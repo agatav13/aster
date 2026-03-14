@@ -1,0 +1,5 @@
+Aby aktywować konto w aplikacji filmowej, kliknij w link:
+{{ activation_url }}
+
+Jeśli to nie Ty zakładałeś konto, zignoruj tę wiadomość.
+
