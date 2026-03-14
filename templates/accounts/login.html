@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Logowanie{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <section class="form-card shadow-sm">
+      <h1 class="h2 mb-3">Zaloguj się</h1>
+      <p class="text-secondary">Użyj aktywnego konta potwierdzonego adresem e-mail.</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/form_fields.html" with form=form %}
+        <button type="submit" class="btn btn-dark w-100 mt-3">Zaloguj się</button>
+      </form>
+      <div class="mt-4 d-flex flex-column gap-2 small">
+        <a href="{% url 'accounts:password_reset' %}">Nie pamiętasz hasła?</a>
+        <a href="{% url 'accounts:resend_activation' %}">Wyślij ponownie link aktywacyjny</a>
+        <a href="{% url 'accounts:register' %}">Nie masz konta? Zarejestruj się</a>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+

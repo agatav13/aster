@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Rejestracja{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <section class="form-card shadow-sm">
+      <h1 class="h2 mb-3">Załóż konto</h1>
+      <p class="text-secondary">Po rejestracji wyślemy link aktywacyjny na Twój adres e-mail.</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/form_fields.html" with form=form %}
+        <button type="submit" class="btn btn-dark w-100 mt-3">Utwórz konto</button>
+      </form>
+      <p class="mt-4 mb-0 small text-secondary">
+        Masz już konto? <a href="{% url 'accounts:login' %}">Zaloguj się</a>.
+      </p>
+    </section>
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Start | Filmowa aplikacja{% endblock %}
+
+{% block content %}
+<section class="hero-panel shadow-sm text-center">
+  <h1 class="display-6 fw-bold mb-4">Filmowa aplikacja</h1>
+  <div class="d-flex flex-column align-items-center gap-3">
+    <a href="{% url 'accounts:login' %}" class="btn btn-dark btn-lg home-cta">Zaloguj się</a>
+    <a href="{% url 'accounts:register' %}" class="btn btn-outline-dark btn-lg home-cta">Zarejestruj się</a>
+    <a href="{% url 'accounts:password_reset' %}" class="small text-decoration-none link-dark">Nie pamiętasz hasła?</a>
+  </div>
+</section>
+{% endblock %}

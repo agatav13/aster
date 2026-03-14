@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Filmowa aplikacja{% endblock %}
+
+{% block content %}
+<section class="dashboard-card shadow-sm">
+  <p class="eyebrow">Strefa użytkownika</p>
+  <h1 class="display-6 fw-bold mb-3">
+    Witaj{% if request.user.display_name %}, {{ request.user.display_name }}{% endif %}.
+  </h1>
+  <p class="text-secondary mb-4">
+    Konto działa poprawnie. Ten ekran jest celowo prosty i będzie bazą pod kolejne funkcje aplikacji filmowej.
+  </p>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="info-tile">
+        <h2 class="h5">Adres logowania</h2>
+        <p class="mb-0">{{ request.user.email }}</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="info-tile">
+        <h2 class="h5">Status konta</h2>
+        <p class="mb-0">
+          {% if request.user.is_email_verified %}
+            Zweryfikowane i aktywne
+          {% else %}
+            Oczekuje na weryfikację
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="info-tile">
+        <h2 class="h5">Ulubione gatunki</h2>
+        <p class="mb-0">
+          {% for genre in request.user.favorite_genres.all %}
+            <span class="genre-pill">{{ genre.name }}</span>
+          {% empty %}
+            Brak wybranych gatunków.
+          {% endfor %}
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,128 @@
+body.app-shell {
+  min-height: 100vh;
+  background: #f5f5f5;
+  color: #1f1f1f;
+}
+
+.hero-panel,
+.form-card,
+.info-panel,
+.dashboard-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 24px;
+  padding: 2rem;
+}
+
+.hero-panel {
+  max-width: 520px;
+  margin: 4rem auto 0;
+  padding: 3rem 2rem;
+}
+
+.info-tile {
+  background: #171717;
+  color: #f7f3eb;
+  border-radius: 20px;
+  padding: 1.5rem;
+}
+
+.info-panel {
+  max-width: 680px;
+}
+
+.home-cta {
+  min-width: 240px;
+}
+
+.genre-pill {
+  display: inline-block;
+  margin: 0 0.5rem 0.5rem 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: #2b2b2b;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.form-card ul {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+.genre-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.genre-field .form-label {
+  margin-bottom: 0.85rem;
+}
+
+.genre-option {
+  position: relative;
+}
+
+.genre-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128px;
+  min-height: 46px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #cfcfcf;
+  border-radius: 999px;
+  background: #fff;
+  color: #1f1f1f;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.genre-choice:hover {
+  border-color: #171717;
+  transform: translateY(-1px);
+}
+
+.genre-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.genre-choice span {
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.genre-option input:checked + .genre-choice {
+  background: #171717;
+  border-color: #171717;
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+.genre-option input:focus-visible + .genre-choice {
+  outline: 3px solid rgba(23, 23, 23, 0.18);
+  outline-offset: 2px;
+}
+
+.form-card input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) {
+  display: block;
+  width: 100%;
+  border: 1px solid #c9c9c9;
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+
+.form-card input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus {
+  outline: none;
+  border-color: #171717;
+  box-shadow: 0 0 0 0.2rem rgba(23, 23, 23, 0.08);
+}
