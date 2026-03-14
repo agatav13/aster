@@ -25,7 +25,7 @@ Aplikacja umożliwia użytkownikom wyszukiwanie filmów, ocenianie ich oraz otrz
 Aplikacja przeznaczona jest dla:
 
 - osób oglądających filmy i chcących łatwiej znajdować nowe tytuły,
-- użytkowników, którzy chcą prowadzić własną listę ocenionych filmów,
+- użytkowników, którzy chcą prowadzić własną listę obejrzanych, ocenionych i zapisanych do obejrzenia filmów,
 - osób poszukujących rekomendacji filmowych na podstawie swoich preferencji
 
 System może być używany przez każdego użytkownika internetu, który chce uporządkować historię oglądanych filmów oraz otrzymywać sugestie nowych tytułów.
@@ -48,9 +48,10 @@ Aplikacja ma na celu zaprezentowanie praktycznego wykorzystania technologii twor
 Użytkownicy oczekują systemu, który:
 
 - umożliwia łatwe i intuicyjne wyszukiwanie filmów według różnych kryteriów,
+- jasno komunikuje, co należy wpisać w pole wyszukiwania i jakie filtry są dostępne,
 - pozwala na ocenianie filmów w prostej skali (np. gwiazdkowej),
 - generuje rekomendacje dopasowane do indywidualnych preferencji,
-- udostępnia historię ocenionych filmów z możliwością zarządzania,
+- udostępnia historię obejrzanych, ocenionych i zapisanych do obejrzenia filmów z możliwością zarządzania,
 - działa responsywnie na różnych urządzeniach,
 - zapewnia przejrzysty i przyjazny interfejs użytkownika.
 
@@ -71,10 +72,10 @@ Z punktu widzenia biznesowego system powinien:
 ### Rejestracja i logowanie użytkownika
 
 **Co robi użytkownik:**
-Nowy użytkownik wypełnia formularz rejestracyjny (login, hasło). Zarejestrowany użytkownik loguje się do istniejącego konta, wprowadzając login i hasło.
+Użytkownik przechodzi do panelu startowego, w którym może wybrać opcję logowania albo rejestracji. Przy logowaniu podaje adres e-mail i hasło. Przy rejestracji wpisuje adres e-mail, hasło oraz zaznacza ulubione gatunki filmowe.
 
 **Co robi system:**
-System waliduje dane, sprawdza unikalność loginu, generuje hash hasła i zapisuje konto w bazie danych. Przy logowaniu weryfikuje dane i uwierzytelnia użytkownika, przekierowując go na stronę główną.
+System wyświetla dwa warianty formularza w jednym panelu: logowanie i rejestrację. Waliduje dane, sprawdza unikalność adresu e-mail, generuje hash hasła i zapisuje konto w bazie danych wraz z preferowanymi gatunkami. Po poprawnym logowaniu uwierzytelnia użytkownika i przekierowuje go na stronę główną. Już po rejestracji system może generować wstępne rekomendacje na podstawie wybranych gatunków, nawet jeśli użytkownik nie ocenił jeszcze żadnego filmu.
 
 **Schemat widoku – Rejestracja/logowanie:**
 
@@ -85,15 +86,14 @@ System waliduje dane, sprawdza unikalność loginu, generuje hash hasła i zapis
 ### Wyszukiwanie filmów
 
 **Co robi użytkownik:**
-Użytkownik wpisuje frazę wyszukiwania w polu wyszukiwania na stronie głównej. Może szukać po tytule, reżyserze, obsadzie lub gatunku. Dodatkowo może skorzystać z filtrów (rok produkcji, gatunek) oraz sortowania wyników.
+Użytkownik przechodzi do strony głównej, wpisuje tytuł filmu w polu wyszukiwania i może dodatkowo filtrować wyniki po gatunkach.
 
 **Co robi system:**
-System przeszukuje bazę filmów i zwraca listę pasujących wyników zawierającą plakat, tytuł, rok produkcji, gatunek oraz średnią ocenę.
+System przeszukuje bazę filmów po tytule i wybranych gatunkach, a następnie wyświetla listę pasujących wyników w dolnej części strony. Każdy wynik zawiera podstawowe informacje o filmie i umożliwia przejście do jego szczegółów.
 
 **Schematy widoków – Wyszukiwanie filmów:**
 
-![Strona główna](figures/main-page.png){width=50%}
-![Wyniki wyszukiwania](figures/search-results.png){width=50%}
+![](figures/search-results.png){width=90% fig-align="center"}
 
 \newpage
 
@@ -103,7 +103,7 @@ System przeszukuje bazę filmów i zwraca listę pasujących wyników zawierają
 Użytkownik klika na wybrany film z listy wyników wyszukiwania lub z sekcji na stronie głównej.
 
 **Co robi system:**
-System pobiera i wyświetla szczegółowe informacje o filmie: tytuł, rok produkcji, reżysera, obsadę, gatunki, opis fabuły, plakat oraz średnią ocenę. Jeśli użytkownik jest zalogowany, system umożliwia mu ocenienie filmu lub wyświetla jego dotychczasową ocenę.
+System pobiera i wyświetla szczegółowe informacje o filmie: tytuł, rok produkcji, reżysera, obsadę, gatunki, opis fabuły, plakat oraz średnią ocenę. W dolnej części widoku udostępnia przyciski: dodanie filmu do obejrzanych, ocenienie filmu oraz zapisanie go do obejrzenia później.
 
 **Schemat widoku – Szczegóły filmu:**
 
@@ -114,37 +114,53 @@ System pobiera i wyświetla szczegółowe informacje o filmie: tytuł, rok produ
 ### Ocenianie filmów
 
 **Co robi użytkownik:**
-Użytkownik wybiera ocenę w skali od 1 do 5 gwiazdek na stronie szczegółów filmu. Może również zmienić lub usunąć istniejącą ocenę.
+Użytkownik wystawia ocenę filmu w skali od 1 do 5 gwiazdek. Może również usunąć wcześniej dodaną ocenę za pomocą dedykowanego przycisku.
 
 **Co robi system:**
-System zapisuje lub aktualizuje ocenę w bazie danych przypisaną do użytkownika i filmu, a następnie przelicza średnią ocenę filmu. Po zapisie system odświeża widok, aby pokazać zaktualizowaną ocenę.
+System zapisuje lub aktualizuje ocenę przypisaną do użytkownika i filmu. W przypadku usunięcia oceny usuwa ją z bazy danych i odświeża widok. Po każdej zmianie przelicza średnią ocenę filmu i uwzględnia nowe dane w rekomendacjach użytkownika.
 
 **Schemat widoku – Ocenianie filmu:**
 
 ![](figures/rating-page.png){width=70% fig-align="center"}
 
-### Panel użytkownika – Oceny i rekomendacje
+### Panel użytkownika – Aktywność i rekomendacje
 
-**Moje ocenione filmy:**
+**Moje filmy:**
 
 **Co robi użytkownik:**
-Użytkownik przechodzi do panelu użytkownika i wybiera sekcję "Moje filmy". Może przeglądać listę ocenionych filmów, sortować je oraz filtrować według gatunków. Może również edytować lub usunąć dowolną ocenę.
+Użytkownik przechodzi do profilu i przegląda zakładki: obejrzane, ocenione oraz do obejrzenia. Może otwierać filmy zapisane w poszczególnych zakładkach.
 
 **Co robi system:**
-System pobiera listę filmów ocenionych przez użytkownika i wyświetla ją w postaci listy z tytułami, ocenami i datami. Lista jest paginowana dla wydajności.
+System pobiera listy filmów powiązanych z kontem użytkownika i wyświetla je w podziale na odpowiednie zakładki. Każda zakładka prezentuje filmy przypisane do danego typu aktywności użytkownika.
 
 **Rekomendacje filmów:**
 
 **Co robi użytkownik:**
-Użytkownik przechodzi do sekcji "Rekomendacje" w panelu użytkownika, gdzie przegląda spersonalizowane propozycje filmów.
+Użytkownik przechodzi do sekcji z rekomendowanymi filmami i może otwierać proponowane tytuły.
 
 **Co robi system:**
-System analizuje historię ocen użytkownika oraz preferencje filmowe. Na podstawie zebranych danych identyfikuje filmy, które mogą odpowiadać gustom użytkownika, i oblicza wskaźnik dopasowania. Wyniki są sortowane i prezentowane jako lista rekomendacji z procentowym dopasowaniem.
+System analizuje historię ocen użytkownika oraz preferencje filmowe zadeklarowane podczas rejestracji. Jeśli użytkownik nie ma jeszcze żadnych ocen, rekomendacje są generowane na podstawie ulubionych gatunków wybranych przy zakładaniu konta. Wyniki są prezentowane jako lista rekomendowanych filmów dostępnych z poziomu profilu użytkownika.
 
 **Schematy widoków – Panel użytkownika:**
 
 ![Panel użytkownika - oceny](figures/user-ratings.png){width=50%}
 ![Rekomendacje](figures/user-recommendations.png){width=50%}
+
+\newpage
+
+### Panel administratora
+
+**Co robi administrator:**
+Administrator loguje się do dedykowanego panelu administracyjnego i przegląda zgłoszenia dotyczące komentarzy oraz treści dodawanych przez użytkowników. Może filtrować komentarze wymagające uwagi, oznaczać je jako zaakceptowane, ukrywać treści nieodpowiednie lub podejmować dalsze działania moderacyjne wobec kont użytkowników.
+
+**Co robi system:**
+System udostępnia administratorowi narzędzia do nadzorowania treści publikowanych w aplikacji, w szczególności komentarzy zawierających wulgaryzmy, mowę nienawiści, spam lub inne niedozwolone treści. System rejestruje historię działań moderacyjnych i umożliwia przegląd komentarzy oznaczonych automatycznie lub zgłoszonych przez użytkowników.
+
+**Schemat widoku – Panel administratora:**
+
+![](figures/admin-panel.png){fig-align="center"}
+
+\newpage
 
 ---
 
@@ -154,25 +170,25 @@ Na podstawie wymagań funkcjonalnych można oszacować zakres prac potrzebnych d
 
 1. Backend:
    - Integracja z TMDB API do pobierania danych filmowych (tytuły, plakaty, gatunki, obsada, reżyserzy).
-   - Projektowanie i implementacja bazy danych relacyjnej (tabele: users, ratings, user_preferences) z indeksami dla wydajności.
-   - Implementacja API REST dla wszystkich funkcjonalności (autentykacja, oceny, rekomendacje).
+   - Projektowanie i implementacja bazy danych relacyjnej (tabele: users, ratings, watchlist, watched_movies, user_preferences, moderation_reports) z indeksami dla wydajności.
+   - Implementacja API REST dla wszystkich funkcjonalności (autentykacja, statusy filmów, oceny, rekomendacje, moderacja).
    - Implementacja algorytmu rekomendacji filmów.
-   - System autentykacji i autoryzacji użytkowników.
+   - System autentykacji i autoryzacji użytkowników z logowaniem przez adres e-mail.
    - Mechanizm walidacji danych, obsługa błędów i logowanie.
-   - Paginacja i filtrowanie dla list wyników.
+   - Paginacja i filtrowanie dla list wyników oraz panelu administracyjnego.
 
 2. Frontend:
    - Implementacja widoków zgodnych z przedstawionymi schematami.
    - Integracja z API backendu oraz wyświetlanie danych z TMDB.
    - System nawigacji między widokami (routing).
-   - Komponenty UI z możliwością wyszukiwania i filtrowania.
-   - Obsługa stanu aplikacji (zarządzanie sesją użytkownika, ulubione filmy).
+   - Komponenty UI z możliwością wyszukiwania po tytule i filtrowania po gatunkach.
+   - Obsługa stanu aplikacji (zarządzanie sesją użytkownika, listą obejrzanych, listą do obejrzenia i preferencjami gatunkowymi).
 
 3. Testy i deployment:
    - Testy jednostkowe dla kluczowych funkcjonalności.
    - Testy integracyjne API oraz komunikacji z TMDB.
    - Testy end-to-end dla głównych ścieżek użytkownika.
-   - Testy wydajnościowe dla algorytmu rekomendacji.
+   - Testy wydajnościowe dla algorytmu rekomendacji oraz testy moderacji treści.
    - Proces CI/CD dla automatycznego deploymentu.
    - Konfiguracja środowiska produkcyjnego z obsługą zmiennych środowiskowych (TMDB API key).
 
