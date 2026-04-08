@@ -11,6 +11,7 @@ dependencies = [
   "psycopg[binary]>=3.2",
   "dj-database-url>=2.3",
   "whitenoise>=6.8",
+  "django-anymail[brevo]>=14.0",
 ]
 
 [tool.uv]
