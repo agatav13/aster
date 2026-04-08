@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.tokens import default_token_generator
@@ -33,6 +35,7 @@ class RegisterView(FormView):
                 "Konto zostało utworzone. Sprawdź skrzynkę e-mail i aktywuj konto.",
             )
         except Exception:
+            logging.exception("Activation email failed")
             messages.warning(
                 self.request,
                 "Konto zostało utworzone, ale wysyłka e-maila się nie powiodła. "
@@ -103,6 +106,7 @@ class ResendActivationView(FormView):
             try:
                 send_activation_email(user)
             except Exception:
+                logging.exception("Resend activation email failed")
                 messages.error(
                     self.request,
                     "Nie udało się ponownie wysłać wiadomości. Sprawdź konfigurację SMTP.",
