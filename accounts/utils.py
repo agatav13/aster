@@ -27,7 +27,6 @@ def send_activation_email(user: User) -> None:
     email = EmailMultiAlternatives(
         subject=subject,
         body=text_body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
         to=[user.email],
     )
     email.attach_alternative(html_body, "text/html")
