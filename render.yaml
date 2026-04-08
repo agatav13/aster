@@ -1,7 +1,7 @@
 services:
   - type: web
     runtime: python
-    name: movie-app
+    name: aster-app
     buildCommand: ./build.sh
     startCommand: uv run gunicorn config.wsgi:application
     envVars:
@@ -23,5 +23,7 @@ services:
         sync: false
       - key: EMAIL_HOST_PASSWORD
         sync: false
-      - key: DEFAULT_FROM_EMAIL
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
         sync: false
