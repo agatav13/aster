@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Edytuj ulubione gatunki | Aster{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <section class="form-card shadow-sm">
+      <p class="eyebrow">Profil</p>
+      <h1 class="h2 mb-3">Edytuj ulubione gatunki</h1>
+      <p class="text-secondary">
+        Wybierz gatunki, które chcesz oglądać. Lista wpływa na filtr "Moje ulubione" w katalogu filmów.
+      </p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/form_fields.html" with form=form %}
+        <div class="d-flex gap-2 mt-3">
+          <button type="submit" class="btn btn-dark flex-grow-1">Zapisz zmiany</button>
+          <a href="{% url 'dashboard' %}" class="btn btn-ghost">Anuluj</a>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

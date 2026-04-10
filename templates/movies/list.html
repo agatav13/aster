@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Filmy | Aster{% endblock %}
+
+{% block content %}
+<section class="movies-section">
+  <header class="movies-header">
+    <p class="eyebrow">Katalog</p>
+    <h1 class="display-6 fw-bold mb-3">Przeglądaj filmy</h1>
+    <p class="text-secondary mb-4">
+      Filmy są pobierane z TMDB i zapisywane w lokalnej bazie. Użyj wyszukiwarki,
+      aby znaleźć tytuł lub przefiltruj listę po gatunku.
+    </p>
+    <form method="get" class="movies-filters">
+      <input
+        type="search"
+        name="q"
+        value="{{ query }}"
+        placeholder="Szukaj po tytule..."
+        class="movies-search"
+        aria-label="Szukaj filmu"
+      >
+      <select name="genre" class="movies-genre-select" aria-label="Gatunek">
+        <option value="">Wszystkie gatunki</option>
+        {% for genre in genres %}
+          <option value="{{ genre.id }}" {% if selected_genre == genre.id|stringformat:"s" %}selected{% endif %}>
+            {{ genre.name }}
+          </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-accent">Szukaj</button>
+      {% if has_favorite_genres %}
+        {% if favorites_active %}
+          <a href="{% url 'movies:list' %}{% if query %}?q={{ query }}{% endif %}" class="btn btn-accent btn-favorites is-active">
+            <i class="bi bi-heart-fill"></i> Moje ulubione
+          </a>
+        {% else %}
+          <a href="?favorites=1{% if query %}&q={{ query }}{% endif %}" class="btn btn-ghost btn-favorites">
+            <i class="bi bi-heart"></i> Moje ulubione
+          </a>
+        {% endif %}
+      {% endif %}
+    </form>
+  </header>
+
+  {% if movies %}
+    <div class="movie-grid">
+      {% for movie in movies %}
+        <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
+          <div class="movie-poster">
+            {% if movie.poster_url %}
+              <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
+            {% else %}
+              <div class="movie-poster-placeholder">
+                <i class="bi bi-film"></i>
+              </div>
+            {% endif %}
+          </div>
+          <div class="movie-card-body">
+            <h3 class="movie-title">{{ movie.title }}</h3>
+            <p class="movie-meta">
+              {% if movie.release_date %}{{ movie.release_date|date:"Y" }}{% endif %}
+              {% if movie.popularity %}
+                <span class="movie-pop"><i class="bi bi-fire"></i> {{ movie.popularity|floatformat:0 }}</span>
+              {% endif %}
+            </p>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+      <nav class="movies-pagination" aria-label="Paginacja">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if favorites_active %}&favorites=1{% endif %}" class="btn btn-ghost btn-ghost-sm">
+            <i class="bi bi-chevron-left"></i> Poprzednia
+          </a>
+        {% endif %}
+        <span class="page-indicator">
+          Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+        </span>
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if favorites_active %}&favorites=1{% endif %}" class="btn btn-ghost btn-ghost-sm">
+            Następna <i class="bi bi-chevron-right"></i>
+          </a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="movies-empty">
+      <i class="bi bi-camera-reels"></i>
+      <h2>Brak filmów do wyświetlenia</h2>
+      {% if query or selected_genre %}
+        <p>Spróbuj zmienić filtry lub wyczyścić wyszukiwanie.</p>
+        <a href="{% url 'movies:list' %}" class="btn btn-ghost">Wyczyść filtry</a>
+      {% else %}
+        <p>
+          Lokalna baza jest jeszcze pusta. Administrator może uruchomić
+          <code>uv run manage.py sync_tmdb_genres</code> i
+          <code>uv run manage.py sync_tmdb_popular --pages 3</code>,
+          aby pobrać dane z TMDB.
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

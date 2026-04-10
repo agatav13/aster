@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "anymail",
     "accounts",
     "core",
+    "movies",
 ]
 
 MIDDLEWARE = [
@@ -133,3 +134,9 @@ else:
     EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
+TMDB_API_BASE_URL = os.getenv("TMDB_API_BASE_URL", "https://api.themoviedb.org/3")
+TMDB_IMAGE_BASE_URL = os.getenv("TMDB_IMAGE_BASE_URL", "https://image.tmdb.org/t/p/w500")
+TMDB_REQUEST_TIMEOUT = float(os.getenv("TMDB_REQUEST_TIMEOUT", "10"))
+TMDB_LANGUAGE = os.getenv("TMDB_LANGUAGE", "pl-PL")

@@ -1,13 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import Genre, User
-
-
-@admin.register(Genre)
-class GenreAdmin(admin.ModelAdmin):
-    list_display = ("name",)
-    search_fields = ("name",)
+from .models import User
 
 
 @admin.register(User)

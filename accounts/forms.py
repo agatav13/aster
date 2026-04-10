@@ -2,7 +2,9 @@ from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import PasswordResetForm, UserCreationForm
 
-from .models import Genre, User
+from movies.models import Genre
+
+from .models import User
 
 
 class RegisterForm(UserCreationForm):
@@ -96,3 +98,22 @@ class ResendActivationForm(forms.Form):
 
 class AppPasswordResetForm(PasswordResetForm):
     email = forms.EmailField(label="Adres e-mail")
+
+
+class FavoriteGenresForm(forms.ModelForm):
+    favorite_genres = forms.ModelMultipleChoiceField(
+        label="Ulubione gatunki",
+        queryset=Genre.objects.none(),
+        required=True,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Wybierz przynajmniej jeden gatunek.",
+        error_messages={"required": "Wybierz przynajmniej jeden ulubiony gatunek."},
+    )
+
+    class Meta:
+        model = User
+        fields = ("favorite_genres",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["favorite_genres"].queryset = Genre.objects.order_by("name")

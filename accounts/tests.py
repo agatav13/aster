@@ -5,7 +5,9 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
-from .models import Genre, User
+from movies.models import Genre
+
+from .models import User
 
 
 @override_settings(
@@ -144,6 +146,70 @@ class AuthFlowTests(TestCase):
         self.assertRedirects(response, reverse("accounts:password_reset_done"))
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("/auth/reset/", mail.outbox[0].body)
+
+    def test_edit_favorite_genres_requires_login(self):
+        response = self.client.get(reverse("accounts:edit_favorite_genres"))
+        self.assertRedirects(
+            response,
+            f"{reverse('accounts:login')}?next={reverse('accounts:edit_favorite_genres')}",
+        )
+
+    def test_edit_favorite_genres_renders_for_logged_in_user(self):
+        user = User.objects.create_user(
+            email="editor@example.com",
+            password="MocneHaslo123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        user.favorite_genres.set([self.action])
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("accounts:edit_favorite_genres"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Edytuj ulubione gatunki")
+        self.assertContains(response, 'class="genre-grid"')
+
+    def test_edit_favorite_genres_updates_selection(self):
+        user = User.objects.create_user(
+            email="updater@example.com",
+            password="MocneHaslo123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        user.favorite_genres.set([self.action])
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("accounts:edit_favorite_genres"),
+            {"favorite_genres": [self.drama.pk]},
+        )
+
+        self.assertRedirects(response, reverse("dashboard"))
+        user.refresh_from_db()
+        self.assertEqual(
+            list(user.favorite_genres.values_list("pk", flat=True)),
+            [self.drama.pk],
+        )
+
+    def test_edit_favorite_genres_requires_at_least_one(self):
+        user = User.objects.create_user(
+            email="empty@example.com",
+            password="MocneHaslo123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        user.favorite_genres.set([self.action])
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("accounts:edit_favorite_genres"),
+            {"favorite_genres": []},
+        )
+
+        self.assertContains(response, "Wybierz przynajmniej jeden ulubiony gatunek.")
+        user.refresh_from_db()
+        self.assertEqual(list(user.favorite_genres.all()), [self.action])
 
     def test_password_reset_confirm_changes_password(self):
         user = User.objects.create_user(

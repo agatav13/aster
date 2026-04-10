@@ -12,6 +12,8 @@ dependencies = [
   "dj-database-url>=2.3",
   "whitenoise>=6.8",
   "django-anymail[brevo]>=14.0",
+  "httpx>=0.28.1",
+  "pydantic>=2.12.5",
 ]
 
 [tool.uv]
