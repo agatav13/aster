@@ -153,6 +153,10 @@ class LogoutView(View):
         return redirect("home")
 
 
+class ProfileView(LoginRequiredMixin, TemplateView):
+    template_name = "accounts/profile.html"
+
+
 class EditFavoriteGenresView(LoginRequiredMixin, UpdateView):
     template_name = "accounts/edit_favorite_genres.html"
     form_class = FavoriteGenresForm

@@ -3,53 +3,120 @@
 {% block title %}Dashboard | Aster{% endblock %}
 
 {% block content %}
-<section class="dashboard-card">
-  <p class="eyebrow">Strefa użytkownika</p>
-  <h1 class="display-6 fw-bold mb-3">
-    Witaj{% if request.user.display_name %}, {{ request.user.display_name }}{% endif %}.
-  </h1>
-  <p class="text-secondary mb-4">
-    Konto działa poprawnie. Przejdź do katalogu, aby przeglądać filmy dopasowane do Twoich gatunków.
-  </p>
-  <a href="{% url 'movies:list' %}" class="btn btn-accent mb-4">
-    <i class="bi bi-collection-play"></i> Przeglądaj filmy
-  </a>
-  <div class="row g-3">
-    <div class="col-md-6">
-      <div class="info-tile">
-        <h2><i class="bi bi-envelope"></i> Adres logowania</h2>
-        <p class="mb-0">{{ request.user.email }}</p>
+<section class="dashboard">
+  <header class="dashboard-hero">
+    <div>
+      <p class="eyebrow">Strefa użytkownika</p>
+      <h1 class="page-title">
+        Witaj{% if request.user.display_name %}, {{ request.user.display_name }}{% endif %}.
+      </h1>
+      <p class="page-lede">
+        Przeglądaj katalog, oceniaj filmy i buduj swoją filmową historię.
+      </p>
+    </div>
+    <a href="{% url 'movies:list' %}" class="btn btn-accent dashboard-cta">
+      <i class="bi bi-collection-play"></i> Przeglądaj filmy
+    </a>
+  </header>
+
+  <section class="dashboard-section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow mb-1">Profil filmowy</p>
+        <h2 class="section-title">Moja aktywność</h2>
+      </div>
+      <span class="soon-badge soon-badge--inline">Wkrótce</span>
+    </div>
+
+    <div class="profile-tabs" role="tablist">
+      <button type="button" class="profile-tab is-active" data-activity-tab="watched" role="tab" aria-selected="true">
+        <i class="bi bi-eye"></i> Obejrzane
+        <span class="profile-tab-count">0</span>
+      </button>
+      <button type="button" class="profile-tab" data-activity-tab="rated" role="tab" aria-selected="false">
+        <i class="bi bi-star"></i> Ocenione
+        <span class="profile-tab-count">0</span>
+      </button>
+      <button type="button" class="profile-tab" data-activity-tab="watchlist" role="tab" aria-selected="false">
+        <i class="bi bi-bookmark"></i> Do obejrzenia
+        <span class="profile-tab-count">0</span>
+      </button>
+    </div>
+
+    <div class="profile-tab-panel" data-activity-panel="watched">
+      <div class="activity-empty">
+        <i class="bi bi-camera-reels"></i>
+        <h3>Brak obejrzanych filmów</h3>
+        <p>Po obejrzeniu filmu zaznacz go na stronie szczegółów, aby pojawił się tutaj.</p>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="info-tile">
-        <h2><i class="bi bi-patch-check"></i> Status konta</h2>
-        <p class="mb-0">
-          {% if request.user.is_email_verified %}
-            Zweryfikowane i aktywne
-          {% else %}
-            Oczekuje na weryfikację
-          {% endif %}
-        </p>
+    <div class="profile-tab-panel" data-activity-panel="rated" hidden>
+      <div class="activity-empty">
+        <i class="bi bi-star"></i>
+        <h3>Brak ocenionych filmów</h3>
+        <p>Wystaw pierwszą ocenę, a Twoja historia ocen pojawi się w tej zakładce.</p>
       </div>
     </div>
-    <div class="col-12">
-      <div class="info-tile">
-        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-          <h2><i class="bi bi-stars"></i> Ulubione gatunki</h2>
-          <a href="{% url 'accounts:edit_favorite_genres' %}" class="btn btn-ghost btn-ghost-sm">
-            <i class="bi bi-pencil"></i> Edytuj
-          </a>
+    <div class="profile-tab-panel" data-activity-panel="watchlist" hidden>
+      <div class="activity-empty">
+        <i class="bi bi-bookmark"></i>
+        <h3>Pusta lista do obejrzenia</h3>
+        <p>Zapisuj filmy na później, aby wrócić do nich w wolnej chwili.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dashboard-section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow mb-1">Spersonalizowane</p>
+        <h2 class="section-title"><i class="bi bi-magic"></i> Rekomendacje dla Ciebie</h2>
+      </div>
+      <span class="soon-badge soon-badge--inline">Wkrótce</span>
+    </div>
+
+    <p class="text-secondary mb-3">
+      Po wystawieniu kilku ocen i zaznaczeniu obejrzanych filmów algorytm zacznie
+      proponować tytuły dopasowane do Twoich preferencji.
+    </p>
+
+    <div class="recommendation-grid">
+      {% for _ in "12345678" %}
+        <div class="recommendation-card recommendation-card--placeholder" aria-hidden="true">
+          <div class="recommendation-poster">
+            <i class="bi bi-film"></i>
+          </div>
+          <div class="recommendation-body">
+            <div class="placeholder-line placeholder-line--title"></div>
+            <div class="placeholder-line placeholder-line--meta"></div>
+            <div class="placeholder-line placeholder-line--meta short"></div>
+          </div>
         </div>
-        <p class="mb-0">
-          {% for genre in request.user.favorite_genres.all %}
-            <span class="genre-pill">{{ genre.name }}</span>
-          {% empty %}
-            Brak wybranych gatunków.
-          {% endfor %}
-        </p>
-      </div>
+      {% endfor %}
     </div>
-  </div>
+  </section>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var tabs = document.querySelectorAll('[data-activity-tab]');
+    if (!tabs.length) return;
+    var panels = document.querySelectorAll('[data-activity-panel]');
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var target = tab.getAttribute('data-activity-tab');
+        tabs.forEach(function (t) {
+          var active = t === tab;
+          t.classList.toggle('is-active', active);
+          t.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        panels.forEach(function (p) {
+          p.hidden = p.getAttribute('data-activity-panel') !== target;
+        });
+      });
+    });
+  })();
+</script>
 {% endblock %}
