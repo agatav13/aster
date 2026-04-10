@@ -9,13 +9,29 @@ from __future__ import annotations
 
 import logging
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 from django.conf import settings
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
+
+
+def _empty_string_to_none(value: Any) -> Any:
+    """Coerce TMDB's empty-string sentinel into None.
+
+    TMDB returns `release_date: ""` for unreleased / unscheduled movies
+    instead of omitting the field. Pydantic v2's date parser rejects an
+    empty string, so we normalize it to None before validation.
+    """
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+# Reusable annotated type: any optional date field that may arrive as "".
+OptionalDate = Annotated[date | None, BeforeValidator(_empty_string_to_none)]
 
 
 class TmdbConfigError(RuntimeError):
@@ -44,7 +60,7 @@ class TmdbMovieSummary(BaseModel):
     title: str
     original_title: str = ""
     overview: str = ""
-    release_date: date | None = None
+    release_date: OptionalDate = None
     poster_path: str | None = None
     backdrop_path: str | None = None
     original_language: str = ""
@@ -66,7 +82,7 @@ class TmdbMovieDetail(BaseModel):
     title: str
     original_title: str = ""
     overview: str = ""
-    release_date: date | None = None
+    release_date: OptionalDate = None
     runtime: int | None = None
     poster_path: str | None = None
     backdrop_path: str | None = None
@@ -129,6 +145,18 @@ class TmdbClient:
         payload = self._get(
             "/discover/movie",
             params={"sort_by": "popularity.desc", "page": page, "include_adult": "false"},
+        )
+        return TmdbDiscoverResponse.model_validate(payload)
+
+    def search_movies(self, query: str, page: int = 1) -> TmdbDiscoverResponse:
+        """Free-text title search via TMDB /search/movie.
+
+        Returns the same shape as discover_popular so the calling code can
+        treat both endpoints uniformly. TMDB caps `page` at 500 server-side.
+        """
+        payload = self._get(
+            "/search/movie",
+            params={"query": query, "page": page, "include_adult": "false"},
         )
         return TmdbDiscoverResponse.model_validate(payload)
 

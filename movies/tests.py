@@ -14,7 +14,14 @@ from .services import (
     sync_all_genres,
     upsert_genre,
 )
-from .tmdb import TmdbConfigError, TmdbGenre, TmdbMovieDetail
+from .tmdb import (
+    TmdbApiError,
+    TmdbConfigError,
+    TmdbDiscoverResponse,
+    TmdbGenre,
+    TmdbMovieDetail,
+    TmdbMovieSummary,
+)
 
 
 def make_movie(
@@ -38,7 +45,11 @@ def make_movie(
     return movie
 
 
+@override_settings(TMDB_API_KEY="")
 class MovieListViewTests(TestCase):
+    """Local-only browse paths. TMDB key is forced empty so search() falls
+    back to the local DB, which is what these assertions exercise."""
+
     @classmethod
     def setUpTestData(cls) -> None:
         cls.action = Genre.objects.get(name="Akcja")
@@ -356,3 +367,178 @@ class FavoritesFilterTests(TestCase):
         self._login_user_with_favorites()
         response = self.client.get(reverse("movies:list"))
         self.assertNotContains(response, "Moje ulubione")
+
+
+class TmdbLiveSearchTests(TestCase):
+    """The list view should hit TMDB /search/movie when ?q= is set."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        # One local movie that does NOT match the TMDB query, to prove the
+        # search results come from TMDB and not from a local title__icontains.
+        make_movie(tmdb_id=1, title="Local Only", popularity=10)
+
+    def _build_response(self, *titles: str) -> TmdbDiscoverResponse:
+        return TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=len(titles),
+            results=[
+                TmdbMovieSummary(
+                    id=10_000 + idx,
+                    title=title,
+                    poster_path=f"/{title.lower().replace(' ', '_')}.jpg",
+                    popularity=50.0,
+                )
+                for idx, title in enumerate(titles)
+            ],
+        )
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_search_uses_tmdb_when_configured(self, mock_client_class) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.search_movies.return_value = self._build_response(
+            "Galactic Quest", "Galactic Empire"
+        )
+        mock_client.image_url.side_effect = lambda path: (
+            f"https://image.tmdb.org/t/p/w500{path}" if path else ""
+        )
+
+        response = self.client.get(reverse("movies:list"), {"q": "galactic"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Galactic Quest")
+        self.assertContains(response, "Galactic Empire")
+        # The local row whose title doesn't match must NOT leak in.
+        self.assertNotContains(response, "Local Only")
+        self.assertContains(response, "Wyniki na żywo z TMDB")
+        mock_client.search_movies.assert_called_once_with(
+            query="galactic", page=1
+        )
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_search_falls_back_to_local_on_tmdb_error(
+        self, mock_client_class
+    ) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.search_movies.side_effect = TmdbApiError("boom")
+
+        # The local DB has a title that matches the query — fallback should
+        # find it via title__icontains.
+        make_movie(tmdb_id=2, title="Local Galactic Hero", popularity=20)
+
+        response = self.client.get(reverse("movies:list"), {"q": "galactic"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Local Galactic Hero")
+        self.assertContains(response, "Wyszukiwarka TMDB jest chwilowo niedostępna")
+
+    @override_settings(TMDB_API_KEY="")
+    def test_search_without_tmdb_key_falls_back_silently(self) -> None:
+        """No TMDB key configured → use local title search, no warning banner."""
+        make_movie(tmdb_id=3, title="Local Galactic Captain", popularity=15)
+
+        response = self.client.get(reverse("movies:list"), {"q": "galactic"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Local Galactic Captain")
+        self.assertNotContains(response, "Wyniki na żywo z TMDB")
+        self.assertContains(response, "Wyniki z lokalnej bazy")
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_search_empty_results_renders_empty_state(
+        self, mock_client_class
+    ) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.search_movies.return_value = TmdbDiscoverResponse(
+            page=1, total_pages=1, total_results=0, results=[]
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(reverse("movies:list"), {"q": "zzznoresults"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Brak filmów do wyświetlenia")
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_search_handles_empty_release_date_string(
+        self, mock_client_class
+    ) -> None:
+        """Regression: TMDB returns release_date as "" for unreleased movies.
+        Pydantic v2's date parser used to crash on this; OptionalDate should
+        coerce it to None so the listing renders cleanly."""
+        raw_payload = {
+            "page": 1,
+            "total_pages": 1,
+            "total_results": 1,
+            "results": [
+                {
+                    "id": 9001,
+                    "title": "Little Women (Unreleased Edition)",
+                    "release_date": "",  # the offending value from production
+                    "poster_path": "/lw.jpg",
+                    "popularity": 12.3,
+                    "genre_ids": [],
+                }
+            ],
+        }
+        # Validate through the real Pydantic model so we exercise the
+        # OptionalDate BeforeValidator end-to-end.
+        mock_client = mock_client_class.return_value
+        mock_client.search_movies.return_value = (
+            TmdbDiscoverResponse.model_validate(raw_payload)
+        )
+        mock_client.image_url.side_effect = lambda path: (
+            f"https://image.tmdb.org/t/p/w500{path}" if path else ""
+        )
+
+        response = self.client.get(reverse("movies:list"), {"q": "little women"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Little Women (Unreleased Edition)")
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_search_stitches_two_tmdb_pages_per_ui_page(
+        self, mock_client_class
+    ) -> None:
+        """A single UI page should pull 2 underlying TMDB pages so users see
+        ~40 results per click."""
+        mock_client = mock_client_class.return_value
+        page1 = TmdbDiscoverResponse(
+            page=1,
+            total_pages=4,
+            total_results=80,
+            results=[
+                TmdbMovieSummary(id=1000 + i, title=f"P1-{i}", popularity=10.0)
+                for i in range(20)
+            ],
+        )
+        page2 = TmdbDiscoverResponse(
+            page=2,
+            total_pages=4,
+            total_results=80,
+            results=[
+                TmdbMovieSummary(id=2000 + i, title=f"P2-{i}", popularity=10.0)
+                for i in range(20)
+            ],
+        )
+        mock_client.search_movies.side_effect = [page1, page2]
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(reverse("movies:list"), {"q": "stitched"})
+
+        self.assertEqual(response.status_code, 200)
+        # Both underlying TMDB pages must have been fetched.
+        self.assertEqual(mock_client.search_movies.call_count, 2)
+        mock_client.search_movies.assert_any_call(query="stitched", page=1)
+        mock_client.search_movies.assert_any_call(query="stitched", page=2)
+        # Sample one row from each underlying page to confirm both got merged.
+        self.assertContains(response, "P1-0")
+        self.assertContains(response, "P2-19")
+        # 4 TMDB pages of total → 2 UI pages of 2 TMDB pages each.
+        self.assertContains(response, "Strona 1 z 2")
