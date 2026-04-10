@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Profil | Aster{% endblock %}
+
+{% block content %}
+<section class="profile-page">
+  <header class="page-header">
+    <p class="eyebrow">Konto</p>
+    <h1 class="page-title">Profil</h1>
+    <p class="page-lede">
+      Zarządzaj swoim kontem, ulubionymi gatunkami i ustawieniami dostępu.
+    </p>
+  </header>
+
+  <div class="profile-grid">
+    <div class="profile-block">
+      <div class="profile-block-head">
+        <h2><i class="bi bi-person"></i> Dane konta</h2>
+      </div>
+      <dl class="profile-dl">
+        <div>
+          <dt>Wyświetlana nazwa</dt>
+          <dd>{{ request.user.display_name|default:"—" }}</dd>
+        </div>
+        <div>
+          <dt>Adres e-mail</dt>
+          <dd>{{ request.user.email }}</dd>
+        </div>
+        <div>
+          <dt>Status konta</dt>
+          <dd>
+            {% if request.user.is_email_verified %}
+              <span class="status-pill status-pill--ok"><i class="bi bi-patch-check"></i> Zweryfikowane</span>
+            {% else %}
+              <span class="status-pill status-pill--warn"><i class="bi bi-hourglass-split"></i> Oczekuje na weryfikację</span>
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="profile-block">
+      <div class="profile-block-head">
+        <h2><i class="bi bi-stars"></i> Ulubione gatunki</h2>
+        <a href="{% url 'accounts:edit_favorite_genres' %}" class="btn btn-ghost btn-ghost-sm">
+          <i class="bi bi-pencil"></i> Edytuj
+        </a>
+      </div>
+      <div class="profile-genres">
+        {% for genre in request.user.favorite_genres.all %}
+          <span class="genre-pill">{{ genre.name }}</span>
+        {% empty %}
+          <p class="text-secondary mb-0">Nie wybrałeś jeszcze ulubionych gatunków.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="profile-block">
+      <div class="profile-block-head">
+        <h2><i class="bi bi-shield-lock"></i> Bezpieczeństwo</h2>
+      </div>
+      <p class="text-secondary mb-3">
+        Możesz zmienić hasło, jeśli podejrzewasz, że ktoś poznał Twoje dane logowania.
+      </p>
+      <a href="{% url 'accounts:password_reset' %}" class="btn btn-ghost btn-ghost-sm">
+        <i class="bi bi-key"></i> Zmień hasło
+      </a>
+    </div>
+
+    <div class="profile-block">
+      <div class="profile-block-head">
+        <h2><i class="bi bi-box-arrow-right"></i> Sesja</h2>
+      </div>
+      <p class="text-secondary mb-3">
+        Wyloguj się, jeśli korzystasz ze wspólnego urządzenia.
+      </p>
+      <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost btn-ghost-sm">
+          <i class="bi bi-box-arrow-right"></i> Wyloguj się
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

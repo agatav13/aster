@@ -8,6 +8,7 @@ from .views import (
     EditFavoriteGenresView,
     LoginView,
     LogoutView,
+    ProfileView,
     RegisterView,
     ResendActivationView,
 )
@@ -18,6 +19,7 @@ urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
+    path("profile/", ProfileView.as_view(), name="profile"),
     path("genres/", EditFavoriteGenresView.as_view(), name="edit_favorite_genres"),
     path("activate/<uidb64>/<token>/", ActivateAccountView.as_view(), name="activate"),
     path("activation-sent/", ActivationSentView.as_view(), name="activation_sent"),
