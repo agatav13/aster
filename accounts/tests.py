@@ -211,6 +211,95 @@ class AuthFlowTests(TestCase):
         user.refresh_from_db()
         self.assertEqual(list(user.favorite_genres.all()), [self.action])
 
+    def test_edit_display_name_requires_login(self):
+        response = self.client.get(reverse("accounts:edit_display_name"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("accounts:login"), response.headers["Location"])
+
+    def test_edit_display_name_form_is_prefilled_for_logged_in_user(self):
+        user = User.objects.create_user(
+            email="display-prefill@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+            display_name="Stara Nazwa",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("accounts:edit_display_name"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Stara Nazwa")
+
+    def test_edit_display_name_updates_user_and_redirects_to_profile(self):
+        user = User.objects.create_user(
+            email="display-update@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+            display_name="Pierwsza Wersja",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("accounts:edit_display_name"),
+            {"display_name": "Nowa Nazwa"},
+        )
+
+        self.assertRedirects(response, reverse("accounts:profile"))
+        user.refresh_from_db()
+        self.assertEqual(user.display_name, "Nowa Nazwa")
+
+    def test_edit_display_name_strips_whitespace(self):
+        user = User.objects.create_user(
+            email="display-strip@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        self.client.force_login(user)
+
+        self.client.post(
+            reverse("accounts:edit_display_name"),
+            {"display_name": "   Z Białymi Znakami   "},
+        )
+
+        user.refresh_from_db()
+        self.assertEqual(user.display_name, "Z Białymi Znakami")
+
+    def test_edit_display_name_allows_blank_to_clear(self):
+        user = User.objects.create_user(
+            email="display-clear@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+            display_name="Do Wyczyszczenia",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("accounts:edit_display_name"),
+            {"display_name": ""},
+        )
+
+        self.assertRedirects(response, reverse("accounts:profile"))
+        user.refresh_from_db()
+        self.assertEqual(user.display_name, "")
+
+    def test_profile_page_links_to_display_name_edit(self):
+        user = User.objects.create_user(
+            email="profile-edit-link@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("accounts:profile"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("accounts:edit_display_name"))
+
     def test_password_reset_confirm_changes_password(self):
         user = User.objects.create_user(
             email="confirm@example.com",

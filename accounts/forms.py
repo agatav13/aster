@@ -100,6 +100,22 @@ class AppPasswordResetForm(PasswordResetForm):
     email = forms.EmailField(label="Adres e-mail")
 
 
+class DisplayNameForm(forms.ModelForm):
+    display_name = forms.CharField(
+        label="Wyświetlana nazwa",
+        max_length=120,
+        required=False,
+        help_text="Pozostaw puste, aby pokazywać adres e-mail.",
+    )
+
+    class Meta:
+        model = User
+        fields = ("display_name",)
+
+    def clean_display_name(self) -> str:
+        return self.cleaned_data["display_name"].strip()
+
+
 class FavoriteGenresForm(forms.ModelForm):
     favorite_genres = forms.ModelMultipleChoiceField(
         label="Ulubione gatunki",
