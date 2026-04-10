@@ -8,8 +8,8 @@
     <p class="eyebrow">Katalog</p>
     <h1 class="page-title">Przeglądaj filmy</h1>
     <p class="page-lede">
-      Wpisz tytuł, aby przeszukać całą bazę TMDB. Bez zapytania pokazujemy filmy
-      zapisane w lokalnym katalogu — możesz je przefiltrować po gatunku.
+      Wpisz tytuł, aby przeszukać całą bazę TMDB, albo przeglądaj najpopularniejsze
+      filmy. Filtry gatunku i ulubionych zawężą wyniki.
     </p>
     <form method="get" class="movies-filters">
       <input
@@ -118,13 +118,13 @@
           {% endif %}
         </p>
         <a href="{% url 'movies:list' %}" class="btn btn-ghost">Wyczyść filtry</a>
-      {% elif selected_genre %}
+      {% elif selected_genre or favorites_active %}
         <p>Spróbuj zmienić filtry lub wyczyścić wyszukiwanie.</p>
         <a href="{% url 'movies:list' %}" class="btn btn-ghost">Wyczyść filtry</a>
       {% else %}
         <p>
-          Lokalna baza jest jeszcze pusta. Wpisz tytuł w wyszukiwarkę, aby
-          przeszukać TMDB, albo poproś administratora o uruchomienie
+          Nie udało się pobrać filmów z TMDB ani z lokalnej bazy. Wpisz tytuł
+          w wyszukiwarkę albo poproś administratora o uruchomienie
           <code>uv run manage.py sync_tmdb_genres</code> i
           <code>uv run manage.py sync_tmdb_popular --pages 3</code>.
         </p>
