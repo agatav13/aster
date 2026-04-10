@@ -7,12 +7,15 @@ be swapped to AsyncClient later when views go async.
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from typing import Any
 
 import httpx
 from django.conf import settings
 from pydantic import BaseModel, ConfigDict, Field
+
+logger = logging.getLogger(__name__)
 
 
 class TmdbConfigError(RuntimeError):
@@ -98,14 +101,23 @@ class TmdbClient:
         merged_params: dict[str, Any] = {"api_key": self.api_key, "language": self.language}
         if params:
             merged_params.update(params)
+        # Log only the public params — never the api_key.
+        safe_params = {k: v for k, v in merged_params.items() if k != "api_key"}
+        logger.debug("TMDB GET %s params=%s", path, safe_params)
         try:
             response = httpx.get(url, params=merged_params, timeout=self.timeout)
         except httpx.HTTPError as exc:
-            raise TmdbApiError(f"TMDB request failed: {exc}") from exc
+            logger.warning("TMDB transport error on %s: %s", path, exc)
+            raise TmdbApiError(f"TMDB request to {path} failed") from exc
         if response.status_code >= 400:
+            # Log the body server-side for debugging, but keep the raised
+            # message generic so it's safe to show to end users.
+            logger.warning(
+                "TMDB %s returned HTTP %s; body=%r",
+                path, response.status_code, response.text[:500],
+            )
             raise TmdbApiError(
-                f"TMDB request to {path} failed with status {response.status_code}: "
-                f"{response.text[:200]}"
+                f"TMDB request to {path} failed with status {response.status_code}"
             )
         return response.json()
 

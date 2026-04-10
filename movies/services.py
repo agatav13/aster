@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
+from typing import Any
 
 from django.db import transaction
 from django.utils import timezone
 
 from .models import Genre, Movie
 from .tmdb import TmdbClient, TmdbMovieDetail, TmdbMovieSummary
+
+logger = logging.getLogger(__name__)
 
 
 # Canonical Polish names for the standard TMDB movie genres, keyed by their
@@ -64,15 +68,26 @@ GENRE_EN_TO_PL: dict[str, str] = {
 }
 
 
+@transaction.atomic
 def _merge_genre(source: Genre, target: Genre) -> None:
-    """Move every reference from `source` to `target`, then delete `source`."""
-    for user in source.users.all():
-        user.favorite_genres.add(target)
-        user.favorite_genres.remove(source)
-    for movie in source.movies.all():
-        movie.genres.add(target)
-        movie.genres.remove(source)
+    """Move every reference from `source` to `target`, then delete `source`.
+
+    Transactional and bulk: M2M `add(*qs)` issues a single INSERT per side and
+    `source.delete()` cascades the old through-rows. Safe to call from any
+    context (does not rely on a caller-provided transaction).
+    """
+    source_pk = source.pk
+    source_name = source.name
+    user_count = source.users.count()
+    movie_count = source.movies.count()
+    target.users.add(*source.users.all())
+    target.movies.add(*source.movies.all())
     source.delete()
+    logger.info(
+        "Merged genre id=%s name=%r into id=%s name=%r "
+        "(moved %d user favorite(s), %d movie link(s))",
+        source_pk, source_name, target.pk, target.name, user_count, movie_count,
+    )
 
 
 @transaction.atomic
@@ -98,11 +113,18 @@ def upsert_genre(tmdb_id: int, name: str) -> Genre:
             Genre.objects.filter(name__iexact=name).exclude(pk=by_id.pk).first()
         )
         if collision is None:
+            logger.debug(
+                "Renaming genre tmdb_id=%s from %r to %r", tmdb_id, by_id.name, name
+            )
             by_id.name = name
             by_id.save(update_fields=["name"])
             return by_id
         # Two rows describe the same genre — fold by_id into collision and
         # promote collision as the canonical row for this tmdb_id.
+        logger.info(
+            "Genre name collision for tmdb_id=%s (%r); merging into existing row id=%s",
+            tmdb_id, name, collision.pk,
+        )
         _merge_genre(source=by_id, target=collision)
         collision.tmdb_id = tmdb_id
         collision.name = name
@@ -111,11 +133,16 @@ def upsert_genre(tmdb_id: int, name: str) -> Genre:
 
     by_name = Genre.objects.filter(name__iexact=name, tmdb_id__isnull=True).first()
     if by_name is not None:
+        logger.debug(
+            "Attaching tmdb_id=%s to seeded genre id=%s (%r)",
+            tmdb_id, by_name.pk, by_name.name,
+        )
         by_name.tmdb_id = tmdb_id
         by_name.name = name  # normalize case to TMDB's
         by_name.save(update_fields=["tmdb_id", "name"])
         return by_name
 
+    logger.debug("Creating new genre tmdb_id=%s name=%r", tmdb_id, name)
     return Genre.objects.create(tmdb_id=tmdb_id, name=name)
 
 
@@ -180,7 +207,7 @@ def normalize_all_genres() -> dict[str, int]:
 
 def _build_movie_defaults(
     payload: TmdbMovieSummary | TmdbMovieDetail, client: TmdbClient
-) -> dict[str, object]:
+) -> dict[str, Any]:
     runtime = getattr(payload, "runtime", None)
     return {
         "title": payload.title,
@@ -228,7 +255,11 @@ def fetch_and_cache_movie(tmdb_id: int, client: TmdbClient | None = None) -> Mov
     """Look up a movie locally; if missing, fetch from TMDB and persist."""
     existing = Movie.objects.filter(tmdb_id=tmdb_id).first()
     if existing is not None:
+        logger.debug("Movie cache hit tmdb_id=%s", tmdb_id)
         return existing
+    logger.info("Movie cache miss tmdb_id=%s, fetching from TMDB", tmdb_id)
     client = client or TmdbClient()
     detail = client.get_movie(tmdb_id)
-    return upsert_movie_detail(detail, client)
+    movie = upsert_movie_detail(detail, client)
+    logger.info("Cached TMDB movie tmdb_id=%s title=%r", tmdb_id, movie.title)
+    return movie

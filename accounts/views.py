@@ -16,6 +16,8 @@ from .forms import FavoriteGenresForm, LoginForm, RegisterForm, ResendActivation
 from .models import User
 from .utils import send_activation_email
 
+logger = logging.getLogger(__name__)
+
 
 class RegisterView(FormView):
     template_name = "accounts/register.html"
@@ -29,14 +31,18 @@ class RegisterView(FormView):
 
     def form_valid(self, form):
         user = form.save()
+        logger.info("Registered new user id=%s email=%s", user.pk, user.email)
         try:
             send_activation_email(user)
+            logger.info("Sent activation email to user id=%s", user.pk)
             messages.success(
                 self.request,
                 "Konto zostało utworzone. Sprawdź skrzynkę e-mail i aktywuj konto.",
             )
         except Exception:
-            logging.exception("Activation email failed")
+            logger.exception(
+                "Activation email failed for user id=%s email=%s", user.pk, user.email
+            )
             messages.warning(
                 self.request,
                 "Konto zostało utworzone, ale wysyłka e-maila się nie powiodła. "
@@ -65,7 +71,9 @@ class LoginView(FormView):
         return kwargs
 
     def form_valid(self, form):
-        login(self.request, form.get_user())
+        user = form.get_user()
+        login(self.request, user)
+        logger.info("User logged in id=%s email=%s", user.pk, user.email)
         messages.success(self.request, "Zalogowano pomyślnie.")
         return super().form_valid(form)
 
@@ -78,10 +86,12 @@ class ActivateAccountView(View):
             uid = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(pk=uid)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            logger.warning("Activation failed: invalid uidb64=%r", uidb64)
             raise Http404("Nie znaleziono użytkownika.")
 
         context = {"success": False, "already_active": False}
         if user.is_active and user.is_email_verified:
+            logger.debug("Activation no-op: user id=%s already active", user.pk)
             context["already_active"] = True
             return render(request, self.template_name, context)
 
@@ -89,7 +99,12 @@ class ActivateAccountView(View):
             user.is_active = True
             user.is_email_verified = True
             user.save(update_fields=["is_active", "is_email_verified", "updated_at"])
+            logger.info("Activated user id=%s email=%s", user.pk, user.email)
             context["success"] = True
+        else:
+            logger.warning(
+                "Activation failed: invalid/expired token for user id=%s", user.pk
+            )
 
         return render(request, self.template_name, context)
 
@@ -106,8 +121,11 @@ class ResendActivationView(FormView):
         if user and not user.is_active:
             try:
                 send_activation_email(user)
+                logger.info("Resent activation email to user id=%s", user.pk)
             except Exception:
-                logging.exception("Resend activation email failed")
+                logger.exception(
+                    "Resend activation email failed for user id=%s", user.pk
+                )
                 messages.error(
                     self.request,
                     "Nie udało się ponownie wysłać wiadomości. Sprawdź konfigurację SMTP.",
@@ -128,7 +146,9 @@ class LogoutView(View):
     http_method_names = ["post"]
 
     def post(self, request: HttpRequest) -> HttpResponse:
+        user_id = request.user.pk if request.user.is_authenticated else None
         logout(request)
+        logger.info("User logged out id=%s", user_id)
         messages.info(request, "Wylogowano pomyślnie.")
         return redirect("home")
 
@@ -142,6 +162,11 @@ class EditFavoriteGenresView(LoginRequiredMixin, UpdateView):
         return self.request.user
 
     def form_valid(self, form):
+        logger.info(
+            "User id=%s updated favorite_genres to %s",
+            self.request.user.pk,
+            list(form.cleaned_data["favorite_genres"].values_list("pk", flat=True)),
+        )
         messages.success(self.request, "Ulubione gatunki zostały zaktualizowane.")
         return super().form_valid(form)
 

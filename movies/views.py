@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from django.core.paginator import Paginator
+import logging
+
 from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
-from django.views.generic import DetailView, ListView
+from django.shortcuts import render
+from django.views.generic import ListView
 
 from .models import Genre, Movie
 from .services import fetch_and_cache_movie
 from .tmdb import TmdbApiError, TmdbConfigError
+
+logger = logging.getLogger(__name__)
 
 
 MOVIES_PER_PAGE = 12
@@ -32,9 +35,14 @@ class MovieListView(ListView):
         if query:
             queryset = queryset.filter(title__icontains=query)
 
-        genre_id = self.request.GET.get("genre")
-        if genre_id:
-            queryset = queryset.filter(genres__id=genre_id)
+        genre_id_raw = self.request.GET.get("genre", "").strip()
+        if genre_id_raw:
+            try:
+                genre_id = int(genre_id_raw)
+            except ValueError:
+                logger.debug("Ignoring non-integer genre filter: %r", genre_id_raw)
+            else:
+                queryset = queryset.filter(genres__id=genre_id)
 
         if self._favorites_active():
             favorite_ids = list(
@@ -65,12 +73,16 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
     try:
         movie = fetch_and_cache_movie(tmdb_id)
     except TmdbConfigError as exc:
+        logger.warning(
+            "Movie tmdb_id=%s not cached and TMDB_API_KEY is not configured", tmdb_id
+        )
         # No API key configured AND movie isn't in the local cache → 404 with hint.
         raise Http404(
             "This movie isn't cached locally yet and TMDB is not configured."
         ) from exc
     except TmdbApiError as exc:
-        raise Http404(f"Could not fetch movie from TMDB: {exc}") from exc
+        logger.warning("TMDB fetch failed for tmdb_id=%s: %s", tmdb_id, exc)
+        raise Http404("Could not fetch movie from TMDB.") from exc
 
     return render(
         request,
