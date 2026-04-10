@@ -103,7 +103,7 @@ class AppPasswordResetForm(PasswordResetForm):
 class FavoriteGenresForm(forms.ModelForm):
     favorite_genres = forms.ModelMultipleChoiceField(
         label="Ulubione gatunki",
-        queryset=Genre.objects.none(),
+        queryset=Genre.objects.order_by("name"),
         required=True,
         widget=forms.CheckboxSelectMultiple,
         help_text="Wybierz przynajmniej jeden gatunek.",
@@ -113,7 +113,3 @@ class FavoriteGenresForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ("favorite_genres",)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["favorite_genres"].queryset = Genre.objects.order_by("name")

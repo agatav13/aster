@@ -140,3 +140,40 @@ TMDB_API_BASE_URL = os.getenv("TMDB_API_BASE_URL", "https://api.themoviedb.org/3
 TMDB_IMAGE_BASE_URL = os.getenv("TMDB_IMAGE_BASE_URL", "https://image.tmdb.org/t/p/w500")
 TMDB_REQUEST_TIMEOUT = float(os.getenv("TMDB_REQUEST_TIMEOUT", "10"))
 TMDB_LANGUAGE = os.getenv("TMDB_LANGUAGE", "pl-PL")
+
+_IS_TEST_RUN = "test" in sys.argv
+APP_LOG_LEVEL = os.getenv(
+    "APP_LOG_LEVEL",
+    "CRITICAL" if _IS_TEST_RUN else ("DEBUG" if DEBUG else "INFO"),
+)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "accounts": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
+        "movies": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
+        "core": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
+        "django.request": {
+            "handlers": ["console"],
+            "level": "CRITICAL" if _IS_TEST_RUN else "WARNING",
+            "propagate": False,
+        },
+    },
+}
