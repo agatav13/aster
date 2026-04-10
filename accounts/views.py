@@ -2,6 +2,7 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth import login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.tokens import default_token_generator
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -9,9 +10,9 @@ from django.urls import reverse_lazy
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views import View
-from django.views.generic import FormView, TemplateView
+from django.views.generic import FormView, TemplateView, UpdateView
 
-from .forms import LoginForm, RegisterForm, ResendActivationForm
+from .forms import FavoriteGenresForm, LoginForm, RegisterForm, ResendActivationForm
 from .models import User
 from .utils import send_activation_email
 
@@ -130,4 +131,17 @@ class LogoutView(View):
         logout(request)
         messages.info(request, "Wylogowano pomyślnie.")
         return redirect("home")
+
+
+class EditFavoriteGenresView(LoginRequiredMixin, UpdateView):
+    template_name = "accounts/edit_favorite_genres.html"
+    form_class = FavoriteGenresForm
+    success_url = reverse_lazy("dashboard")
+
+    def get_object(self, queryset=None) -> User:
+        return self.request.user
+
+    def form_valid(self, form):
+        messages.success(self.request, "Ulubione gatunki zostały zaktualizowane.")
+        return super().form_valid(form)
 

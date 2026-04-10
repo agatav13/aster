@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }} | Aster{% endblock %}
+
+{% block content %}
+<article class="movie-detail">
+  {% if movie.backdrop_url %}
+    <div class="movie-backdrop" style="background-image: linear-gradient(180deg, transparent 0%, var(--bg-primary) 90%), url('{{ movie.backdrop_url }}');"></div>
+  {% endif %}
+
+  <div class="movie-detail-body">
+    <div class="movie-detail-poster">
+      {% if movie.poster_url %}
+        <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}">
+      {% else %}
+        <div class="movie-poster-placeholder large">
+          <i class="bi bi-film"></i>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="movie-detail-info">
+      <p class="eyebrow">
+        {% if movie.release_date %}{{ movie.release_date|date:"Y" }}{% endif %}
+        {% if movie.runtime_minutes %} · {{ movie.runtime_minutes }} min{% endif %}
+        {% if movie.original_language %} · {{ movie.original_language|upper }}{% endif %}
+      </p>
+      <h1 class="movie-detail-title">{{ movie.title }}</h1>
+      {% if movie.original_title and movie.original_title != movie.title %}
+        <p class="movie-original-title">{{ movie.original_title }}</p>
+      {% endif %}
+
+      <div class="movie-detail-genres">
+        {% for genre in genres %}
+          <span class="genre-pill">{{ genre.name }}</span>
+        {% empty %}
+          <span class="text-secondary">Brak przypisanych gatunków.</span>
+        {% endfor %}
+      </div>
+
+      {% if movie.overview %}
+        <p class="movie-overview">{{ movie.overview }}</p>
+      {% endif %}
+
+      <div class="movie-detail-stats">
+        {% if movie.popularity %}
+          <div class="info-tile">
+            <h2><i class="bi bi-fire"></i> Popularność TMDB</h2>
+            <p class="mb-0">{{ movie.popularity|floatformat:1 }}</p>
+          </div>
+        {% endif %}
+        <div class="info-tile">
+          <h2><i class="bi bi-star"></i> Średnia ocena</h2>
+          <p class="mb-0">
+            {% if movie.ratings_count %}
+              {{ movie.average_rating }} ({{ movie.ratings_count }} ocen)
+            {% else %}
+              Brak ocen
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <a href="{% url 'movies:list' %}" class="btn btn-ghost mt-3">
+        <i class="bi bi-arrow-left"></i> Wróć do katalogu
+      </a>
+    </div>
+  </div>
+</article>
+{% endblock %}

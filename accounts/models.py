@@ -2,18 +2,6 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
 
-class Genre(models.Model):
-    name = models.CharField("Nazwa", max_length=50, unique=True)
-
-    class Meta:
-        ordering = ["name"]
-        verbose_name = "gatunek"
-        verbose_name_plural = "gatunki"
-
-    def __str__(self) -> str:
-        return self.name
-
-
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -52,7 +40,7 @@ class User(AbstractUser):
     email = models.EmailField("Adres e-mail", unique=True)
     display_name = models.CharField("Nick lub imię i nazwisko", max_length=120, blank=True)
     favorite_genres = models.ManyToManyField(
-        Genre,
+        "movies.Genre",
         related_name="users",
         blank=True,
         verbose_name="Ulubione gatunki",
