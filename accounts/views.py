@@ -26,7 +26,7 @@ class RegisterView(FormView):
 
     def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         if request.user.is_authenticated:
-            return redirect("dashboard")
+            return redirect("home")
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
@@ -58,11 +58,11 @@ class ActivationSentView(TemplateView):
 class LoginView(FormView):
     template_name = "accounts/login.html"
     form_class = LoginForm
-    success_url = reverse_lazy("dashboard")
+    success_url = reverse_lazy("home")
 
     def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         if request.user.is_authenticated:
-            return redirect("dashboard")
+            return redirect("home")
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -160,7 +160,7 @@ class ProfileView(LoginRequiredMixin, TemplateView):
 class EditFavoriteGenresView(LoginRequiredMixin, UpdateView):
     template_name = "accounts/edit_favorite_genres.html"
     form_class = FavoriteGenresForm
-    success_url = reverse_lazy("dashboard")
+    success_url = reverse_lazy("home")
 
     def get_object(self, queryset=None) -> User:
         return self.request.user

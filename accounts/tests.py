@@ -127,7 +127,7 @@ class AuthFlowTests(TestCase):
             {"email": user.email, "password": "MocneHaslo123!"},
         )
 
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("home"))
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
 
     def test_password_reset_sends_email(self):
@@ -185,7 +185,7 @@ class AuthFlowTests(TestCase):
             {"favorite_genres": [self.drama.pk]},
         )
 
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("home"))
         user.refresh_from_db()
         self.assertEqual(
             list(user.favorite_genres.values_list("pk", flat=True)),
@@ -242,4 +242,4 @@ class AuthFlowTests(TestCase):
             reverse("accounts:login"),
             {"email": user.email, "password": "NoweHaslo123!"},
         )
-        self.assertRedirects(login_response, reverse("dashboard"))
+        self.assertRedirects(login_response, reverse("home"))
