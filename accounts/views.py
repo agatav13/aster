@@ -12,7 +12,13 @@ from django.utils.http import urlsafe_base64_decode
 from django.views import View
 from django.views.generic import FormView, TemplateView, UpdateView
 
-from .forms import FavoriteGenresForm, LoginForm, RegisterForm, ResendActivationForm
+from .forms import (
+    DisplayNameForm,
+    FavoriteGenresForm,
+    LoginForm,
+    RegisterForm,
+    ResendActivationForm,
+)
 from .models import User
 from .utils import send_activation_email
 
@@ -155,6 +161,24 @@ class LogoutView(View):
 
 class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = "accounts/profile.html"
+
+
+class EditDisplayNameView(LoginRequiredMixin, UpdateView):
+    template_name = "accounts/edit_display_name.html"
+    form_class = DisplayNameForm
+    success_url = reverse_lazy("accounts:profile")
+
+    def get_object(self, queryset=None) -> User:
+        return self.request.user
+
+    def form_valid(self, form):
+        logger.info(
+            "User id=%s updated display_name to %r",
+            self.request.user.pk,
+            form.cleaned_data["display_name"],
+        )
+        messages.success(self.request, "Wyświetlana nazwa została zaktualizowana.")
+        return super().form_valid(form)
 
 
 class EditFavoriteGenresView(LoginRequiredMixin, UpdateView):

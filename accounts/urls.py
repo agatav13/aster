@@ -5,6 +5,7 @@ from .forms import AppPasswordResetForm
 from .views import (
     ActivateAccountView,
     ActivationSentView,
+    EditDisplayNameView,
     EditFavoriteGenresView,
     LoginView,
     LogoutView,
@@ -20,6 +21,7 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("profile/", ProfileView.as_view(), name="profile"),
+    path("display-name/", EditDisplayNameView.as_view(), name="edit_display_name"),
     path("genres/", EditFavoriteGenresView.as_view(), name="edit_favorite_genres"),
     path("activate/<uidb64>/<token>/", ActivateAccountView.as_view(), name="activate"),
     path("activation-sent/", ActivationSentView.as_view(), name="activation_sent"),
