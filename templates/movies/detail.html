@@ -59,12 +59,58 @@
             {% endif %}
           </p>
         </div>
+        <div class="info-tile">
+          <h2><i class="bi bi-person-check"></i> Twoja ocena</h2>
+          <p class="mb-0 user-rating-display">
+            <span class="text-secondary">Brak oceny</span>
+          </p>
+        </div>
       </div>
+
+      {% if request.user.is_authenticated %}
+        <div class="movie-actions">
+          <button type="button" class="movie-action-btn" disabled aria-disabled="true">
+            <i class="bi bi-eye"></i>
+            <span>Dodaj do obejrzanych</span>
+            <span class="soon-badge">Wkrótce</span>
+          </button>
+          <button
+            type="button"
+            class="movie-action-btn movie-action-btn--accent"
+            data-bs-toggle="modal"
+            data-bs-target="#ratingModal"
+          >
+            <i class="bi bi-star"></i>
+            <span>Oceń film</span>
+          </button>
+          <button type="button" class="movie-action-btn" disabled aria-disabled="true">
+            <i class="bi bi-bookmark-plus"></i>
+            <span>Obejrzyj później</span>
+            <span class="soon-badge">Wkrótce</span>
+          </button>
+        </div>
+      {% else %}
+        <div class="movie-actions-guest">
+          <p class="text-secondary mb-2">
+            <i class="bi bi-info-circle"></i>
+            Zaloguj się, aby oceniać filmy i zarządzać listą obejrzanych.
+          </p>
+          <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-accent">
+            <i class="bi bi-box-arrow-in-right"></i> Zaloguj się
+          </a>
+        </div>
+      {% endif %}
 
       <a href="{% url 'movies:list' %}" class="btn btn-ghost mt-3">
         <i class="bi bi-arrow-left"></i> Wróć do katalogu
       </a>
     </div>
   </div>
+
+  {% include "movies/_comments_section.html" %}
 </article>
+
+{% if request.user.is_authenticated %}
+  {% include "movies/_rating_modal.html" %}
+{% endif %}
 {% endblock %}
