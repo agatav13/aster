@@ -1,40 +1,52 @@
 /* ── Variables ─────────────────────────────────────────── */
+/* Palette inspired by the "Ethereal Curator" (dark) and "Digital Atelier"
+   (light) design specs: warm charcoal vs. parchment surfaces, dusty rose
+   accents, soft lavender + peach as supporting tones. The "no pure black,
+   no pure white" rule is intentional — every neutral is tinted toward warm
+   to keep the editorial feel. --accent-rgb is exposed so rgba() callers
+   can pick up the theme switch automatically. */
 :root,
 :root[data-theme="dark"] {
-  --bg-primary: #0f0f0f;
-  --bg-secondary: #1a1a1a;
-  --bg-card: #1e1e1e;
-  --bg-card-hover: #252525;
-  --text-primary: #f0ece4;
-  --text-secondary: #9a9590;
-  --accent: #d4a853;
-  --accent-hover: #e4bc6a;
-  --accent-dim: rgba(212, 168, 83, 0.12);
-  --border: rgba(255, 255, 255, 0.06);
-  --border-accent: rgba(212, 168, 83, 0.25);
+  --bg-primary: #0f0e0e;          /* warm charcoal surface */
+  --bg-secondary: #161313;        /* surface-container-low */
+  --bg-card: #1c1818;             /* surface-container */
+  --bg-card-hover: #282525;       /* surface-container-highest */
+  --text-primary: #ebe4e3;        /* warm off-white on-surface */
+  --text-secondary: #a89c9b;      /* muted warm */
+  --accent: #ecbbba;              /* dusty rose primary */
+  --accent-hover: #f3cccb;        /* lighter rose for hover */
+  --accent-rgb: 236, 187, 186;
+  --accent-dim: rgba(236, 187, 186, 0.12);
+  --secondary: #cec2d9;           /* soft lavender supporting tone */
+  --tertiary: #fff1ea;            /* warm peach delight tone */
+  --border: rgba(235, 228, 227, 0.08);
+  --border-accent: rgba(236, 187, 186, 0.28);
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 24px;
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 40px rgba(212, 168, 83, 0.08);
-  --hero-glow: rgba(212, 168, 83, 0.08);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.32);
+  --shadow-glow: 0 0 40px rgba(236, 187, 186, 0.10);
+  --hero-glow: rgba(236, 187, 186, 0.12);
 }
 
 :root[data-theme="light"] {
-  --bg-primary: #faf8f3;
-  --bg-secondary: #ffffff;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f7f5f0;
-  --text-primary: #1a1a1a;
-  --text-secondary: #6b6560;
-  --accent: #a67825;
-  --accent-hover: #8f6718;
-  --accent-dim: rgba(166, 120, 37, 0.1);
-  --border: rgba(0, 0, 0, 0.1);
-  --border-accent: rgba(166, 120, 37, 0.3);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.06);
-  --shadow-glow: 0 0 40px rgba(166, 120, 37, 0.1);
-  --hero-glow: rgba(166, 120, 37, 0.08);
+  --bg-primary: #faf9f6;          /* parchment surface */
+  --bg-secondary: #f3eee9;        /* slightly darker parchment for layering */
+  --bg-card: #ffffff;             /* highest tier — true white only as needed */
+  --bg-card-hover: #f7f1ec;
+  --text-primary: #2b2222;        /* warm charcoal text — never #000 */
+  --text-secondary: #7b6e6e;
+  --accent: #a26465;              /* deeper dusty rose for contrast on light */
+  --accent-hover: #8a5253;
+  --accent-rgb: 162, 100, 101;
+  --accent-dim: rgba(162, 100, 101, 0.10);
+  --secondary: #8b7aa3;           /* deeper lavender */
+  --tertiary: #d99a7c;             /* deeper peach */
+  --border: rgba(43, 34, 34, 0.10);
+  --border-accent: rgba(162, 100, 101, 0.30);
+  --shadow-card: 0 8px 32px rgba(43, 34, 34, 0.08);
+  --shadow-glow: 0 0 40px rgba(162, 100, 101, 0.12);
+  --hero-glow: rgba(162, 100, 101, 0.10);
 }
 
 html {
@@ -295,7 +307,7 @@ a:hover {
   background: var(--accent-hover);
   color: var(--bg-primary);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(212, 168, 83, 0.25);
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.25);
 }
 
 .btn-accent:active {
@@ -638,7 +650,7 @@ a:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--bg-primary);
-  box-shadow: 0 4px 16px rgba(212, 168, 83, 0.3);
+  box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.3);
 }
 
 .genre-option input:focus-visible + .genre-choice {
@@ -705,7 +717,7 @@ a:hover {
 }
 
 .alert-warning {
-  border-color: rgba(212, 168, 83, 0.3);
+  border-color: rgba(var(--accent-rgb), 0.3);
   background: var(--accent-dim);
   color: var(--accent);
 }
@@ -755,7 +767,7 @@ a:hover {
   border-color: var(--accent-hover);
   color: var(--bg-primary);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(212, 168, 83, 0.25);
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.25);
 }
 
 .btn-dark:active {
@@ -1114,7 +1126,7 @@ a:hover {
 .movie-action-btn--accent:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  box-shadow: 0 8px 24px rgba(212, 168, 83, 0.25);
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.25);
 }
 
 .movie-actions-guest {

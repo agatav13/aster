@@ -1,0 +1,53 @@
+{% comment %}
+  Rating modal scaffold. The form does not yet POST anywhere — Save/Delete are
+  visually wired up but submit nothing until the rating feature is implemented
+  (see docs/database-design.md, table `ratings`).
+{% endcomment %}
+<div class="modal fade rating-modal" id="ratingModal" tabindex="-1" aria-labelledby="ratingModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="ratingModalLabel">
+          <i class="bi bi-star"></i> Oceń: <span class="rating-modal-movie">{{ movie.title }}</span>
+        </h2>
+        <button type="button" class="btn-close-custom" data-bs-dismiss="modal" aria-label="Zamknij">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form class="rating-form" data-rating-form>
+          <fieldset class="rating-stars" aria-label="Wybierz ocenę od 1 do 5 gwiazdek">
+            {% for value in "54321" %}
+              <input type="radio" name="score" id="rating-star-{{ value }}" value="{{ value }}">
+              <label for="rating-star-{{ value }}" title="{{ value }} z 5">
+                <i class="bi bi-star-fill"></i>
+              </label>
+            {% endfor %}
+          </fieldset>
+
+          <label for="ratingComment" class="rating-comment-label">Komentarz (opcjonalnie)</label>
+          <textarea
+            id="ratingComment"
+            name="comment"
+            class="rating-comment"
+            rows="4"
+            placeholder="Co sądzisz o tym filmie?"
+          ></textarea>
+
+          <div class="rating-soon-banner">
+            <i class="bi bi-clock-history"></i>
+            Funkcja w przygotowaniu — wkrótce będzie można zapisać ocenę.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost btn-ghost-sm" disabled>
+          <i class="bi bi-trash"></i> Usuń ocenę
+        </button>
+        <button type="button" class="btn btn-accent" disabled>
+          <i class="bi bi-check2"></i> Zapisz
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
