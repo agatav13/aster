@@ -1,49 +1,113 @@
-# Filmowa aplikacja - etap autoryzacji
+# Aster - Movie Recommendation App
 
-## Wymagania
+A Django-based web application for discovering, rating, and managing movies with personalized recommendations.
+
+## Features
+
+- **User authentication** — registration with email verification, login, password reset
+- **Genre preferences** — select favorite genres during registration
+- **User dashboard** — personalized view with account info and preferences
+- **Movie catalog** — browse, search, and filter movies sourced from TMDB
+- **Admin panel** — Django admin for managing users, genres, and movies
+
+## Tech Stack
+
+- **Backend:** Django 5.2, Gunicorn
+- **Database:** SQLite (development), PostgreSQL (production)
+- **Email:** Gmail SMTP / Brevo API (via django-anymail)
+- **Static files:** WhiteNoise
+- **Deployment:** Render.com
+- **Package manager:** uv
+
+## Requirements
 
 - Python 3.13
 - uv
 
-## Uruchomienie
+## Getting Started
 
-1. Utwórz `.env` na podstawie `.env.example`.
-2. Uzupełnij dane SMTP prawdziwym kontem pocztowym.
-3. Zsynchronizuj środowisko przez `uv`:
+1. Clone the repository and create `.env` from `.env.example`:
 
-```powershell
+```bash
+cp .env.example .env
+```
+
+2. Fill in the required environment variables (see [Configuration](#configuration)).
+
+3. Install dependencies:
+
+```bash
 uv sync --python 3.13
 ```
 
-4. Wykonaj migracje:
+4. Run database migrations:
 
-```powershell
+```bash
 uv run manage.py migrate
 ```
 
-Ta komenda tworzy tabele w lokalnej bazie SQLite. W praktyce uruchamiasz ją po pierwszym pobraniu projektu i po każdej zmianie w modelach bazy.
+5. Start the development server:
 
-5. Uruchom serwer:
-
-```powershell
+```bash
 uv run manage.py runserver
 ```
 
-6. Otwórz `http://127.0.0.1:8000/`.
+6. Open http://127.0.0.1:8000/
 
-## Testy
+## Configuration
 
-```powershell
+Key environment variables:
+
+| Variable | Description |
+|---|---|
+| `DJANGO_SECRET_KEY` | Django secret key |
+| `DJANGO_DEBUG` | `True` for development, `False` for production |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hosts |
+| `DATABASE_URL` | PostgreSQL connection string (defaults to SQLite if unset) |
+| `EMAIL_HOST_USER` | SMTP email address |
+| `EMAIL_HOST_PASSWORD` | SMTP password / app password |
+| `BREVO_API_KEY` | Brevo API key (alternative to SMTP) |
+| `DEFAULT_FROM_EMAIL` | Sender address for outgoing emails |
+| `APP_BASE_URL` | Base URL for activation links |
+| `TMDB_API_KEY` | TMDB v3 API key (required to populate the movie catalog) |
+| `TMDB_API_BASE_URL` | TMDB API base, defaults to `https://api.themoviedb.org/3` |
+| `TMDB_IMAGE_BASE_URL` | Poster CDN base, defaults to `https://image.tmdb.org/t/p/w500` |
+
+## Useful Commands
+
+```bash
+# Run tests
 uv run manage.py test
-```
 
-## Przydatne komendy
-
-```powershell
+# Create superuser
 uv run manage.py createsuperuser
+
+# Generate migrations after model changes
 uv run manage.py makemigrations
+
+# Collect static files for production
+uv run manage.py collectstatic --noinput
+
+# Sync the genre dictionary from TMDB (run once)
+uv run manage.py sync_tmdb_genres
+
+# Pull popular movies from TMDB (1 page = 20 movies)
+uv run manage.py sync_tmdb_popular --pages 3
 ```
 
-## Baza danych
+## Project Structure
 
-Projekt działa wyłącznie na lokalnym SQLite i tworzy plik `db.sqlite3` w katalogu głównym.
+```
+config/          # Django settings, root URL config, WSGI/ASGI
+accounts/        # Authentication app (models, views, forms, utils)
+core/            # Home page and dashboard
+templates/       # HTML templates (base, auth, email, partials)
+static/          # CSS and static assets
+docs/            # Project documentation and mockups
+build.sh         # Render.com build script
+render.yaml      # Render.com deployment config
+```
+
+## Deployment
+
+The project deploys to Render.com. The `build.sh` script handles dependency installation, static file collection, and database migrations. A cron job pings the health endpoint (`/health/`) every 14 minutes to prevent free-tier sleep.
