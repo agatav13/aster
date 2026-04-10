@@ -141,11 +141,25 @@ class TmdbClient:
         payload = self._get("/genre/movie/list")
         return TmdbGenresResponse.model_validate(payload).genres
 
-    def discover_popular(self, page: int = 1) -> TmdbDiscoverResponse:
-        payload = self._get(
-            "/discover/movie",
-            params={"sort_by": "popularity.desc", "page": page, "include_adult": "false"},
-        )
+    def discover_popular(
+        self,
+        page: int = 1,
+        with_genres: str | None = None,
+    ) -> TmdbDiscoverResponse:
+        """Browse popular movies.
+
+        `with_genres` is forwarded straight to TMDB's `/discover/movie`
+        endpoint. Use a single id to filter by one genre, "id1,id2" for AND,
+        or "id1|id2" for OR — see TMDB's discover docs.
+        """
+        params: dict[str, Any] = {
+            "sort_by": "popularity.desc",
+            "page": page,
+            "include_adult": "false",
+        }
+        if with_genres:
+            params["with_genres"] = with_genres
+        payload = self._get("/discover/movie", params=params)
         return TmdbDiscoverResponse.model_validate(payload)
 
     def search_movies(self, query: str, page: int = 1) -> TmdbDiscoverResponse:

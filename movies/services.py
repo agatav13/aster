@@ -22,11 +22,13 @@ logger = logging.getLogger(__name__)
 # TMDB caps `page` at 500 server-side; honour the same ceiling so users can't
 # trip a 422 by clicking past the end.
 TMDB_MAX_PAGE = 500
-# How many movies the local browse paginator shows per UI page.
-DEFAULT_PAGE_SIZE = 30
+# Canonical UI page size, deliberately a multiple of 6 so a 6-column movie
+# grid never ends with an orphan partial row. Used for both the local
+# paginator and the TMDB-backed listings (which trim down to this count).
+DEFAULT_PAGE_SIZE = 36
 # Each TMDB /search/movie response is 20 rows. We stitch this many underlying
-# TMDB pages together per UI page so a search feels closer in density to the
-# local browse view (40 rows per UI page).
+# TMDB pages together per UI page (40 raw rows) and trim down to
+# DEFAULT_PAGE_SIZE so the visible grid stays clean.
 TMDB_SEARCH_PAGES_PER_REQUEST = 2
 
 
@@ -419,6 +421,100 @@ def _resolve_tmdb_genre_id(genre_id_raw: str | None) -> int | None:
     return local_genre.tmdb_id
 
 
+def _build_with_genres_filter(
+    *,
+    genre_id_raw: str | None,
+    favorites_active: bool,
+    user: AbstractBaseUser | AnonymousUser | None,
+) -> str | None:
+    """Translate the local UI filters into a TMDB `with_genres` value.
+
+    Precedence: an explicit genre pick from the dropdown overrides the
+    favorites toggle, since picking a single genre is the more specific
+    intent. Otherwise, when favorites is on, OR-join all of the user's
+    favorite genres so a movie matching any one of them is included.
+
+    Returns None when no filter applies (or the favorites set has no rows
+    linked to a TMDB id, which would otherwise produce an empty `|`).
+    """
+    selected_tmdb_id = _resolve_tmdb_genre_id(genre_id_raw)
+    if selected_tmdb_id is not None:
+        return str(selected_tmdb_id)
+
+    if favorites_active and user is not None and user.is_authenticated:
+        favorite_tmdb_ids = list(
+            user.favorite_genres
+            .filter(tmdb_id__isnull=False)
+            .values_list("tmdb_id", flat=True)
+        )
+        if favorite_tmdb_ids:
+            return "|".join(str(t) for t in favorite_tmdb_ids)
+
+    return None
+
+
+def discover_tmdb_movies(
+    *,
+    genre_id_raw: str | None = None,
+    favorites_active: bool = False,
+    user: AbstractBaseUser | AnonymousUser | None = None,
+    page: int = 1,
+    client: TmdbClient | None = None,
+    pages_per_ui: int = TMDB_SEARCH_PAGES_PER_REQUEST,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> MovieListPage:
+    """Browse popular movies live from TMDB.
+
+    Mirrors `search_tmdb_movies` so the list view can swap data sources
+    transparently. Same pagination scheme: stitch `pages_per_ui` underlying
+    TMDB pages together so the user sees ~40 results per UI page instead of
+    TMDB's default 20.
+
+    Genre and favorites filters are translated into TMDB's `with_genres`
+    parameter so the filtering happens server-side, with no need for the
+    client-side post-filtering trick used by search.
+    """
+    client = client or TmdbClient()
+
+    max_ui_page = max(1, TMDB_MAX_PAGE // pages_per_ui)
+    safe_ui_page = max(1, min(page, max_ui_page))
+
+    with_genres = _build_with_genres_filter(
+        genre_id_raw=genre_id_raw,
+        favorites_active=favorites_active,
+        user=user,
+    )
+
+    items: list[MovieListItem] = []
+    tmdb_total_pages = 1
+
+    for offset in range(pages_per_ui):
+        tmdb_page = (safe_ui_page - 1) * pages_per_ui + 1 + offset
+        if tmdb_page > TMDB_MAX_PAGE:
+            break
+
+        response = client.discover_popular(page=tmdb_page, with_genres=with_genres)
+
+        if offset == 0:
+            tmdb_total_pages = response.total_pages
+
+        for summary in response.results:
+            items.append(MovieListItem.from_tmdb(summary, client))
+
+        if tmdb_page >= response.total_pages:
+            break
+
+    ui_total_pages = max(
+        1, (min(tmdb_total_pages, TMDB_MAX_PAGE) + pages_per_ui - 1) // pages_per_ui
+    )
+
+    return MovieListPage(
+        object_list=items[:page_size],
+        number=safe_ui_page,
+        num_pages=ui_total_pages,
+    )
+
+
 def search_tmdb_movies(
     *,
     query: str,
@@ -426,15 +522,18 @@ def search_tmdb_movies(
     page: int = 1,
     client: TmdbClient | None = None,
     pages_per_ui: int = TMDB_SEARCH_PAGES_PER_REQUEST,
+    page_size: int = DEFAULT_PAGE_SIZE,
 ) -> MovieListPage:
     """Search TMDB live and adapt the response to the list template.
 
     A single UI page maps to `pages_per_ui` underlying TMDB pages so the user
-    sees ~40 results at a time instead of TMDB's default 20. When
-    `genre_id_raw` is supplied, the local Genre row is resolved to its TMDB
-    id and the returned summaries are post-filtered client-side; TMDB's
-    /search/movie endpoint does not accept `with_genres`, so this is the
-    cleanest way to combine free-text search with a genre constraint.
+    sees ~40 raw results at a time instead of TMDB's default 20; the result
+    is then trimmed to `page_size` so the rendered grid stays a clean
+    multiple of the column count. When `genre_id_raw` is supplied, the local
+    Genre row is resolved to its TMDB id and the returned summaries are
+    post-filtered client-side; TMDB's /search/movie endpoint does not accept
+    `with_genres`, so this is the cleanest way to combine free-text search
+    with a genre constraint.
     """
     client = client or TmdbClient()
 
@@ -471,7 +570,7 @@ def search_tmdb_movies(
     )
 
     return MovieListPage(
-        object_list=items,
+        object_list=items[:page_size],
         number=safe_ui_page,
         num_pages=ui_total_pages,
     )

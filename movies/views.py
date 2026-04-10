@@ -11,6 +11,7 @@ from .models import Genre
 from .services import (
     MovieListPage,
     browse_local_movies,
+    discover_tmdb_movies,
     fetch_and_cache_movie,
     search_tmdb_movies,
 )
@@ -78,59 +79,50 @@ class MovieListView(TemplateView):
     ) -> tuple[MovieListPage, str, str | None]:
         """Pick the right data source for the current request.
 
+        Both modes (free-text search via /search/movie, default browse via
+        /discover/movie) hit TMDB live and fall back to the local DB on
+        config or transport errors.
+
         Returns (page, source, error_message) where:
-          - source is "tmdb" when the rows came from TMDB live search,
-            "local" otherwise.
+          - source is "tmdb" when the rows came from TMDB, "local" otherwise.
           - error_message is set when TMDB was tried but failed and we fell
             back to the local DB; the template renders it as a banner.
         """
-        if not query:
-            return (
-                browse_local_movies(
-                    genre_id_raw=genre_id_raw,
-                    favorites_active=favorites_active,
-                    user=self.request.user,
-                    page=page,
-                ),
-                "local",
-                None,
+        fallback_kwargs: dict[str, Any] = {
+            "query": query,
+            "genre_id_raw": genre_id_raw,
+            "favorites_active": favorites_active,
+            "user": self.request.user,
+            "page": page,
+        }
+
+        if query:
+            tmdb_call = lambda: search_tmdb_movies(  # noqa: E731
+                query=query, genre_id_raw=genre_id_raw, page=page
             )
+            log_label = f"search q={query!r}"
+        else:
+            tmdb_call = lambda: discover_tmdb_movies(  # noqa: E731
+                genre_id_raw=genre_id_raw,
+                favorites_active=favorites_active,
+                user=self.request.user,
+                page=page,
+            )
+            log_label = "browse"
 
         try:
-            return (
-                search_tmdb_movies(
-                    query=query, genre_id_raw=genre_id_raw, page=page
-                ),
-                "tmdb",
-                None,
-            )
+            return tmdb_call(), "tmdb", None
         except TmdbConfigError:
             logger.info(
-                "TMDB search requested but TMDB_API_KEY is not configured; "
-                "falling back to local search for q=%r",
-                query,
+                "TMDB %s requested but TMDB_API_KEY is not configured; "
+                "falling back to local",
+                log_label,
             )
-            return (
-                browse_local_movies(
-                    query=query,
-                    genre_id_raw=genre_id_raw,
-                    favorites_active=favorites_active,
-                    user=self.request.user,
-                    page=page,
-                ),
-                "local",
-                None,
-            )
+            return browse_local_movies(**fallback_kwargs), "local", None
         except TmdbApiError as exc:
-            logger.warning("TMDB search failed for q=%r: %s", query, exc)
+            logger.warning("TMDB %s failed: %s", log_label, exc)
             return (
-                browse_local_movies(
-                    query=query,
-                    genre_id_raw=genre_id_raw,
-                    favorites_active=favorites_active,
-                    user=self.request.user,
-                    page=page,
-                ),
+                browse_local_movies(**fallback_kwargs),
                 "local",
                 "Wyszukiwarka TMDB jest chwilowo niedostępna. "
                 "Pokazujemy pasujące tytuły z lokalnej bazy.",

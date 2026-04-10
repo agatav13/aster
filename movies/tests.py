@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from .models import Genre, Movie
 from .services import (
+    DEFAULT_PAGE_SIZE,
     TMDB_GENRE_PL_NAMES,
     fetch_and_cache_movie,
     normalize_all_genres,
@@ -306,7 +307,12 @@ class NormalizeGenresTests(TestCase):
             self.assertEqual(row.name, polish_name)
 
 
+@override_settings(TMDB_API_KEY="")
 class FavoritesFilterTests(TestCase):
+    """Local-only favorites filtering. TMDB key is forced empty so the
+    list view falls back to the local DB browse path, which is what these
+    assertions exercise."""
+
     @classmethod
     def setUpTestData(cls) -> None:
         cls.action = Genre.objects.get(name="Akcja")
@@ -538,7 +544,217 @@ class TmdbLiveSearchTests(TestCase):
         mock_client.search_movies.assert_any_call(query="stitched", page=1)
         mock_client.search_movies.assert_any_call(query="stitched", page=2)
         # Sample one row from each underlying page to confirm both got merged.
+        # 40 raw rows → trimmed to 36, so the last 4 of the second page are
+        # dropped. P1-0 stays; P2-15 is the last surviving row from page 2.
         self.assertContains(response, "P1-0")
-        self.assertContains(response, "P2-19")
+        self.assertContains(response, "P2-15")
+        self.assertNotContains(response, "P2-16")
+        self.assertNotContains(response, "P2-19")
         # 4 TMDB pages of total → 2 UI pages of 2 TMDB pages each.
+        self.assertContains(response, "Strona 1 z 2")
+
+
+class TmdbDiscoverBrowseTests(TestCase):
+    """Default browse (no ?q=) should hit TMDB /discover/movie when configured
+    so the catalog isn't capped by whatever happens to be cached locally."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        # Local row with a non-matching title — proves the default listing
+        # comes from TMDB, not from a local fallback that would also include it.
+        make_movie(tmdb_id=1, title="Local Cached", popularity=10)
+        cls.action = Genre.objects.get(name="Akcja")
+        # Pretend the seeded Akcja row was synced so it has a tmdb_id.
+        cls.action.tmdb_id = 28
+        cls.action.save(update_fields=["tmdb_id"])
+
+    def _build_response(
+        self, *titles: str, total_pages: int = 1
+    ) -> TmdbDiscoverResponse:
+        return TmdbDiscoverResponse(
+            page=1,
+            total_pages=total_pages,
+            total_results=len(titles),
+            results=[
+                TmdbMovieSummary(
+                    id=20_000 + idx,
+                    title=title,
+                    poster_path=f"/{title.lower().replace(' ', '_')}.jpg",
+                    popularity=99.0,
+                )
+                for idx, title in enumerate(titles)
+            ],
+        )
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_uses_tmdb_when_configured(self, mock_client_class) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.discover_popular.return_value = self._build_response(
+            "Trending One", "Trending Two"
+        )
+        mock_client.image_url.side_effect = lambda path: (
+            f"https://image.tmdb.org/t/p/w500{path}" if path else ""
+        )
+
+        response = self.client.get(reverse("movies:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Trending One")
+        self.assertContains(response, "Trending Two")
+        # The local row whose title doesn't match must NOT leak in.
+        self.assertNotContains(response, "Local Cached")
+        mock_client.discover_popular.assert_called_once_with(
+            page=1, with_genres=None
+        )
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_falls_back_to_local_on_tmdb_error(
+        self, mock_client_class
+    ) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.discover_popular.side_effect = TmdbApiError("boom")
+
+        response = self.client.get(reverse("movies:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Local Cached")
+        self.assertContains(response, "Wyszukiwarka TMDB jest chwilowo niedostępna")
+
+    @override_settings(TMDB_API_KEY="")
+    def test_browse_without_tmdb_key_falls_back_silently(self) -> None:
+        response = self.client.get(reverse("movies:list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Local Cached")
+        # No warning banner — missing key is not an outage.
+        self.assertNotContains(response, "Wyszukiwarka TMDB jest chwilowo niedostępna")
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_passes_genre_filter_to_tmdb(self, mock_client_class) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.discover_popular.return_value = self._build_response("Action Pick")
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(
+            reverse("movies:list"), {"genre": str(self.action.id)}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Action Pick")
+        mock_client.discover_popular.assert_called_once_with(
+            page=1, with_genres="28"
+        )
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_passes_favorites_as_or_filter_to_tmdb(
+        self, mock_client_class
+    ) -> None:
+        drama = Genre.objects.get(name="Dramat")
+        drama.tmdb_id = 18
+        drama.save(update_fields=["tmdb_id"])
+
+        user = get_user_model().objects.create_user(
+            email="discover-fav@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        user.favorite_genres.set([self.action, drama])
+        self.client.force_login(user)
+
+        mock_client = mock_client_class.return_value
+        mock_client.discover_popular.return_value = self._build_response("Mixed Pick")
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(reverse("movies:list"), {"favorites": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        mock_client.discover_popular.assert_called_once()
+        call_kwargs = mock_client.discover_popular.call_args.kwargs
+        self.assertEqual(call_kwargs["page"], 1)
+        # Order of favorites isn't guaranteed by the ORM — accept either OR.
+        self.assertIn(call_kwargs["with_genres"], {"28|18", "18|28"})
+
+    def test_default_page_size_is_a_multiple_of_six(self) -> None:
+        """A 6-column movie grid should never end with a partial last row."""
+        self.assertEqual(DEFAULT_PAGE_SIZE % 6, 0)
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_trims_stitched_results_to_page_size(
+        self, mock_client_class
+    ) -> None:
+        """40 raw rows from two stitched TMDB pages should be trimmed down
+        to exactly DEFAULT_PAGE_SIZE so the grid has a clean last row."""
+        mock_client = mock_client_class.return_value
+        page1 = TmdbDiscoverResponse(
+            page=1,
+            total_pages=10,
+            total_results=200,
+            results=[
+                TmdbMovieSummary(id=5000 + i, title=f"T-{i:02d}", popularity=10.0)
+                for i in range(20)
+            ],
+        )
+        page2 = TmdbDiscoverResponse(
+            page=2,
+            total_pages=10,
+            total_results=200,
+            results=[
+                TmdbMovieSummary(id=6000 + i, title=f"T-{20 + i:02d}", popularity=10.0)
+                for i in range(20)
+            ],
+        )
+        mock_client.discover_popular.side_effect = [page1, page2]
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(reverse("movies:list"))
+
+        self.assertEqual(response.status_code, 200)
+        page_obj = response.context["page_obj"]
+        self.assertEqual(len(page_obj.object_list), DEFAULT_PAGE_SIZE)
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_stitches_two_tmdb_pages_per_ui_page(
+        self, mock_client_class
+    ) -> None:
+        mock_client = mock_client_class.return_value
+        page1 = TmdbDiscoverResponse(
+            page=1,
+            total_pages=4,
+            total_results=80,
+            results=[
+                TmdbMovieSummary(id=3000 + i, title=f"D1-{i}", popularity=10.0)
+                for i in range(20)
+            ],
+        )
+        page2 = TmdbDiscoverResponse(
+            page=2,
+            total_pages=4,
+            total_results=80,
+            results=[
+                TmdbMovieSummary(id=4000 + i, title=f"D2-{i}", popularity=10.0)
+                for i in range(20)
+            ],
+        )
+        mock_client.discover_popular.side_effect = [page1, page2]
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(reverse("movies:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_client.discover_popular.call_count, 2)
+        mock_client.discover_popular.assert_any_call(page=1, with_genres=None)
+        mock_client.discover_popular.assert_any_call(page=2, with_genres=None)
+        # 40 raw rows → trimmed to 36, so the last 4 of the second page are
+        # dropped. D1-0 stays; D2-15 is the last surviving row from page 2.
+        self.assertContains(response, "D1-0")
+        self.assertContains(response, "D2-15")
+        self.assertNotContains(response, "D2-16")
+        self.assertNotContains(response, "D2-19")
+        # 4 TMDB pages → 2 UI pages of 2 TMDB pages each.
         self.assertContains(response, "Strona 1 z 2")
