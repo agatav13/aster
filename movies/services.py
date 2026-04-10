@@ -3,16 +3,31 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
-from typing import Any
+from typing import Any, Iterator
 
+from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from .models import Genre, Movie
 from .tmdb import TmdbClient, TmdbMovieDetail, TmdbMovieSummary
 
 logger = logging.getLogger(__name__)
+
+# TMDB caps `page` at 500 server-side; honour the same ceiling so users can't
+# trip a 422 by clicking past the end.
+TMDB_MAX_PAGE = 500
+# How many movies the local browse paginator shows per UI page.
+DEFAULT_PAGE_SIZE = 30
+# Each TMDB /search/movie response is 20 rows. We stitch this many underlying
+# TMDB pages together per UI page so a search feels closer in density to the
+# local browse view (40 rows per UI page).
+TMDB_SEARCH_PAGES_PER_REQUEST = 2
 
 
 # Canonical Polish names for the standard TMDB movie genres, keyed by their
@@ -263,3 +278,200 @@ def fetch_and_cache_movie(tmdb_id: int, client: TmdbClient | None = None) -> Mov
     movie = upsert_movie_detail(detail, client)
     logger.info("Cached TMDB movie tmdb_id=%s title=%r", tmdb_id, movie.title)
     return movie
+
+
+# ── Listing adapters ─────────────────────────────────────────────────────────
+# The list view needs to render rows from two sources (the local cache and
+# live TMDB search results) without the template caring which one. The two
+# tiny dataclasses below normalize both into a single shape and provide the
+# same pagination attributes Django's Page object exposes.
+
+
+@dataclass
+class MovieListItem:
+    """View-model row used by templates/movies/list.html."""
+
+    tmdb_id: int
+    title: str
+    poster_url: str = ""
+    release_date: date | None = None
+    popularity: float | None = None
+
+    @classmethod
+    def from_local(cls, movie: Movie) -> "MovieListItem":
+        return cls(
+            tmdb_id=movie.tmdb_id,
+            title=movie.title,
+            poster_url=movie.poster_url,
+            release_date=movie.release_date,
+            popularity=float(movie.popularity) if movie.popularity is not None else None,
+        )
+
+    @classmethod
+    def from_tmdb(
+        cls, summary: TmdbMovieSummary, client: TmdbClient
+    ) -> "MovieListItem":
+        return cls(
+            tmdb_id=summary.id,
+            title=summary.title,
+            poster_url=client.image_url(summary.poster_path),
+            release_date=summary.release_date,
+            popularity=summary.popularity,
+        )
+
+
+@dataclass
+class MovieListPage:
+    """Minimal page object compatible with the list template.
+
+    Mirrors the subset of django.core.paginator.Page that the template uses
+    so we can hand-build a page from a TMDB response without instantiating a
+    Paginator.
+    """
+
+    object_list: list[MovieListItem]
+    number: int
+    num_pages: int
+
+    def __iter__(self) -> Iterator[MovieListItem]:
+        return iter(self.object_list)
+
+    @property
+    def has_previous(self) -> bool:
+        return self.number > 1
+
+    @property
+    def has_next(self) -> bool:
+        return self.number < self.num_pages
+
+    @property
+    def previous_page_number(self) -> int:
+        return self.number - 1
+
+    @property
+    def next_page_number(self) -> int:
+        return self.number + 1
+
+
+def _coerce_genre_id(raw: str | None) -> int | None:
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        logger.debug("Ignoring non-integer genre filter: %r", raw)
+        return None
+
+
+def browse_local_movies(
+    *,
+    query: str = "",
+    genre_id_raw: str | None = None,
+    favorites_active: bool = False,
+    user: AbstractBaseUser | AnonymousUser | None = None,
+    page: int = 1,
+    per_page: int = DEFAULT_PAGE_SIZE,
+) -> MovieListPage:
+    """Paginate the locally cached Movie table with optional filters.
+
+    Used both for plain browse mode and as a fallback when TMDB search is
+    unavailable. The query is matched against `title` with icontains to
+    preserve the previous local-search behaviour.
+    """
+    queryset: QuerySet[Movie] = Movie.objects.all().prefetch_related("genres")
+
+    if query:
+        queryset = queryset.filter(title__icontains=query)
+
+    genre_id = _coerce_genre_id(genre_id_raw)
+    if genre_id is not None:
+        queryset = queryset.filter(genres__id=genre_id)
+
+    if favorites_active and user is not None and user.is_authenticated:
+        favorite_ids = list(user.favorite_genres.values_list("id", flat=True))
+        if favorite_ids:
+            queryset = queryset.filter(genres__id__in=favorite_ids)
+
+    queryset = queryset.distinct()
+
+    paginator = Paginator(queryset, per_page)
+    page_obj = paginator.get_page(page)
+
+    return MovieListPage(
+        object_list=[MovieListItem.from_local(m) for m in page_obj.object_list],
+        number=page_obj.number,
+        num_pages=paginator.num_pages,
+    )
+
+
+def _resolve_tmdb_genre_id(genre_id_raw: str | None) -> int | None:
+    """Map a local Genre PK to the corresponding TMDB genre id.
+
+    Returns None when no filter is applied or when the local row has no
+    TMDB linkage (e.g. a custom genre that was never synced).
+    """
+    genre_id = _coerce_genre_id(genre_id_raw)
+    if genre_id is None:
+        return None
+    local_genre = Genre.objects.filter(pk=genre_id).first()
+    if local_genre is None or local_genre.tmdb_id is None:
+        return None
+    return local_genre.tmdb_id
+
+
+def search_tmdb_movies(
+    *,
+    query: str,
+    genre_id_raw: str | None = None,
+    page: int = 1,
+    client: TmdbClient | None = None,
+    pages_per_ui: int = TMDB_SEARCH_PAGES_PER_REQUEST,
+) -> MovieListPage:
+    """Search TMDB live and adapt the response to the list template.
+
+    A single UI page maps to `pages_per_ui` underlying TMDB pages so the user
+    sees ~40 results at a time instead of TMDB's default 20. When
+    `genre_id_raw` is supplied, the local Genre row is resolved to its TMDB
+    id and the returned summaries are post-filtered client-side; TMDB's
+    /search/movie endpoint does not accept `with_genres`, so this is the
+    cleanest way to combine free-text search with a genre constraint.
+    """
+    client = client or TmdbClient()
+
+    max_ui_page = max(1, TMDB_MAX_PAGE // pages_per_ui)
+    safe_ui_page = max(1, min(page, max_ui_page))
+
+    tmdb_genre_id = _resolve_tmdb_genre_id(genre_id_raw)
+
+    items: list[MovieListItem] = []
+    tmdb_total_pages = 1
+
+    for offset in range(pages_per_ui):
+        tmdb_page = (safe_ui_page - 1) * pages_per_ui + 1 + offset
+        if tmdb_page > TMDB_MAX_PAGE:
+            break
+
+        response = client.search_movies(query=query, page=tmdb_page)
+
+        if offset == 0:
+            tmdb_total_pages = response.total_pages
+
+        for summary in response.results:
+            if tmdb_genre_id is not None and tmdb_genre_id not in summary.genre_ids:
+                continue
+            items.append(MovieListItem.from_tmdb(summary, client))
+
+        # No more underlying pages available — stop early so we don't waste
+        # an HTTP call on a guaranteed-empty response.
+        if tmdb_page >= response.total_pages:
+            break
+
+    ui_total_pages = max(
+        1, (min(tmdb_total_pages, TMDB_MAX_PAGE) + pages_per_ui - 1) // pages_per_ui
+    )
+
+    return MovieListPage(
+        object_list=items,
+        number=safe_ui_page,
+        num_pages=ui_total_pages,
+    )

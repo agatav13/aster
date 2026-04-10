@@ -1,71 +1,140 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
-from django.views.generic import ListView
+from django.views.generic import TemplateView
 
-from .models import Genre, Movie
-from .services import fetch_and_cache_movie
+from .models import Genre
+from .services import (
+    MovieListPage,
+    browse_local_movies,
+    fetch_and_cache_movie,
+    search_tmdb_movies,
+)
 from .tmdb import TmdbApiError, TmdbConfigError
 
 logger = logging.getLogger(__name__)
 
 
-MOVIES_PER_PAGE = 12
-
-
-class MovieListView(ListView):
-    model = Movie
+class MovieListView(TemplateView):
     template_name = "movies/list.html"
-    context_object_name = "movies"
-    paginate_by = MOVIES_PER_PAGE
 
-    def _favorites_active(self) -> bool:
-        return (
-            self.request.GET.get("favorites") == "1"
-            and self.request.user.is_authenticated
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        request = self.request
+
+        query = request.GET.get("q", "").strip()
+        genre_id_raw = request.GET.get("genre", "").strip()
+        favorites_active = (
+            request.GET.get("favorites") == "1" and request.user.is_authenticated
+        )
+        page = self._parse_page(request.GET.get("page"))
+
+        page_obj, source, search_error = self._build_listing(
+            query=query,
+            genre_id_raw=genre_id_raw,
+            favorites_active=favorites_active,
+            page=page,
         )
 
-    def get_queryset(self):
-        queryset = Movie.objects.all().prefetch_related("genres")
-
-        query = self.request.GET.get("q", "").strip()
-        if query:
-            queryset = queryset.filter(title__icontains=query)
-
-        genre_id_raw = self.request.GET.get("genre", "").strip()
-        if genre_id_raw:
-            try:
-                genre_id = int(genre_id_raw)
-            except ValueError:
-                logger.debug("Ignoring non-integer genre filter: %r", genre_id_raw)
-            else:
-                queryset = queryset.filter(genres__id=genre_id)
-
-        if self._favorites_active():
-            favorite_ids = list(
-                self.request.user.favorite_genres.values_list("id", flat=True)
-            )
-            if favorite_ids:
-                queryset = queryset.filter(genres__id__in=favorite_ids)
-
-        return queryset.distinct()
-
-    def get_context_data(self, **kwargs: object) -> dict[str, object]:
-        context = super().get_context_data(**kwargs)
-        context["query"] = self.request.GET.get("q", "")
-        context["selected_genre"] = self.request.GET.get("genre", "")
-        context["favorites_active"] = self._favorites_active()
-        context["genres"] = Genre.objects.order_by("name")
-        if self.request.user.is_authenticated:
-            context["has_favorite_genres"] = (
-                self.request.user.favorite_genres.exists()
-            )
-        else:
-            context["has_favorite_genres"] = False
+        context.update(
+            {
+                "movies": page_obj.object_list,
+                "page_obj": page_obj,
+                "is_paginated": page_obj.num_pages > 1,
+                "query": query,
+                "selected_genre": genre_id_raw,
+                "favorites_active": favorites_active,
+                "genres": Genre.objects.order_by("name"),
+                "has_favorite_genres": (
+                    request.user.is_authenticated
+                    and request.user.favorite_genres.exists()
+                ),
+                "search_mode": bool(query),
+                "search_source": source,
+                "search_error": search_error,
+            }
+        )
         return context
+
+    @staticmethod
+    def _parse_page(raw: str | None) -> int:
+        try:
+            value = int(raw) if raw else 1
+        except ValueError:
+            return 1
+        return max(1, value)
+
+    def _build_listing(
+        self,
+        *,
+        query: str,
+        genre_id_raw: str,
+        favorites_active: bool,
+        page: int,
+    ) -> tuple[MovieListPage, str, str | None]:
+        """Pick the right data source for the current request.
+
+        Returns (page, source, error_message) where:
+          - source is "tmdb" when the rows came from TMDB live search,
+            "local" otherwise.
+          - error_message is set when TMDB was tried but failed and we fell
+            back to the local DB; the template renders it as a banner.
+        """
+        if not query:
+            return (
+                browse_local_movies(
+                    genre_id_raw=genre_id_raw,
+                    favorites_active=favorites_active,
+                    user=self.request.user,
+                    page=page,
+                ),
+                "local",
+                None,
+            )
+
+        try:
+            return (
+                search_tmdb_movies(
+                    query=query, genre_id_raw=genre_id_raw, page=page
+                ),
+                "tmdb",
+                None,
+            )
+        except TmdbConfigError:
+            logger.info(
+                "TMDB search requested but TMDB_API_KEY is not configured; "
+                "falling back to local search for q=%r",
+                query,
+            )
+            return (
+                browse_local_movies(
+                    query=query,
+                    genre_id_raw=genre_id_raw,
+                    favorites_active=favorites_active,
+                    user=self.request.user,
+                    page=page,
+                ),
+                "local",
+                None,
+            )
+        except TmdbApiError as exc:
+            logger.warning("TMDB search failed for q=%r: %s", query, exc)
+            return (
+                browse_local_movies(
+                    query=query,
+                    genre_id_raw=genre_id_raw,
+                    favorites_active=favorites_active,
+                    user=self.request.user,
+                    page=page,
+                ),
+                "local",
+                "Wyszukiwarka TMDB jest chwilowo niedostępna. "
+                "Pokazujemy pasujące tytuły z lokalnej bazy.",
+            )
 
 
 def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
@@ -76,7 +145,6 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
         logger.warning(
             "Movie tmdb_id=%s not cached and TMDB_API_KEY is not configured", tmdb_id
         )
-        # No API key configured AND movie isn't in the local cache → 404 with hint.
         raise Http404(
             "This movie isn't cached locally yet and TMDB is not configured."
         ) from exc

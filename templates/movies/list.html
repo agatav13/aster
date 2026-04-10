@@ -6,10 +6,10 @@
 <section class="movies-section">
   <header class="movies-header">
     <p class="eyebrow">Katalog</p>
-    <h1 class="display-6 fw-bold mb-3">Przeglądaj filmy</h1>
-    <p class="text-secondary mb-4">
-      Filmy są pobierane z TMDB i zapisywane w lokalnej bazie. Użyj wyszukiwarki,
-      aby znaleźć tytuł lub przefiltruj listę po gatunku.
+    <h1 class="page-title">Przeglądaj filmy</h1>
+    <p class="page-lede">
+      Wpisz tytuł, aby przeszukać całą bazę TMDB. Bez zapytania pokazujemy filmy
+      zapisane w lokalnym katalogu — możesz je przefiltrować po gatunku.
     </p>
     <form method="get" class="movies-filters">
       <input
@@ -42,6 +42,24 @@
       {% endif %}
     </form>
   </header>
+
+  {% if search_error %}
+    <div class="alert alert-warning mb-3" role="alert">
+      <i class="bi bi-exclamation-triangle"></i> {{ search_error }}
+    </div>
+  {% endif %}
+
+  {% if search_mode %}
+    <p class="search-source">
+      {% if search_source == "tmdb" %}
+        <i class="bi bi-cloud-arrow-down"></i>
+        Wyniki na żywo z TMDB dla zapytania <strong>„{{ query }}”</strong>.
+      {% else %}
+        <i class="bi bi-database"></i>
+        Wyniki z lokalnej bazy dla zapytania <strong>„{{ query }}”</strong>.
+      {% endif %}
+    </p>
+  {% endif %}
 
   {% if movies %}
     <div class="movie-grid">
@@ -77,7 +95,7 @@
           </a>
         {% endif %}
         <span class="page-indicator">
-          Strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+          Strona {{ page_obj.number }} z {{ page_obj.num_pages }}
         </span>
         {% if page_obj.has_next %}
           <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if favorites_active %}&favorites=1{% endif %}" class="btn btn-ghost btn-ghost-sm">
@@ -90,15 +108,25 @@
     <div class="movies-empty">
       <i class="bi bi-camera-reels"></i>
       <h2>Brak filmów do wyświetlenia</h2>
-      {% if query or selected_genre %}
+      {% if query %}
+        <p>
+          {% if search_source == "tmdb" %}
+            TMDB nie zwróciło wyników dla <strong>„{{ query }}”</strong>. Spróbuj
+            innego tytułu lub usuń filtr gatunku.
+          {% else %}
+            Nie znaleźliśmy nic w lokalnej bazie dla <strong>„{{ query }}”</strong>.
+          {% endif %}
+        </p>
+        <a href="{% url 'movies:list' %}" class="btn btn-ghost">Wyczyść filtry</a>
+      {% elif selected_genre %}
         <p>Spróbuj zmienić filtry lub wyczyścić wyszukiwanie.</p>
         <a href="{% url 'movies:list' %}" class="btn btn-ghost">Wyczyść filtry</a>
       {% else %}
         <p>
-          Lokalna baza jest jeszcze pusta. Administrator może uruchomić
+          Lokalna baza jest jeszcze pusta. Wpisz tytuł w wyszukiwarkę, aby
+          przeszukać TMDB, albo poproś administratora o uruchomienie
           <code>uv run manage.py sync_tmdb_genres</code> i
-          <code>uv run manage.py sync_tmdb_popular --pages 3</code>,
-          aby pobrać dane z TMDB.
+          <code>uv run manage.py sync_tmdb_popular --pages 3</code>.
         </p>
       {% endif %}
     </div>
