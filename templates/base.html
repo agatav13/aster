@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Aster{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
     <script>
       (function () {
         var stored = localStorage.getItem('theme');
@@ -40,6 +41,12 @@
                 {{ request.user.display_name|default:request.user.email }}
               </span>
             </a>
+            <form method="post" action="{% url 'accounts:logout' %}" class="nav-logout-form">
+              {% csrf_token %}
+              <button type="submit" class="logout-button" aria-label="Wyloguj się" title="Wyloguj się">
+                <i class="bi bi-box-arrow-right"></i>
+              </button>
+            </form>
           {% else %}
             <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-ghost-sm">Logowanie</a>
             <a href="{% url 'accounts:register' %}" class="btn btn-accent btn-sm">Rejestracja</a>
