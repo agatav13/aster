@@ -1,23 +1,40 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Rejestracja{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-lg-6">
-    <section class="form-card shadow-sm">
-      <h1 class="h2 mb-3">Załóż konto</h1>
-      <p class="text-secondary">Po rejestracji wyślemy link aktywacyjny na Twój adres e-mail.</p>
-      <form method="post" novalidate>
+  <div class="col-xl-10 col-lg-11">
+    <section class="form-card form-card--split shadow-sm">
+      <header class="form-card-header">
+        <h1 class="h2 mb-2">Załóż konto</h1>
+        <p class="text-secondary mb-0">
+          Po rejestracji wyślemy link aktywacyjny na Twój adres e-mail.
+        </p>
+      </header>
+      <form method="post" novalidate class="form-card-body">
         {% csrf_token %}
-        {% include "partials/form_fields.html" with form=form %}
-        <button type="submit" class="btn btn-dark w-100 mt-3">Utwórz konto</button>
+        <div class="row g-4">
+          <div class="col-lg-6 form-card-col">
+            {% include "partials/form_fields.html" with form=form exclude_field="favorite_genres" %}
+          </div>
+          <div class="col-lg-6 form-card-col">
+            {% include "partials/genre_field.html" with field=form.favorite_genres visible_count=10 %}
+          </div>
+        </div>
+        <div class="form-card-footer">
+          <button type="submit" class="btn btn-dark w-100">Utwórz konto</button>
+          <p class="mt-3 mb-0 small text-secondary text-center">
+            Masz już konto? <a href="{% url 'accounts:login' %}">Zaloguj się</a>.
+          </p>
+        </div>
       </form>
-      <p class="mt-4 mb-0 small text-secondary">
-        Masz już konto? <a href="{% url 'accounts:login' %}">Zaloguj się</a>.
-      </p>
     </section>
   </div>
 </div>
 {% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'js/genre_toggle.js' %}"></script>
+{% endblock %}

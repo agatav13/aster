@@ -1,3 +1,9 @@
+{% comment %}
+  Generic form renderer. Pass `exclude_field="favorite_genres"` (or any other
+  field name) to skip a field — callers that want to render it themselves in
+  a different layout slot can then include `partials/genre_field.html`
+  directly with the field they extracted.
+{% endcomment %}
 {% if form.non_field_errors %}
   <div class="alert alert-danger">
     {% for error in form.non_field_errors %}
@@ -7,28 +13,20 @@
 {% endif %}
 
 {% for field in form %}
-  <div class="mb-3{% if field.name == 'favorite_genres' %} genre-field{% endif %}">
+  {% if field.name != exclude_field %}
     {% if field.name == "favorite_genres" %}
-      <div class="form-label" id="{{ field.id_for_label }}_label">{{ field.label }}</div>
-      <div class="genre-grid" role="group" aria-labelledby="{{ field.id_for_label }}_label">
-        {% for checkbox in field %}
-          <div class="genre-option">
-            {{ checkbox.tag }}
-            <label class="genre-choice" for="{{ checkbox.id_for_label }}">
-              <span>{{ checkbox.choice_label }}</span>
-            </label>
-          </div>
+      {% include "partials/genre_field.html" with field=field %}
+    {% else %}
+      <div class="mb-3">
+        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}
+          <div class="form-text">{{ field.help_text }}</div>
+        {% endif %}
+        {% for error in field.errors %}
+          <div class="text-danger small mt-1">{{ error }}</div>
         {% endfor %}
       </div>
-    {% else %}
-      <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-      {{ field }}
     {% endif %}
-    {% if field.help_text %}
-      <div class="form-text">{{ field.help_text }}</div>
-    {% endif %}
-    {% for error in field.errors %}
-      <div class="text-danger small mt-1">{{ error }}</div>
-    {% endfor %}
-  </div>
+  {% endif %}
 {% endfor %}

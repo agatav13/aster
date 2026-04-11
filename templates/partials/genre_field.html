@@ -1,0 +1,43 @@
+{% comment %}
+  Renders the `favorite_genres` checkbox grid with a JS-powered
+  "show more" toggle. The server emits every option up front; the
+  progressive-enhancement script in register/edit templates hides the
+  overflow until the user opts in. `visible_count` is the number of
+  options kept visible by default (falls back to 10).
+{% endcomment %}
+<div class="mb-3 genre-field">
+  <div class="form-label" id="{{ field.id_for_label }}_label">{{ field.label }}</div>
+  <div
+    class="genre-grid"
+    role="group"
+    aria-labelledby="{{ field.id_for_label }}_label"
+    data-genre-grid
+    data-visible-count="{{ visible_count|default:10 }}"
+  >
+    {% for checkbox in field %}
+      <div class="genre-option">
+        {{ checkbox.tag }}
+        <label class="genre-choice" for="{{ checkbox.id_for_label }}">
+          <span>{{ checkbox.choice_label }}</span>
+        </label>
+      </div>
+    {% endfor %}
+  </div>
+  <button
+    type="button"
+    class="genre-toggle"
+    data-genre-toggle
+    data-label-more="Pokaż więcej gatunków"
+    data-label-less="Pokaż mniej"
+    hidden
+  >
+    <span data-genre-toggle-label>Pokaż więcej gatunków</span>
+    <i class="bi bi-chevron-down" data-genre-toggle-icon></i>
+  </button>
+  {% if field.help_text %}
+    <div class="form-text">{{ field.help_text }}</div>
+  {% endif %}
+  {% for error in field.errors %}
+    <div class="text-danger small mt-1">{{ error }}</div>
+  {% endfor %}
+</div>

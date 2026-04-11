@@ -545,6 +545,29 @@ a:hover {
   margin: 0 auto;
 }
 
+.form-card--wide {
+  max-width: 720px;
+}
+
+.form-card--split {
+  max-width: 960px;
+}
+
+.form-card--split .form-card-header {
+  margin-bottom: 1.75rem;
+}
+
+.form-card--split .form-card-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-card--split .form-card-footer {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
 .form-card h1 {
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -656,6 +679,43 @@ a:hover {
 .genre-option input:focus-visible + .genre-choice {
   outline: 3px solid var(--accent-dim);
   outline-offset: 2px;
+}
+
+.genre-option--collapsed {
+  display: none !important;
+}
+
+.genre-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+  padding: 0.45rem 0.9rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.genre-toggle:hover {
+  border-color: var(--accent);
+  border-style: solid;
+  color: var(--accent);
+}
+
+.genre-toggle[aria-expanded="true"] {
+  border-style: solid;
+  border-color: var(--border-accent);
+  color: var(--accent);
+}
+
+.genre-toggle i {
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 /* ── Info panels (activation, reset, etc.) ─────────────── */
@@ -1763,6 +1823,11 @@ a:hover {
   .info-panel {
     padding: 1.5rem;
     border-radius: var(--radius-md);
+  }
+
+  .form-card--split .form-card-footer {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
   }
 
   .page-title {

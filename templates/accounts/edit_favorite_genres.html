@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Edytuj ulubione gatunki | Aster{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-lg-7">
-    <section class="form-card shadow-sm">
+  <div class="col-xl-8 col-lg-9">
+    <section class="form-card form-card--wide shadow-sm">
       <p class="eyebrow">Profil</p>
       <h1 class="h2 mb-3">Edytuj ulubione gatunki</h1>
       <p class="text-secondary">
@@ -13,7 +14,12 @@
       </p>
       <form method="post" novalidate>
         {% csrf_token %}
-        {% include "partials/form_fields.html" with form=form %}
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}
+        {% include "partials/genre_field.html" with field=form.favorite_genres visible_count=12 %}
         <div class="d-flex gap-2 mt-3">
           <button type="submit" class="btn btn-dark flex-grow-1">Zapisz zmiany</button>
           <a href="{% url 'home' %}" class="btn btn-ghost">Anuluj</a>
@@ -22,4 +28,8 @@
     </section>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/genre_toggle.js' %}"></script>
 {% endblock %}
