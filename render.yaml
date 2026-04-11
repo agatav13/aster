@@ -28,16 +28,3 @@ services:
         sync: false
       - key: DJANGO_SUPERUSER_PASSWORD
         sync: false
-
-  - type: cron
-    name: aster-keep-alive
-    runtime: python
-    schedule: "*/14 * * * *"
-    buildCommand: "true"
-    startCommand: "python3 -c \"from urllib.request import urlopen; print(urlopen('$APP_BASE_URL/health/').status)\""
-    envVars:
-      - key: APP_BASE_URL
-        fromService:
-          name: aster-app
-          type: web
-          envVarKey: APP_BASE_URL
