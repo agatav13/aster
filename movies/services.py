@@ -11,10 +11,10 @@ from typing import Any, Iterator
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Avg, Count, QuerySet
 from django.utils import timezone
 
-from .models import Genre, Movie
+from .models import Comment, Genre, Movie, Rating, UserMovieStatus
 from .tmdb import TmdbClient, TmdbMovieDetail, TmdbMovieSummary
 
 logger = logging.getLogger(__name__)
@@ -598,3 +598,164 @@ def search_tmdb_movies(
         number=safe_ui_page,
         num_pages=ui_total_pages,
     )
+
+
+# ── User activity: watchlist / watched / rating ──────────────────────────────
+# These helpers encapsulate the write-side logic for the three "my movies"
+# features. They keep the cached aggregates on Movie (average_rating,
+# ratings_count) in sync so the detail and list views can render without
+# recomputing on every request.
+
+
+@transaction.atomic
+def set_movie_status(*, user, movie: Movie, status: str) -> UserMovieStatus:
+    """Create or flip a user↔movie status.
+
+    Accepted `status` values are the class constants on UserMovieStatus.
+    Raises ValueError on anything else so the view layer doesn't have to.
+    """
+    if status not in {UserMovieStatus.WATCHLIST, UserMovieStatus.WATCHED}:
+        raise ValueError(f"Invalid status: {status!r}")
+    obj, _ = UserMovieStatus.objects.update_or_create(
+        user=user, movie=movie, defaults={"status": status}
+    )
+    logger.info(
+        "User id=%s set status=%s on movie tmdb_id=%s",
+        user.pk, status, movie.tmdb_id,
+    )
+    return obj
+
+
+@transaction.atomic
+def remove_movie_status(*, user, movie: Movie) -> bool:
+    """Delete any status row for (user, movie). Returns True if one existed."""
+    deleted, _ = UserMovieStatus.objects.filter(user=user, movie=movie).delete()
+    if deleted:
+        logger.info(
+            "User id=%s cleared status on movie tmdb_id=%s",
+            user.pk, movie.tmdb_id,
+        )
+    return bool(deleted)
+
+
+def _refresh_movie_rating_aggregates(movie: Movie) -> None:
+    """Recompute average_rating and ratings_count from the ratings table.
+
+    Called from inside the transaction that mutates a Rating row, so the
+    cached aggregates on Movie stay consistent with the source of truth.
+    The two-decimal quantization matches the DecimalField definition.
+    """
+    stats = Rating.objects.filter(movie=movie).aggregate(
+        avg=Avg("score"), total=Count("id")
+    )
+    total = stats["total"] or 0
+    avg = stats["avg"]
+    if total == 0 or avg is None:
+        movie.average_rating = Decimal("0.00")
+    else:
+        movie.average_rating = Decimal(str(avg)).quantize(Decimal("0.01"))
+    movie.ratings_count = total
+    movie.save(update_fields=["average_rating", "ratings_count", "updated_at"])
+
+
+@transaction.atomic
+def upsert_rating(*, user, movie: Movie, score: int) -> Rating:
+    """Create or update a user's rating and refresh the movie aggregates.
+
+    Rating a movie implies the user has watched it, so we also ensure the
+    user↔movie status row exists with `status=WATCHED`. This promotes a
+    prior `watchlist` row to `watched` via update_or_create, and is a no-op
+    when the row is already watched.
+    """
+    if not (Rating.MIN_SCORE <= score <= Rating.MAX_SCORE):
+        raise ValueError(
+            f"Score must be between {Rating.MIN_SCORE} and {Rating.MAX_SCORE}"
+        )
+    rating, created = Rating.objects.update_or_create(
+        user=user, movie=movie, defaults={"score": score}
+    )
+    _refresh_movie_rating_aggregates(movie)
+    UserMovieStatus.objects.update_or_create(
+        user=user,
+        movie=movie,
+        defaults={"status": UserMovieStatus.WATCHED},
+    )
+    logger.info(
+        "User id=%s %s rating=%s for movie tmdb_id=%s (status auto-set to watched)",
+        user.pk, "created" if created else "updated", score, movie.tmdb_id,
+    )
+    return rating
+
+
+@transaction.atomic
+def remove_rating(*, user, movie: Movie) -> bool:
+    """Delete a user's rating (if present) and refresh movie aggregates."""
+    deleted, _ = Rating.objects.filter(user=user, movie=movie).delete()
+    if deleted:
+        _refresh_movie_rating_aggregates(movie)
+        logger.info(
+            "User id=%s removed rating on movie tmdb_id=%s",
+            user.pk, movie.tmdb_id,
+        )
+    return bool(deleted)
+
+
+# ── Comments ────────────────────────────────────────────────────────────────
+# Thin wrappers so the view layer doesn't touch the ORM directly. Keeping
+# the moderation fields (status, toxicity_score, moderated_at) here means the
+# phase-2 moderation panel can plug into these helpers without rewriting the
+# create/delete path.
+
+
+def visible_comments_for(movie: Movie) -> QuerySet[Comment]:
+    """All user-facing comments for a movie, newest first."""
+    return (
+        Comment.objects.filter(movie=movie, status=Comment.VISIBLE)
+        .select_related("user")
+    )
+
+
+@transaction.atomic
+def create_comment(*, user, movie: Movie, content: str) -> Comment:
+    """Persist a new comment after trimming whitespace.
+
+    Length-capping is enforced by the model field, but we trim here so the
+    form can't submit a comment that is only whitespace.
+    """
+    trimmed = (content or "").strip()
+    if not trimmed:
+        raise ValueError("Comment content must not be empty.")
+    if len(trimmed) > Comment.MAX_LENGTH:
+        raise ValueError(
+            f"Comment content must not exceed {Comment.MAX_LENGTH} characters."
+        )
+    comment = Comment.objects.create(
+        user=user,
+        movie=movie,
+        content=trimmed,
+        status=Comment.VISIBLE,
+    )
+    logger.info(
+        "User id=%s added comment id=%s on movie tmdb_id=%s",
+        user.pk, comment.pk, movie.tmdb_id,
+    )
+    return comment
+
+
+@transaction.atomic
+def delete_own_comment(*, user, comment: Comment) -> bool:
+    """Hard-delete a comment if it belongs to the given user.
+
+    Returns True when a row was removed. Ownership check lives here so the
+    view layer doesn't have to repeat the permission logic.
+    """
+    if comment.user_id != user.pk:
+        return False
+    comment_id = comment.pk
+    movie_tmdb_id = comment.movie.tmdb_id
+    comment.delete()
+    logger.info(
+        "User id=%s deleted own comment id=%s on movie tmdb_id=%s",
+        user.pk, comment_id, movie_tmdb_id,
+    )
+    return True

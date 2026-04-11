@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -57,3 +59,163 @@ class Movie(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+class UserMovieStatus(models.Model):
+    """Tracks a user's relationship with a movie (watchlist or watched).
+
+    Maps to the `user_movie_statuses` table from docs/database-design.md.
+    Replaces separate `watchlist` and `watched_movies` tables by letting a
+    single row flip between the two states via `status`.
+    """
+
+    WATCHLIST = "watchlist"
+    WATCHED = "watched"
+    STATUS_CHOICES = [
+        (WATCHLIST, "Do obejrzenia"),
+        (WATCHED, "Obejrzane"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="movie_statuses",
+    )
+    movie = models.ForeignKey(
+        Movie,
+        on_delete=models.CASCADE,
+        related_name="user_statuses",
+    )
+    status: str = models.CharField(
+        "Status", max_length=20, choices=STATUS_CHOICES
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "movie"], name="uq_user_movie_status"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "status"]),
+        ]
+        verbose_name = "user movie status"
+        verbose_name_plural = "user movie statuses"
+
+    def __str__(self) -> str:
+        return f"{self.user} → {self.movie} ({self.status})"
+
+
+class Rating(models.Model):
+    """User's 1–5 star rating for a movie.
+
+    Maps to the `ratings` table from docs/database-design.md. The cached
+    `movies.average_rating` / `movies.ratings_count` aggregates are
+    refreshed by the service layer whenever a rating is inserted, updated
+    or deleted.
+    """
+
+    MIN_SCORE = 1
+    MAX_SCORE = 5
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ratings",
+    )
+    movie = models.ForeignKey(
+        Movie,
+        on_delete=models.CASCADE,
+        related_name="ratings",
+    )
+    score: int = models.PositiveSmallIntegerField(
+        "Ocena",
+        validators=[MinValueValidator(MIN_SCORE), MaxValueValidator(MAX_SCORE)],
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "movie"], name="uq_user_movie_rating"),
+            models.CheckConstraint(
+                check=models.Q(score__gte=1) & models.Q(score__lte=5),
+                name="ck_rating_score_1_5",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["movie"]),
+        ]
+        verbose_name = "rating"
+        verbose_name_plural = "ratings"
+
+    def __str__(self) -> str:
+        return f"{self.user} → {self.movie}: {self.score}/5"
+
+
+class Comment(models.Model):
+    """User comment on a movie.
+
+    Maps to the `comments` table from docs/database-design.md. The `status`
+    field is the hook for the moderation flow from phase 2 — the feed view
+    filters on `VISIBLE` so `FLAGGED`, `HIDDEN` and `DELETED` comments drop
+    out of the public list without any extra plumbing.
+    """
+
+    VISIBLE = "visible"
+    FLAGGED = "flagged"
+    HIDDEN = "hidden"
+    DELETED = "deleted"
+    STATUS_CHOICES = [
+        (VISIBLE, "Widoczny"),
+        (FLAGGED, "Zgłoszony"),
+        (HIDDEN, "Ukryty"),
+        (DELETED, "Usunięty"),
+    ]
+
+    MAX_LENGTH = 2000
+
+    movie = models.ForeignKey(
+        Movie,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    content: str = models.TextField("Treść", max_length=MAX_LENGTH)
+    status: str = models.CharField(
+        "Status",
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=VISIBLE,
+    )
+    toxicity_score = models.DecimalField(
+        "Toxicity score",
+        max_digits=5,
+        decimal_places=4,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    moderated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["movie", "status", "-created_at"],
+                name="ix_comments_movie_status",
+            ),
+        ]
+        verbose_name = "comment"
+        verbose_name_plural = "comments"
+
+    def __str__(self) -> str:
+        preview = self.content[:40] + ("…" if len(self.content) > 40 else "")
+        return f"{self.user} → {self.movie}: {preview}"

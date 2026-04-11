@@ -3,17 +3,28 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 
-from .models import Genre
+from .models import Comment, Genre, Rating, UserMovieStatus
 from .services import (
     MovieListPage,
     browse_local_movies,
+    create_comment,
+    delete_own_comment,
     discover_tmdb_movies,
     fetch_and_cache_movie,
+    remove_movie_status,
+    remove_rating,
     search_tmdb_movies,
+    set_movie_status,
+    upsert_rating,
+    visible_comments_for,
 )
 from .tmdb import TmdbApiError, TmdbConfigError
 
@@ -167,8 +178,181 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
         logger.warning("TMDB fetch failed for tmdb_id=%s: %s", tmdb_id, exc)
         raise Http404("Could not fetch movie from TMDB.") from exc
 
+    user_status: str | None = None
+    user_rating: int | None = None
+    if request.user.is_authenticated:
+        status_row = UserMovieStatus.objects.filter(
+            user=request.user, movie=movie
+        ).first()
+        user_status = status_row.status if status_row else None
+        rating_row = Rating.objects.filter(user=request.user, movie=movie).first()
+        user_rating = rating_row.score if rating_row else None
+
+    comments = list(visible_comments_for(movie))
+
     return render(
         request,
         "movies/detail.html",
-        {"movie": movie, "genres": movie.genres.all()},
+        {
+            "movie": movie,
+            "genres": movie.genres.all(),
+            "user_status": user_status,
+            "user_rating": user_rating,
+            "status_watchlist": UserMovieStatus.WATCHLIST,
+            "status_watched": UserMovieStatus.WATCHED,
+            "comments": comments,
+            "comments_count": len(comments),
+            "comment_max_length": Comment.MAX_LENGTH,
+        },
     )
+
+
+def _resolve_movie_or_404(tmdb_id: int):
+    """Shared helper for write-side views: fetch-and-cache or 404."""
+    try:
+        return fetch_and_cache_movie(tmdb_id)
+    except TmdbConfigError as exc:
+        raise Http404(
+            "This movie isn't cached locally yet and TMDB is not configured."
+        ) from exc
+    except TmdbApiError as exc:
+        raise Http404("Could not fetch movie from TMDB.") from exc
+
+
+def _detail_redirect(tmdb_id: int) -> HttpResponse:
+    return redirect(reverse("movies:detail", args=[tmdb_id]))
+
+
+@login_required
+@require_POST
+def update_movie_status(request: HttpRequest, tmdb_id: int) -> HttpResponse:
+    """Toggle/clear a watchlist or watched marker for the current user.
+
+    The form posts an `action` field. Supported values:
+      * "watchlist" / "watched" — upsert the corresponding status. If the
+        user already has the same status, treat the second click as a
+        "remove" toggle so the buttons work as on/off switches.
+      * "clear" — unconditionally remove any status row.
+    """
+    movie = _resolve_movie_or_404(tmdb_id)
+    action = request.POST.get("action", "").strip()
+
+    if action == "clear":
+        remove_movie_status(user=request.user, movie=movie)
+        messages.info(request, f"„{movie.title}” usunięty z Twoich list.")
+        return _detail_redirect(tmdb_id)
+
+    if action not in {UserMovieStatus.WATCHLIST, UserMovieStatus.WATCHED}:
+        messages.error(request, "Nieprawidłowa akcja.")
+        return _detail_redirect(tmdb_id)
+
+    existing = UserMovieStatus.objects.filter(
+        user=request.user, movie=movie
+    ).first()
+    if existing is not None and existing.status == action:
+        remove_movie_status(user=request.user, movie=movie)
+        messages.info(request, f"„{movie.title}” usunięty z Twoich list.")
+        return _detail_redirect(tmdb_id)
+
+    promoted_from_watchlist = (
+        existing is not None
+        and existing.status == UserMovieStatus.WATCHLIST
+        and action == UserMovieStatus.WATCHED
+    )
+    set_movie_status(user=request.user, movie=movie, status=action)
+    if promoted_from_watchlist:
+        messages.success(
+            request,
+            f"„{movie.title}” przeniesiony z „do obejrzenia” do „obejrzane”.",
+        )
+    else:
+        label = (
+            "do obejrzenia"
+            if action == UserMovieStatus.WATCHLIST
+            else "obejrzane"
+        )
+        messages.success(request, f"„{movie.title}” dodany do listy „{label}”.")
+    return _detail_redirect(tmdb_id)
+
+
+@login_required
+@require_POST
+def update_movie_rating(request: HttpRequest, tmdb_id: int) -> HttpResponse:
+    """Save or delete the current user's rating for a movie."""
+    movie = _resolve_movie_or_404(tmdb_id)
+    action = request.POST.get("action", "save").strip()
+
+    if action == "delete":
+        if remove_rating(user=request.user, movie=movie):
+            messages.info(request, f"Twoja ocena filmu „{movie.title}” została usunięta.")
+        return _detail_redirect(tmdb_id)
+
+    raw_score = request.POST.get("score", "").strip()
+    try:
+        score = int(raw_score)
+    except ValueError:
+        messages.error(request, "Wybierz ocenę od 1 do 5 gwiazdek.")
+        return _detail_redirect(tmdb_id)
+
+    # Detect "watchlist → watched" promotion before the rating upsert so we
+    # can tell the user that their watchlist entry was moved, not just that
+    # the rating was saved.
+    was_on_watchlist = UserMovieStatus.objects.filter(
+        user=request.user, movie=movie, status=UserMovieStatus.WATCHLIST
+    ).exists()
+
+    try:
+        upsert_rating(user=request.user, movie=movie, score=score)
+    except ValueError:
+        messages.error(request, "Ocena musi mieścić się w zakresie 1–5.")
+        return _detail_redirect(tmdb_id)
+
+    messages.success(request, f"Zapisano ocenę {score}/5 dla „{movie.title}”.")
+    if was_on_watchlist:
+        messages.info(
+            request,
+            f"„{movie.title}” przeniesiony z „do obejrzenia” do „obejrzane”.",
+        )
+    return _detail_redirect(tmdb_id)
+
+
+@login_required
+@require_POST
+def create_movie_comment(request: HttpRequest, tmdb_id: int) -> HttpResponse:
+    """Create a new visible comment on the movie.
+
+    Validation is intentionally shallow: the service layer trims/caps
+    content and the view just surfaces the two error cases via messages so
+    the rendered page can tell the user what went wrong.
+    """
+    movie = _resolve_movie_or_404(tmdb_id)
+    content = request.POST.get("content", "")
+    try:
+        create_comment(user=request.user, movie=movie, content=content)
+    except ValueError:
+        if not content.strip():
+            messages.error(request, "Komentarz nie może być pusty.")
+        else:
+            messages.error(
+                request,
+                f"Komentarz jest zbyt długi (maks. {Comment.MAX_LENGTH} znaków).",
+            )
+        return _detail_redirect(tmdb_id)
+
+    messages.success(request, "Dodano komentarz.")
+    return _detail_redirect(tmdb_id)
+
+
+@login_required
+@require_POST
+def delete_movie_comment(
+    request: HttpRequest, tmdb_id: int, comment_id: int
+) -> HttpResponse:
+    """Delete a comment the current user owns; 404 for anything else."""
+    comment = get_object_or_404(
+        Comment, pk=comment_id, movie__tmdb_id=tmdb_id
+    )
+    if not delete_own_comment(user=request.user, comment=comment):
+        raise Http404("Nie można usunąć tego komentarza.")
+    messages.info(request, "Komentarz usunięty.")
+    return _detail_redirect(tmdb_id)

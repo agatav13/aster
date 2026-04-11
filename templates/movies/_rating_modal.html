@@ -1,53 +1,63 @@
 {% comment %}
-  Rating modal scaffold. The form does not yet POST anywhere — Save/Delete are
-  visually wired up but submit nothing until the rating feature is implemented
-  (see docs/database-design.md, table `ratings`).
+  Rating modal. Submits to movies:update_rating. Delete is rendered as a
+  separate form so the "delete" action doesn't have to share the star input.
 {% endcomment %}
 <div class="modal fade rating-modal" id="ratingModal" tabindex="-1" aria-labelledby="ratingModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title" id="ratingModalLabel">
-          <i class="bi bi-star"></i> Oceń: <span class="rating-modal-movie">{{ movie.title }}</span>
-        </h2>
-        <button type="button" class="btn-close-custom" data-bs-dismiss="modal" aria-label="Zamknij">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </div>
-      <div class="modal-body">
-        <form class="rating-form" data-rating-form>
+      <form method="post" action="{% url 'movies:update_rating' movie.tmdb_id %}" class="rating-form" data-rating-form>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save">
+        <div class="modal-header">
+          <h2 class="modal-title" id="ratingModalLabel">
+            <i class="bi bi-star"></i> Oceń: <span class="rating-modal-movie">{{ movie.title }}</span>
+          </h2>
+          <button type="button" class="btn-close-custom" data-bs-dismiss="modal" aria-label="Zamknij">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="modal-body">
           <fieldset class="rating-stars" aria-label="Wybierz ocenę od 1 do 5 gwiazdek">
             {% for value in "54321" %}
-              <input type="radio" name="score" id="rating-star-{{ value }}" value="{{ value }}">
+              <input
+                type="radio"
+                name="score"
+                id="rating-star-{{ value }}"
+                value="{{ value }}"
+                {% if user_rating|stringformat:"s" == value %}checked{% endif %}
+                required
+              >
               <label for="rating-star-{{ value }}" title="{{ value }} z 5">
                 <i class="bi bi-star-fill"></i>
               </label>
             {% endfor %}
           </fieldset>
 
-          <label for="ratingComment" class="rating-comment-label">Komentarz (opcjonalnie)</label>
-          <textarea
-            id="ratingComment"
-            name="comment"
-            class="rating-comment"
-            rows="4"
-            placeholder="Co sądzisz o tym filmie?"
-          ></textarea>
-
-          <div class="rating-soon-banner">
-            <i class="bi bi-clock-history"></i>
-            Funkcja w przygotowaniu — wkrótce będzie można zapisać ocenę.
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost btn-ghost-sm" disabled>
-          <i class="bi bi-trash"></i> Usuń ocenę
-        </button>
-        <button type="button" class="btn btn-accent" disabled>
-          <i class="bi bi-check2"></i> Zapisz
-        </button>
-      </div>
+          {% if user_rating %}
+            <p class="text-secondary small mb-0">
+              <i class="bi bi-info-circle"></i>
+              Twoja obecna ocena: <strong>{{ user_rating }}/5</strong>.
+            </p>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          {% if user_rating %}
+            <button
+              type="submit"
+              formaction="{% url 'movies:update_rating' movie.tmdb_id %}"
+              name="action"
+              value="delete"
+              class="btn btn-ghost btn-ghost-sm"
+              formnovalidate
+            >
+              <i class="bi bi-trash"></i> Usuń ocenę
+            </button>
+          {% endif %}
+          <button type="submit" class="btn btn-accent">
+            <i class="bi bi-check2"></i> Zapisz
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

@@ -930,9 +930,30 @@ a:hover {
 }
 
 .movie-poster {
+  position: relative;
   aspect-ratio: 2 / 3;
   overflow: hidden;
   background: var(--bg-secondary);
+}
+
+.movie-card-score {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  background: rgba(var(--accent-rgb), 0.92);
+  color: var(--bg-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+.movie-card-score i {
+  font-size: 0.72rem;
 }
 
 .movie-poster img {
@@ -1165,6 +1186,20 @@ a:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
   box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.25);
+}
+
+.movie-action-btn--active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.movie-action-btn--active i {
+  color: var(--accent);
+}
+
+.movie-action-form {
+  margin: 0;
 }
 
 .movie-actions-guest {
@@ -1449,6 +1484,13 @@ a:hover {
   color: var(--text-primary);
   line-height: 1.6;
   margin: 0;
+  white-space: pre-wrap;
+}
+
+.comment-delete-form {
+  margin: 0.5rem 0 0;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .comment-empty {

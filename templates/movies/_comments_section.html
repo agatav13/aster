@@ -1,33 +1,39 @@
 {% comment %}
-  Comments section scaffold. Maps to the `comments` table from
-  docs/database-design.md. Currently shows an empty state and a disabled
-  composer; once the comments app lands we plug in the real list + form.
+  Comments section. Maps to the `comments` table from
+  docs/database-design.md. Lists VISIBLE comments newest-first and lets the
+  current user post new ones or delete their own.
 {% endcomment %}
 <section class="comments-section" aria-labelledby="comments-heading">
   <header class="comments-header">
     <h2 id="comments-heading">
       <i class="bi bi-chat-left-text"></i> Komentarze
-      <span class="comments-count">0</span>
+      <span class="comments-count">{{ comments_count }}</span>
     </h2>
-    <span class="soon-badge soon-badge--inline">Wkrótce</span>
   </header>
 
   {% if request.user.is_authenticated %}
-    <form class="comment-composer" data-comment-form>
+    <form
+      class="comment-composer"
+      method="post"
+      action="{% url 'movies:create_comment' movie.tmdb_id %}"
+      data-comment-form
+    >
+      {% csrf_token %}
       <label for="commentBody" class="visually-hidden">Twój komentarz</label>
       <textarea
         id="commentBody"
         name="content"
         rows="3"
+        maxlength="{{ comment_max_length }}"
         placeholder="Podziel się swoją opinią o filmie..."
-        disabled
+        required
       ></textarea>
       <div class="comment-composer-footer">
         <span class="text-secondary small">
           <i class="bi bi-shield-check"></i>
           Komentarze są moderowane.
         </span>
-        <button type="button" class="btn btn-accent" disabled>
+        <button type="submit" class="btn btn-accent">
           <i class="bi bi-send"></i> Wyślij
         </button>
       </div>
@@ -45,9 +51,36 @@
   {% endif %}
 
   <ul class="comment-list" aria-live="polite">
-    <li class="comment-empty">
-      <i class="bi bi-chat-square-dots"></i>
-      <p>Brak komentarzy. Bądź pierwszy, gdy funkcja będzie dostępna.</p>
-    </li>
+    {% for comment in comments %}
+      <li class="comment-item">
+        <div class="comment-item-head">
+          <span class="comment-author">
+            <i class="bi bi-person-circle"></i>
+            {{ comment.user.display_name|default:comment.user.email }}
+          </span>
+          <span class="comment-date" title="{{ comment.created_at|date:'Y-m-d H:i' }}">
+            {{ comment.created_at|date:"j N Y, H:i" }}
+          </span>
+        </div>
+        <p class="comment-body">{{ comment.content|linebreaksbr }}</p>
+        {% if request.user.is_authenticated and request.user.pk == comment.user_id %}
+          <form
+            method="post"
+            action="{% url 'movies:delete_comment' movie.tmdb_id comment.pk %}"
+            class="comment-delete-form"
+          >
+            {% csrf_token %}
+            <button type="submit" class="btn btn-ghost btn-ghost-sm">
+              <i class="bi bi-trash"></i> Usuń
+            </button>
+          </form>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="comment-empty">
+        <i class="bi bi-chat-square-dots"></i>
+        <p>Brak komentarzy. Bądź pierwszy!</p>
+      </li>
+    {% endfor %}
   </ul>
 </section>

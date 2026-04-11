@@ -23,44 +23,120 @@
         <p class="eyebrow mb-1">Profil filmowy</p>
         <h2 class="section-title">Moja aktywność</h2>
       </div>
-      <span class="soon-badge soon-badge--inline">Wkrótce</span>
     </div>
 
     <div class="profile-tabs" role="tablist">
       <button type="button" class="profile-tab is-active" data-activity-tab="watched" role="tab" aria-selected="true">
         <i class="bi bi-eye"></i> Obejrzane
-        <span class="profile-tab-count">0</span>
+        <span class="profile-tab-count">{{ watched_count }}</span>
       </button>
       <button type="button" class="profile-tab" data-activity-tab="rated" role="tab" aria-selected="false">
         <i class="bi bi-star"></i> Ocenione
-        <span class="profile-tab-count">0</span>
+        <span class="profile-tab-count">{{ rated_count }}</span>
       </button>
       <button type="button" class="profile-tab" data-activity-tab="watchlist" role="tab" aria-selected="false">
         <i class="bi bi-bookmark"></i> Do obejrzenia
-        <span class="profile-tab-count">0</span>
+        <span class="profile-tab-count">{{ watchlist_count }}</span>
       </button>
     </div>
 
     <div class="profile-tab-panel" data-activity-panel="watched">
-      <div class="activity-empty">
-        <i class="bi bi-camera-reels"></i>
-        <h3>Brak obejrzanych filmów</h3>
-        <p>Po obejrzeniu filmu zaznacz go na stronie szczegółów, aby pojawił się tutaj.</p>
-      </div>
+      {% if watched_movies %}
+        <div class="movie-grid">
+          {% for movie in watched_movies %}
+            <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
+              <div class="movie-poster">
+                {% if movie.poster_url %}
+                  <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
+                {% else %}
+                  <div class="movie-poster-placeholder">
+                    <i class="bi bi-film"></i>
+                  </div>
+                {% endif %}
+              </div>
+              <div class="movie-card-body">
+                <h3 class="movie-title">{{ movie.title }}</h3>
+                {% if movie.release_date %}
+                  <p class="movie-meta">{{ movie.release_date|date:"Y" }}</p>
+                {% endif %}
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="activity-empty">
+          <i class="bi bi-camera-reels"></i>
+          <h3>Brak obejrzanych filmów</h3>
+          <p>Po obejrzeniu filmu zaznacz go na stronie szczegółów, aby pojawił się tutaj.</p>
+        </div>
+      {% endif %}
     </div>
+
     <div class="profile-tab-panel" data-activity-panel="rated" hidden>
-      <div class="activity-empty">
-        <i class="bi bi-star"></i>
-        <h3>Brak ocenionych filmów</h3>
-        <p>Wystaw pierwszą ocenę, a Twoja historia ocen pojawi się w tej zakładce.</p>
-      </div>
+      {% if rated_movies %}
+        <div class="movie-grid">
+          {% for entry in rated_movies %}
+            <a href="{% url 'movies:detail' entry.movie.tmdb_id %}" class="movie-card">
+              <div class="movie-poster">
+                {% if entry.movie.poster_url %}
+                  <img src="{{ entry.movie.poster_url }}" alt="Plakat: {{ entry.movie.title }}" loading="lazy">
+                {% else %}
+                  <div class="movie-poster-placeholder">
+                    <i class="bi bi-film"></i>
+                  </div>
+                {% endif %}
+                <span class="movie-card-score" aria-label="Twoja ocena: {{ entry.score }} z 5">
+                  <i class="bi bi-star-fill"></i> {{ entry.score }}/5
+                </span>
+              </div>
+              <div class="movie-card-body">
+                <h3 class="movie-title">{{ entry.movie.title }}</h3>
+                {% if entry.movie.release_date %}
+                  <p class="movie-meta">{{ entry.movie.release_date|date:"Y" }}</p>
+                {% endif %}
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="activity-empty">
+          <i class="bi bi-star"></i>
+          <h3>Brak ocenionych filmów</h3>
+          <p>Wystaw pierwszą ocenę, a Twoja historia ocen pojawi się w tej zakładce.</p>
+        </div>
+      {% endif %}
     </div>
+
     <div class="profile-tab-panel" data-activity-panel="watchlist" hidden>
-      <div class="activity-empty">
-        <i class="bi bi-bookmark"></i>
-        <h3>Pusta lista do obejrzenia</h3>
-        <p>Zapisuj filmy na później, aby wrócić do nich w wolnej chwili.</p>
-      </div>
+      {% if watchlist_movies %}
+        <div class="movie-grid">
+          {% for movie in watchlist_movies %}
+            <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
+              <div class="movie-poster">
+                {% if movie.poster_url %}
+                  <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
+                {% else %}
+                  <div class="movie-poster-placeholder">
+                    <i class="bi bi-film"></i>
+                  </div>
+                {% endif %}
+              </div>
+              <div class="movie-card-body">
+                <h3 class="movie-title">{{ movie.title }}</h3>
+                {% if movie.release_date %}
+                  <p class="movie-meta">{{ movie.release_date|date:"Y" }}</p>
+                {% endif %}
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="activity-empty">
+          <i class="bi bi-bookmark"></i>
+          <h3>Pusta lista do obejrzenia</h3>
+          <p>Zapisuj filmy na później, aby wrócić do nich w wolnej chwili.</p>
+        </div>
+      {% endif %}
     </div>
   </section>
 

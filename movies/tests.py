@@ -6,14 +6,21 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import Genre, Movie
+from .models import Comment, Genre, Movie, Rating, UserMovieStatus
 from .services import (
     DEFAULT_PAGE_SIZE,
     TMDB_GENRE_PL_NAMES,
+    create_comment,
+    delete_own_comment,
     fetch_and_cache_movie,
     normalize_all_genres,
+    remove_movie_status,
+    remove_rating,
+    set_movie_status,
     sync_all_genres,
     upsert_genre,
+    upsert_rating,
+    visible_comments_for,
 )
 from .tmdb import (
     TmdbApiError,
@@ -875,3 +882,510 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.assertEqual(page_obj.num_pages, MAX_UI_PAGES)
         # Sanity: the cap is well below TMDB's own 500 ceiling.
         self.assertLess(MAX_UI_PAGES, 500 // TMDB_SEARCH_PAGES_PER_REQUEST)
+
+
+class UserMovieStatusServiceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="status-svc@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=900, title="Status Flick")
+
+    def test_set_status_creates_row(self) -> None:
+        set_movie_status(
+            user=self.user, movie=self.movie, status=UserMovieStatus.WATCHLIST
+        )
+        row = UserMovieStatus.objects.get(user=self.user, movie=self.movie)
+        self.assertEqual(row.status, UserMovieStatus.WATCHLIST)
+
+    def test_set_status_updates_existing_row(self) -> None:
+        set_movie_status(
+            user=self.user, movie=self.movie, status=UserMovieStatus.WATCHLIST
+        )
+        set_movie_status(
+            user=self.user, movie=self.movie, status=UserMovieStatus.WATCHED
+        )
+        rows = UserMovieStatus.objects.filter(user=self.user, movie=self.movie)
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().status, UserMovieStatus.WATCHED)
+
+    def test_set_status_rejects_unknown_value(self) -> None:
+        with self.assertRaises(ValueError):
+            set_movie_status(user=self.user, movie=self.movie, status="bogus")
+
+    def test_remove_status_returns_false_when_missing(self) -> None:
+        self.assertFalse(remove_movie_status(user=self.user, movie=self.movie))
+
+    def test_remove_status_deletes_row(self) -> None:
+        set_movie_status(
+            user=self.user, movie=self.movie, status=UserMovieStatus.WATCHED
+        )
+        self.assertTrue(remove_movie_status(user=self.user, movie=self.movie))
+        self.assertFalse(
+            UserMovieStatus.objects.filter(user=self.user, movie=self.movie).exists()
+        )
+
+
+class RatingServiceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="rating-svc@example.com", password="StrongPass123!"
+        )
+        cls.other = cls.User.objects.create_user(
+            email="other@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=901, title="Rating Flick")
+
+    def test_upsert_creates_and_updates_aggregates(self) -> None:
+        upsert_rating(user=self.user, movie=self.movie, score=5)
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.ratings_count, 1)
+        self.assertEqual(self.movie.average_rating, Decimal("5.00"))
+
+        upsert_rating(user=self.other, movie=self.movie, score=3)
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.ratings_count, 2)
+        self.assertEqual(self.movie.average_rating, Decimal("4.00"))
+
+    def test_upsert_updates_existing_rating(self) -> None:
+        upsert_rating(user=self.user, movie=self.movie, score=5)
+        upsert_rating(user=self.user, movie=self.movie, score=2)
+
+        self.assertEqual(Rating.objects.filter(user=self.user).count(), 1)
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.average_rating, Decimal("2.00"))
+        self.assertEqual(self.movie.ratings_count, 1)
+
+    def test_upsert_rejects_out_of_range(self) -> None:
+        for bad in (0, 6, -1, 10):
+            with self.assertRaises(ValueError):
+                upsert_rating(user=self.user, movie=self.movie, score=bad)
+
+    def test_remove_rating_refreshes_aggregates(self) -> None:
+        upsert_rating(user=self.user, movie=self.movie, score=5)
+        upsert_rating(user=self.other, movie=self.movie, score=3)
+
+        self.assertTrue(remove_rating(user=self.user, movie=self.movie))
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.ratings_count, 1)
+        self.assertEqual(self.movie.average_rating, Decimal("3.00"))
+
+    def test_remove_all_ratings_resets_aggregates_to_zero(self) -> None:
+        upsert_rating(user=self.user, movie=self.movie, score=4)
+        remove_rating(user=self.user, movie=self.movie)
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.ratings_count, 0)
+        self.assertEqual(self.movie.average_rating, Decimal("0.00"))
+
+    def test_rating_auto_marks_movie_as_watched(self) -> None:
+        upsert_rating(user=self.user, movie=self.movie, score=4)
+        status = UserMovieStatus.objects.get(user=self.user, movie=self.movie)
+        self.assertEqual(status.status, UserMovieStatus.WATCHED)
+
+    def test_rating_promotes_watchlist_to_watched(self) -> None:
+        set_movie_status(
+            user=self.user, movie=self.movie, status=UserMovieStatus.WATCHLIST
+        )
+        upsert_rating(user=self.user, movie=self.movie, score=3)
+        rows = UserMovieStatus.objects.filter(user=self.user, movie=self.movie)
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().status, UserMovieStatus.WATCHED)
+
+    def test_rating_is_noop_on_status_when_already_watched(self) -> None:
+        set_movie_status(
+            user=self.user, movie=self.movie, status=UserMovieStatus.WATCHED
+        )
+        upsert_rating(user=self.user, movie=self.movie, score=5)
+        rows = UserMovieStatus.objects.filter(user=self.user, movie=self.movie)
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().status, UserMovieStatus.WATCHED)
+
+    def test_removing_rating_leaves_watched_status_intact(self) -> None:
+        """Removing a rating is not the same as "I didn't watch this" —
+        the user just withdrew their score. The watched marker should stay."""
+        upsert_rating(user=self.user, movie=self.movie, score=4)
+        remove_rating(user=self.user, movie=self.movie)
+        self.assertTrue(
+            UserMovieStatus.objects.filter(
+                user=self.user,
+                movie=self.movie,
+                status=UserMovieStatus.WATCHED,
+            ).exists()
+        )
+
+    def test_invalid_score_does_not_create_status(self) -> None:
+        with self.assertRaises(ValueError):
+            upsert_rating(user=self.user, movie=self.movie, score=99)
+        self.assertFalse(
+            UserMovieStatus.objects.filter(
+                user=self.user, movie=self.movie
+            ).exists()
+        )
+
+
+class MovieStatusViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="status-view@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=902, title="View Status")
+
+    def setUp(self) -> None:
+        self.client.force_login(self.user)
+
+    def test_post_watchlist_creates_status(self) -> None:
+        url = reverse("movies:update_status", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"action": UserMovieStatus.WATCHLIST})
+        self.assertRedirects(
+            response, reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertEqual(
+            UserMovieStatus.objects.get(user=self.user, movie=self.movie).status,
+            UserMovieStatus.WATCHLIST,
+        )
+
+    def test_repeated_click_acts_as_toggle_off(self) -> None:
+        url = reverse("movies:update_status", args=[self.movie.tmdb_id])
+        self.client.post(url, {"action": UserMovieStatus.WATCHED})
+        self.client.post(url, {"action": UserMovieStatus.WATCHED})
+        self.assertFalse(
+            UserMovieStatus.objects.filter(user=self.user, movie=self.movie).exists()
+        )
+
+    def test_switching_status_replaces_row(self) -> None:
+        url = reverse("movies:update_status", args=[self.movie.tmdb_id])
+        self.client.post(url, {"action": UserMovieStatus.WATCHLIST})
+        self.client.post(url, {"action": UserMovieStatus.WATCHED})
+        row = UserMovieStatus.objects.get(user=self.user, movie=self.movie)
+        self.assertEqual(row.status, UserMovieStatus.WATCHED)
+        # There must never be a second row — the unique constraint on
+        # (user, movie) is what implements "rated/watched removes from
+        # watchlist" for free.
+        self.assertEqual(
+            UserMovieStatus.objects.filter(
+                user=self.user, movie=self.movie
+            ).count(),
+            1,
+        )
+
+    def test_clear_action_removes_row(self) -> None:
+        url = reverse("movies:update_status", args=[self.movie.tmdb_id])
+        self.client.post(url, {"action": UserMovieStatus.WATCHED})
+        self.client.post(url, {"action": "clear"})
+        self.assertFalse(
+            UserMovieStatus.objects.filter(user=self.user, movie=self.movie).exists()
+        )
+
+    def test_anonymous_user_redirected_to_login(self) -> None:
+        self.client.logout()
+        url = reverse("movies:update_status", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"action": UserMovieStatus.WATCHLIST})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login", response["Location"])
+
+
+class MovieRatingViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="rating-view@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=903, title="View Rating")
+
+    def setUp(self) -> None:
+        self.client.force_login(self.user)
+
+    def test_post_score_creates_rating_and_refreshes_average(self) -> None:
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"action": "save", "score": "4"})
+        self.assertRedirects(
+            response, reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        rating = Rating.objects.get(user=self.user, movie=self.movie)
+        self.assertEqual(rating.score, 4)
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.ratings_count, 1)
+        self.assertEqual(self.movie.average_rating, Decimal("4.00"))
+
+    def test_post_score_also_marks_movie_as_watched(self) -> None:
+        """Rating a movie via the view implies watched — this is what lets
+        the dashboard "Ocenione" and "Obejrzane" tabs stay consistent."""
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        self.client.post(url, {"action": "save", "score": "5"})
+        status = UserMovieStatus.objects.get(user=self.user, movie=self.movie)
+        self.assertEqual(status.status, UserMovieStatus.WATCHED)
+
+    def test_post_score_updates_existing_rating(self) -> None:
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        self.client.post(url, {"action": "save", "score": "5"})
+        self.client.post(url, {"action": "save", "score": "2"})
+        self.assertEqual(Rating.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(
+            Rating.objects.get(user=self.user, movie=self.movie).score, 2
+        )
+
+    def test_delete_action_removes_rating(self) -> None:
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        self.client.post(url, {"action": "save", "score": "3"})
+        self.client.post(url, {"action": "delete"})
+        self.assertFalse(
+            Rating.objects.filter(user=self.user, movie=self.movie).exists()
+        )
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.ratings_count, 0)
+        self.assertEqual(self.movie.average_rating, Decimal("0.00"))
+
+    def test_invalid_score_does_not_create_rating(self) -> None:
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        self.client.post(url, {"action": "save", "score": "not-a-number"})
+        self.assertFalse(Rating.objects.filter(user=self.user).exists())
+
+    def test_score_out_of_range_rejected(self) -> None:
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        self.client.post(url, {"action": "save", "score": "9"})
+        self.assertFalse(Rating.objects.filter(user=self.user).exists())
+
+    def test_anonymous_user_redirected_to_login(self) -> None:
+        self.client.logout()
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"action": "save", "score": "4"})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login", response["Location"])
+
+
+class MovieDetailContextTests(TestCase):
+    """Detail view should expose the current user's status + rating so the
+    template can toggle button styles without a second query."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="detail-ctx@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=904, title="Context Flick")
+
+    def test_anonymous_context_has_no_user_activity(self) -> None:
+        response = self.client.get(
+            reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertIsNone(response.context["user_status"])
+        self.assertIsNone(response.context["user_rating"])
+
+    def test_authenticated_context_reflects_existing_activity(self) -> None:
+        set_movie_status(
+            user=self.user, movie=self.movie, status=UserMovieStatus.WATCHED
+        )
+        upsert_rating(user=self.user, movie=self.movie, score=4)
+
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertEqual(response.context["user_status"], UserMovieStatus.WATCHED)
+        self.assertEqual(response.context["user_rating"], 4)
+
+
+class CommentServiceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="comment-svc@example.com", password="StrongPass123!"
+        )
+        cls.other = cls.User.objects.create_user(
+            email="other-svc@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=1000, title="Comment Flick")
+
+    def test_create_comment_persists_with_default_visible_status(self) -> None:
+        comment = create_comment(
+            user=self.user, movie=self.movie, content="Niezłe kino."
+        )
+        self.assertEqual(comment.status, Comment.VISIBLE)
+        self.assertEqual(comment.content, "Niezłe kino.")
+        self.assertEqual(comment.movie, self.movie)
+        self.assertEqual(comment.user, self.user)
+
+    def test_create_comment_trims_whitespace(self) -> None:
+        comment = create_comment(
+            user=self.user, movie=self.movie, content="  Świetne!   "
+        )
+        self.assertEqual(comment.content, "Świetne!")
+
+    def test_create_comment_rejects_empty_content(self) -> None:
+        for bad in ("", "   ", "\n\t  "):
+            with self.assertRaises(ValueError):
+                create_comment(user=self.user, movie=self.movie, content=bad)
+        self.assertFalse(Comment.objects.exists())
+
+    def test_create_comment_rejects_too_long_content(self) -> None:
+        with self.assertRaises(ValueError):
+            create_comment(
+                user=self.user,
+                movie=self.movie,
+                content="x" * (Comment.MAX_LENGTH + 1),
+            )
+
+    def test_visible_comments_filters_out_non_visible(self) -> None:
+        create_comment(user=self.user, movie=self.movie, content="ok-1")
+        Comment.objects.create(
+            user=self.user,
+            movie=self.movie,
+            content="hidden",
+            status=Comment.HIDDEN,
+        )
+        Comment.objects.create(
+            user=self.user,
+            movie=self.movie,
+            content="flagged",
+            status=Comment.FLAGGED,
+        )
+
+        rows = list(visible_comments_for(self.movie))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].content, "ok-1")
+
+    def test_delete_own_comment_succeeds(self) -> None:
+        comment = create_comment(
+            user=self.user, movie=self.movie, content="usuwalny"
+        )
+        self.assertTrue(delete_own_comment(user=self.user, comment=comment))
+        self.assertFalse(Comment.objects.filter(pk=comment.pk).exists())
+
+    def test_delete_own_comment_refuses_other_users_row(self) -> None:
+        comment = create_comment(
+            user=self.other, movie=self.movie, content="cudzy"
+        )
+        self.assertFalse(delete_own_comment(user=self.user, comment=comment))
+        self.assertTrue(Comment.objects.filter(pk=comment.pk).exists())
+
+
+class CommentViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="comment-view@example.com", password="StrongPass123!"
+        )
+        cls.other = cls.User.objects.create_user(
+            email="other-view@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=1001, title="Comment View")
+
+    def test_create_comment_requires_login(self) -> None:
+        url = reverse("movies:create_comment", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"content": "hej"})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login", response["Location"])
+        self.assertFalse(Comment.objects.exists())
+
+    def test_create_comment_persists_and_redirects_to_detail(self) -> None:
+        self.client.force_login(self.user)
+        url = reverse("movies:create_comment", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"content": "Bardzo dobre!"})
+        self.assertRedirects(
+            response, reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        comment = Comment.objects.get()
+        self.assertEqual(comment.content, "Bardzo dobre!")
+        self.assertEqual(comment.user, self.user)
+        self.assertEqual(comment.status, Comment.VISIBLE)
+
+    def test_empty_comment_does_not_persist(self) -> None:
+        self.client.force_login(self.user)
+        url = reverse("movies:create_comment", args=[self.movie.tmdb_id])
+        self.client.post(url, {"content": "   "})
+        self.assertFalse(Comment.objects.exists())
+
+    def test_overlong_comment_does_not_persist(self) -> None:
+        self.client.force_login(self.user)
+        url = reverse("movies:create_comment", args=[self.movie.tmdb_id])
+        self.client.post(url, {"content": "x" * (Comment.MAX_LENGTH + 1)})
+        self.assertFalse(Comment.objects.exists())
+
+    def test_delete_own_comment_removes_row(self) -> None:
+        comment = create_comment(
+            user=self.user, movie=self.movie, content="moje"
+        )
+        self.client.force_login(self.user)
+        url = reverse(
+            "movies:delete_comment", args=[self.movie.tmdb_id, comment.pk]
+        )
+        response = self.client.post(url)
+        self.assertRedirects(
+            response, reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertFalse(Comment.objects.filter(pk=comment.pk).exists())
+
+    def test_cannot_delete_someone_elses_comment(self) -> None:
+        comment = create_comment(
+            user=self.other, movie=self.movie, content="cudze"
+        )
+        self.client.force_login(self.user)
+        url = reverse(
+            "movies:delete_comment", args=[self.movie.tmdb_id, comment.pk]
+        )
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Comment.objects.filter(pk=comment.pk).exists())
+
+    def test_delete_returns_404_when_comment_belongs_to_other_movie(self) -> None:
+        """URL scoping: /movies/<a>/comments/<id-on-movie-b>/delete/ must 404,
+        otherwise a crafted URL could delete comments from any movie."""
+        other_movie = make_movie(tmdb_id=1002, title="Other Movie")
+        comment = create_comment(
+            user=self.user, movie=other_movie, content="na innym filmie"
+        )
+        self.client.force_login(self.user)
+        url = reverse(
+            "movies:delete_comment", args=[self.movie.tmdb_id, comment.pk]
+        )
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Comment.objects.filter(pk=comment.pk).exists())
+
+
+class MovieDetailCommentContextTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="detail-comments@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=1003, title="Comments Context")
+
+    def test_detail_view_lists_visible_comments_newest_first(self) -> None:
+        old = create_comment(user=self.user, movie=self.movie, content="stary")
+        new = create_comment(user=self.user, movie=self.movie, content="nowy")
+
+        response = self.client.get(
+            reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertEqual(response.status_code, 200)
+        ctx_comments = list(response.context["comments"])
+        self.assertEqual([c.pk for c in ctx_comments], [new.pk, old.pk])
+        self.assertEqual(response.context["comments_count"], 2)
+
+    def test_detail_view_hides_non_visible_comments(self) -> None:
+        create_comment(user=self.user, movie=self.movie, content="widoczny")
+        Comment.objects.create(
+            user=self.user,
+            movie=self.movie,
+            content="ukryty",
+            status=Comment.HIDDEN,
+        )
+
+        response = self.client.get(
+            reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertContains(response, "widoczny")
+        self.assertNotContains(response, "ukryty")
+        self.assertEqual(response.context["comments_count"], 1)
