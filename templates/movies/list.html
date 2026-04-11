@@ -29,17 +29,6 @@
         {% endfor %}
       </select>
       <button type="submit" class="btn btn-accent">Szukaj</button>
-      {% if has_favorite_genres %}
-        {% if favorites_active %}
-          <a href="{% url 'movies:list' %}{% if query %}?q={{ query }}{% endif %}" class="btn btn-accent btn-favorites is-active">
-            <i class="bi bi-heart-fill"></i> Moje ulubione
-          </a>
-        {% else %}
-          <a href="?favorites=1{% if query %}&q={{ query }}{% endif %}" class="btn btn-ghost btn-favorites">
-            <i class="bi bi-heart"></i> Moje ulubione
-          </a>
-        {% endif %}
-      {% endif %}
     </form>
   </header>
 
@@ -76,12 +65,9 @@
           </div>
           <div class="movie-card-body">
             <h3 class="movie-title">{{ movie.title }}</h3>
-            <p class="movie-meta">
-              {% if movie.release_date %}{{ movie.release_date|date:"Y" }}{% endif %}
-              {% if movie.popularity %}
-                <span class="movie-pop"><i class="bi bi-fire"></i> {{ movie.popularity|floatformat:0 }}</span>
-              {% endif %}
-            </p>
+            {% if movie.release_date %}
+              <p class="movie-meta">{{ movie.release_date|date:"Y" }}</p>
+            {% endif %}
           </div>
         </a>
       {% endfor %}
@@ -90,7 +76,7 @@
     {% if is_paginated %}
       <nav class="movies-pagination" aria-label="Paginacja">
         {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if favorites_active %}&favorites=1{% endif %}" class="btn btn-ghost btn-ghost-sm">
+          <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}" class="btn btn-ghost btn-ghost-sm">
             <i class="bi bi-chevron-left"></i> Poprzednia
           </a>
         {% endif %}
@@ -98,7 +84,7 @@
           Strona {{ page_obj.number }} z {{ page_obj.num_pages }}
         </span>
         {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if favorites_active %}&favorites=1{% endif %}" class="btn btn-ghost btn-ghost-sm">
+          <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}" class="btn btn-ghost btn-ghost-sm">
             Następna <i class="bi bi-chevron-right"></i>
           </a>
         {% endif %}

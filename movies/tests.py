@@ -364,15 +364,25 @@ class FavoritesFilterTests(TestCase):
         self.assertContains(response, "Action Hero")
         self.assertContains(response, "Spooky Night")
 
-    def test_favorites_button_visible_when_user_has_favorites(self) -> None:
+    def test_logged_in_user_with_favorites_is_personalized_by_default(
+        self,
+    ) -> None:
+        """Dropping the explicit "Moje ulubione" toggle means the catalog
+        must auto-personalize on its own: a logged-in user with favorites
+        should see their preferred genres filtered in without touching
+        any query parameters."""
         self._login_user_with_favorites(self.action)
         response = self.client.get(reverse("movies:list"))
-        self.assertContains(response, "Moje ulubione")
+        self.assertTrue(response.context["favorites_active"])
+        self.assertContains(response, "Action Hero")
+        self.assertNotContains(response, "Spooky Night")
 
-    def test_favorites_button_hidden_when_no_favorites(self) -> None:
-        self._login_user_with_favorites()
+    def test_logged_in_user_without_favorites_sees_everything(self) -> None:
+        self._login_user_with_favorites()  # no favorites
         response = self.client.get(reverse("movies:list"))
-        self.assertNotContains(response, "Moje ulubione")
+        self.assertFalse(response.context["favorites_active"])
+        self.assertContains(response, "Action Hero")
+        self.assertContains(response, "Spooky Night")
 
 
 class TmdbLiveSearchTests(TestCase):
@@ -588,9 +598,12 @@ class TmdbDiscoverBrowseTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_browse_uses_tmdb_when_configured(self, mock_client_class) -> None:
+    def test_browse_uses_trending_when_unfiltered(self, mock_client_class) -> None:
+        """Anonymous, unfiltered browse should hit /trending/movie/week so the
+        base rail reshuffles weekly instead of showing the same
+        popularity-sorted top-40 forever."""
         mock_client = mock_client_class.return_value
-        mock_client.discover_popular.return_value = self._build_response(
+        mock_client.list_trending.return_value = self._build_response(
             "Trending One", "Trending Two"
         )
         mock_client.image_url.side_effect = lambda path: (
@@ -604,9 +617,11 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.assertContains(response, "Trending Two")
         # The local row whose title doesn't match must NOT leak in.
         self.assertNotContains(response, "Local Cached")
-        mock_client.discover_popular.assert_called_once_with(
-            page=1, with_genres=None
+        mock_client.list_trending.assert_called_once_with(
+            time_window="week", page=1
         )
+        # /discover is only used when a genre or favorites filter applies.
+        mock_client.discover_popular.assert_not_called()
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
@@ -614,7 +629,7 @@ class TmdbDiscoverBrowseTests(TestCase):
         self, mock_client_class
     ) -> None:
         mock_client = mock_client_class.return_value
-        mock_client.discover_popular.side_effect = TmdbApiError("boom")
+        mock_client.list_trending.side_effect = TmdbApiError("boom")
 
         response = self.client.get(reverse("movies:list"))
 
@@ -677,6 +692,78 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.assertEqual(call_kwargs["page"], 1)
         # Order of favorites isn't guaranteed by the ORM — accept either OR.
         self.assertIn(call_kwargs["with_genres"], {"28|18", "18|28"})
+        mock_client.list_trending.assert_not_called()
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_auto_personalizes_for_logged_in_user_with_favorites(
+        self, mock_client_class
+    ) -> None:
+        """Logged-in users with favorite genres should land on a
+        personalized catalog by default — no need to click the
+        'Moje ulubione' toggle first. The absence of a favorites
+        query param means 'auto-activate'."""
+        drama = Genre.objects.get(name="Dramat")
+        drama.tmdb_id = 18
+        drama.save(update_fields=["tmdb_id"])
+
+        user = get_user_model().objects.create_user(
+            email="auto-fav@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        user.favorite_genres.set([self.action, drama])
+        self.client.force_login(user)
+
+        mock_client = mock_client_class.return_value
+        mock_client.discover_popular.return_value = self._build_response(
+            "Personalized Pick"
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(reverse("movies:list"))  # no ?favorites=
+
+        self.assertEqual(response.status_code, 200)
+        # Discover was called with the user's favorites OR-joined.
+        mock_client.discover_popular.assert_called_once()
+        call_kwargs = mock_client.discover_popular.call_args.kwargs
+        self.assertIn(call_kwargs["with_genres"], {"28|18", "18|28"})
+        # Trending is only for unfiltered browse; personalization routes
+        # around it.
+        mock_client.list_trending.assert_not_called()
+        # The context mirrors the auto-activation so the toggle renders
+        # as "on" for the user.
+        self.assertTrue(response.context["favorites_active"])
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_auto_personalization_is_bypassed_by_explicit_favorites_zero(
+        self, mock_client_class
+    ) -> None:
+        """?favorites=0 is the escape hatch users click via the toggle when
+        they want to see the full trending rail despite having favorites."""
+        user = get_user_model().objects.create_user(
+            email="opt-out@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+        user.favorite_genres.set([self.action])
+        self.client.force_login(user)
+
+        mock_client = mock_client_class.return_value
+        mock_client.list_trending.return_value = self._build_response("Global Hit")
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(reverse("movies:list"), {"favorites": "0"})
+
+        self.assertEqual(response.status_code, 200)
+        mock_client.list_trending.assert_called_once_with(
+            time_window="week", page=1
+        )
+        mock_client.discover_popular.assert_not_called()
+        self.assertFalse(response.context["favorites_active"])
 
     def test_default_page_size_is_a_multiple_of_six(self) -> None:
         """A 6-column movie grid should never end with a partial last row."""
@@ -708,7 +795,7 @@ class TmdbDiscoverBrowseTests(TestCase):
                 for i in range(20)
             ],
         )
-        mock_client.discover_popular.side_effect = [page1, page2]
+        mock_client.list_trending.side_effect = [page1, page2]
         mock_client.image_url.side_effect = lambda path: ""
 
         response = self.client.get(reverse("movies:list"))
@@ -741,15 +828,15 @@ class TmdbDiscoverBrowseTests(TestCase):
                 for i in range(20)
             ],
         )
-        mock_client.discover_popular.side_effect = [page1, page2]
+        mock_client.list_trending.side_effect = [page1, page2]
         mock_client.image_url.side_effect = lambda path: ""
 
         response = self.client.get(reverse("movies:list"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(mock_client.discover_popular.call_count, 2)
-        mock_client.discover_popular.assert_any_call(page=1, with_genres=None)
-        mock_client.discover_popular.assert_any_call(page=2, with_genres=None)
+        self.assertEqual(mock_client.list_trending.call_count, 2)
+        mock_client.list_trending.assert_any_call(time_window="week", page=1)
+        mock_client.list_trending.assert_any_call(time_window="week", page=2)
         # 40 raw rows → trimmed to 36, so the last 4 of the second page are
         # dropped. D1-0 stays; D2-15 is the last surviving row from page 2.
         self.assertContains(response, "D1-0")
@@ -758,3 +845,33 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.assertNotContains(response, "D2-19")
         # 4 TMDB pages → 2 UI pages of 2 TMDB pages each.
         self.assertContains(response, "Strona 1 z 2")
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_browse_caps_ui_pagination_to_max_ui_pages(
+        self, mock_client_class
+    ) -> None:
+        """Even when TMDB claims thousands of pages, the UI paginator must
+        never offer more than MAX_UI_PAGES — we don't want the grid letting
+        users click into noise-territory popularity rankings."""
+        from movies.services import MAX_UI_PAGES, TMDB_SEARCH_PAGES_PER_REQUEST
+
+        mock_client = mock_client_class.return_value
+        mock_client.list_trending.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=5000,  # TMDB claims a huge corpus
+            total_results=100000,
+            results=[
+                TmdbMovieSummary(id=7000 + i, title=f"Big-{i}", popularity=10.0)
+                for i in range(20)
+            ],
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        response = self.client.get(reverse("movies:list"))
+
+        self.assertEqual(response.status_code, 200)
+        page_obj = response.context["page_obj"]
+        self.assertEqual(page_obj.num_pages, MAX_UI_PAGES)
+        # Sanity: the cap is well below TMDB's own 500 ceiling.
+        self.assertLess(MAX_UI_PAGES, 500 // TMDB_SEARCH_PAGES_PER_REQUEST)

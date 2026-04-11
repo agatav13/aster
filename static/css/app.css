@@ -904,18 +904,6 @@ a:hover {
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
-.btn-favorites {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-favorites.is-active {
-  background: var(--accent);
-  color: var(--bg-primary);
-  border-color: var(--accent);
-}
-
 .movie-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -985,19 +973,9 @@ a:hover {
 }
 
 .movie-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   font-size: 0.8rem;
   color: var(--text-secondary);
   margin: 0;
-}
-
-.movie-pop {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--accent);
 }
 
 .movies-pagination {

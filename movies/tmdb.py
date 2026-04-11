@@ -141,6 +141,26 @@ class TmdbClient:
         payload = self._get("/genre/movie/list")
         return TmdbGenresResponse.model_validate(payload).genres
 
+    def list_trending(
+        self,
+        time_window: str = "week",
+        page: int = 1,
+    ) -> TmdbDiscoverResponse:
+        """Fetch TMDB's trending movies for the given time window.
+
+        `time_window` is "day" or "week". The response shape is identical to
+        `/discover/movie` so `TmdbDiscoverResponse` and `MovieListItem` can
+        consume both endpoints uniformly. `/trending/*` does NOT accept
+        `with_genres` — callers that need genre filtering must fall back to
+        `discover_popular`.
+        """
+        if time_window not in ("day", "week"):
+            raise ValueError(
+                f"time_window must be 'day' or 'week', got {time_window!r}"
+            )
+        payload = self._get(f"/trending/movie/{time_window}", params={"page": page})
+        return TmdbDiscoverResponse.model_validate(payload)
+
     def discover_popular(
         self,
         page: int = 1,

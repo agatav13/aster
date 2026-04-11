@@ -29,8 +29,12 @@ class MovieListView(TemplateView):
 
         query = request.GET.get("q", "").strip()
         genre_id_raw = request.GET.get("genre", "").strip()
-        favorites_active = (
-            request.GET.get("favorites") == "1" and request.user.is_authenticated
+        has_favorite_genres = (
+            request.user.is_authenticated
+            and request.user.favorite_genres.exists()
+        )
+        favorites_active = self._resolve_favorites_active(
+            request.GET.get("favorites"), has_favorite_genres
         )
         page = self._parse_page(request.GET.get("page"))
 
@@ -50,16 +54,35 @@ class MovieListView(TemplateView):
                 "selected_genre": genre_id_raw,
                 "favorites_active": favorites_active,
                 "genres": Genre.objects.order_by("name"),
-                "has_favorite_genres": (
-                    request.user.is_authenticated
-                    and request.user.favorite_genres.exists()
-                ),
                 "search_mode": bool(query),
                 "search_source": source,
                 "search_error": search_error,
             }
         )
         return context
+
+    @staticmethod
+    def _resolve_favorites_active(
+        raw_favorites: str | None, has_favorite_genres: bool
+    ) -> bool:
+        """Decide whether the favorites filter should be on for this request.
+
+        Behaviour matrix:
+          * No `favorites` param + user has favorites → on (auto-personalize
+            so the catalog defaults to the user's preferred genres).
+          * `favorites=0` → explicitly off, even if the user has favorites.
+            This is the escape hatch the "Pokaż wszystkie" state uses.
+          * `favorites=1` → on, if the user actually has favorites to filter by.
+          * User has no favorite genres (or is anonymous) → always off; the
+            filter would be a no-op anyway.
+        """
+        if not has_favorite_genres:
+            return False
+        if raw_favorites == "0":
+            return False
+        if raw_favorites == "1":
+            return True
+        return raw_favorites is None
 
     @staticmethod
     def _parse_page(raw: str | None) -> int:

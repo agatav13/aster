@@ -19,9 +19,15 @@ from .tmdb import TmdbClient, TmdbMovieDetail, TmdbMovieSummary
 
 logger = logging.getLogger(__name__)
 
-# TMDB caps `page` at 500 server-side; honour the same ceiling so users can't
-# trip a 422 by clicking past the end.
-TMDB_MAX_PAGE = 500
+# TMDB caps `page` at 500 server-side; exceed it and the API returns 422.
+# Kept as a hard upper bound for the inner pagination loop so we never issue
+# a guaranteed-bad request, but the UI cap below is deliberately much lower.
+TMDB_API_MAX_PAGE = 500
+# Local cap on how deep the grid will let users paginate. TMDB's popularity
+# and trending rankings get noisy well before page 500, and browsing that
+# deep is vanishingly rare. 30 UI pages × 2 TMDB pages × 18 trimmed rows =
+# ~1080 distinct movies, which is more than enough for a catalogue view.
+MAX_UI_PAGES = 30
 # Canonical UI page size, deliberately a multiple of 6 so a 6-column movie
 # grid never ends with an orphan partial row. Used for both the local
 # paginator and the TMDB-backed listings (which trim down to this count).
@@ -463,37 +469,48 @@ def discover_tmdb_movies(
     pages_per_ui: int = TMDB_SEARCH_PAGES_PER_REQUEST,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> MovieListPage:
-    """Browse popular movies live from TMDB.
+    """Browse movies live from TMDB.
 
-    Mirrors `search_tmdb_movies` so the list view can swap data sources
-    transparently. Same pagination scheme: stitch `pages_per_ui` underlying
-    TMDB pages together so the user sees ~40 results per UI page instead of
-    TMDB's default 20.
+    Two data sources depending on what filters apply:
 
-    Genre and favorites filters are translated into TMDB's `with_genres`
-    parameter so the filtering happens server-side, with no need for the
-    client-side post-filtering trick used by search.
+    * Unfiltered browse hits `/trending/movie/week`, so the base rail
+      reshuffles weekly instead of showing the same popularity-ranked top-40
+      on every visit.
+    * As soon as any genre filter applies — either an explicit genre pick or
+      a `favorites_active` toggle that resolves to at least one TMDB-linked
+      favorite genre — we switch to `/discover/movie` with `with_genres` so
+      the filtering happens server-side. TMDB's trending endpoint does not
+      accept `with_genres`, so this split keeps filtering exact without
+      resorting to client-side post-filtering.
+
+    Same pagination scheme as search: stitch `pages_per_ui` underlying TMDB
+    pages together so the user sees ~40 results per UI page.
     """
     client = client or TmdbClient()
 
-    max_ui_page = max(1, TMDB_MAX_PAGE // pages_per_ui)
-    safe_ui_page = max(1, min(page, max_ui_page))
+    safe_ui_page = max(1, min(page, MAX_UI_PAGES))
 
     with_genres = _build_with_genres_filter(
         genre_id_raw=genre_id_raw,
         favorites_active=favorites_active,
         user=user,
     )
+    use_trending = with_genres is None
 
     items: list[MovieListItem] = []
     tmdb_total_pages = 1
 
     for offset in range(pages_per_ui):
         tmdb_page = (safe_ui_page - 1) * pages_per_ui + 1 + offset
-        if tmdb_page > TMDB_MAX_PAGE:
+        if tmdb_page > TMDB_API_MAX_PAGE:
             break
 
-        response = client.discover_popular(page=tmdb_page, with_genres=with_genres)
+        if use_trending:
+            response = client.list_trending(time_window="week", page=tmdb_page)
+        else:
+            response = client.discover_popular(
+                page=tmdb_page, with_genres=with_genres
+            )
 
         if offset == 0:
             tmdb_total_pages = response.total_pages
@@ -505,7 +522,11 @@ def discover_tmdb_movies(
             break
 
     ui_total_pages = max(
-        1, (min(tmdb_total_pages, TMDB_MAX_PAGE) + pages_per_ui - 1) // pages_per_ui
+        1,
+        min(
+            MAX_UI_PAGES,
+            (tmdb_total_pages + pages_per_ui - 1) // pages_per_ui,
+        ),
     )
 
     return MovieListPage(
@@ -537,8 +558,7 @@ def search_tmdb_movies(
     """
     client = client or TmdbClient()
 
-    max_ui_page = max(1, TMDB_MAX_PAGE // pages_per_ui)
-    safe_ui_page = max(1, min(page, max_ui_page))
+    safe_ui_page = max(1, min(page, MAX_UI_PAGES))
 
     tmdb_genre_id = _resolve_tmdb_genre_id(genre_id_raw)
 
@@ -547,7 +567,7 @@ def search_tmdb_movies(
 
     for offset in range(pages_per_ui):
         tmdb_page = (safe_ui_page - 1) * pages_per_ui + 1 + offset
-        if tmdb_page > TMDB_MAX_PAGE:
+        if tmdb_page > TMDB_API_MAX_PAGE:
             break
 
         response = client.search_movies(query=query, page=tmdb_page)
@@ -566,7 +586,11 @@ def search_tmdb_movies(
             break
 
     ui_total_pages = max(
-        1, (min(tmdb_total_pages, TMDB_MAX_PAGE) + pages_per_ui - 1) // pages_per_ui
+        1,
+        min(
+            MAX_UI_PAGES,
+            (tmdb_total_pages + pages_per_ui - 1) // pages_per_ui,
+        ),
     )
 
     return MovieListPage(
