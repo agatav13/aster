@@ -13,6 +13,11 @@ jobs:
         env:
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
         run: |
-          status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 "${APP_BASE_URL%/}/health/")
-          echo "HTTP $status"
-          test "$status" = "200"
+          url="${APP_BASE_URL%/}/health/"
+          for i in 1 2 3 4; do
+            status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 90 "$url" || echo "000")
+            echo "attempt $i: HTTP $status"
+            [ "$status" = "200" ] && exit 0
+            sleep 10
+          done
+          exit 1
