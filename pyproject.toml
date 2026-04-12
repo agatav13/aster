@@ -18,3 +18,31 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2",
+    "pytest>=9.0.3",
+    "pytest-django>=4.12.0",
+    "ruff>=0.11",
+    "ty>=0.0.1a7",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+filterwarnings = [
+    "ignore::UserWarning:django.core.handlers.base",
+]
+
+[tool.ty.rules]
+# Django's metaclass magic (Model.objects, descriptors, HttpRequest.user)
+# generates false positives for these rules.
+unresolved-attribute = "ignore"
+invalid-assignment = "ignore"
+# Django field descriptors resolve to Python types at runtime but ty sees
+# the field class (e.g. EmailField instead of str, DateField instead of date).
+invalid-return-type = "warn"
+invalid-argument-type = "warn"

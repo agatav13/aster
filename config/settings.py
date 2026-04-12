@@ -74,11 +74,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 _SQLITE = {
     "ENGINE": "django.db.backends.sqlite3",
-    "NAME": BASE_DIR / ("test_db.sqlite3" if "test" in sys.argv else "db.sqlite3"),
+    "NAME": BASE_DIR / "db.sqlite3",
 }
-DATABASES = {
-    "default": dj_database_url.config(default=None) or _SQLITE,
-}
+if "test" in sys.argv or "pytest" in sys.modules:
+    DATABASES = {"default": _SQLITE}
+else:
+    DATABASES = {"default": dj_database_url.config(default=None) or _SQLITE}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -137,7 +138,9 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
 TMDB_API_BASE_URL = os.getenv("TMDB_API_BASE_URL", "https://api.themoviedb.org/3")
-TMDB_IMAGE_BASE_URL = os.getenv("TMDB_IMAGE_BASE_URL", "https://image.tmdb.org/t/p/w500")
+TMDB_IMAGE_BASE_URL = os.getenv(
+    "TMDB_IMAGE_BASE_URL", "https://image.tmdb.org/t/p/w500"
+)
 TMDB_REQUEST_TIMEOUT = float(os.getenv("TMDB_REQUEST_TIMEOUT", "10"))
 TMDB_LANGUAGE = os.getenv("TMDB_LANGUAGE", "pl-PL")
 
@@ -167,7 +170,11 @@ LOGGING = {
         "level": "WARNING",
     },
     "loggers": {
-        "accounts": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
+        "accounts": {
+            "handlers": ["console"],
+            "level": APP_LOG_LEVEL,
+            "propagate": False,
+        },
         "movies": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
         "core": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
         "django.request": {

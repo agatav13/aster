@@ -7,7 +7,9 @@ from django.db import models
 
 class Genre(models.Model):
     name: str = models.CharField("Name", max_length=50, unique=True)
-    tmdb_id: int | None = models.IntegerField("TMDB id", unique=True, null=True, blank=True)
+    tmdb_id: int | None = models.IntegerField(
+        "TMDB id", unique=True, null=True, blank=True
+    )
 
     class Meta:
         ordering = ["name"]
@@ -86,9 +88,7 @@ class UserMovieStatus(models.Model):
         on_delete=models.CASCADE,
         related_name="user_statuses",
     )
-    status: str = models.CharField(
-        "Status", max_length=20, choices=STATUS_CHOICES
-    )
+    status: str = models.CharField("Status", max_length=20, choices=STATUS_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -145,9 +145,12 @@ class Rating(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["user", "movie"], name="uq_user_movie_rating"),
+            models.UniqueConstraint(
+                fields=["user", "movie"], name="uq_user_movie_rating"
+            ),
             models.CheckConstraint(
-                check=models.Q(score__gte=Decimal("0.5")) & models.Q(score__lte=Decimal("5.0")),
+                condition=models.Q(score__gte=Decimal("0.5"))
+                & models.Q(score__lte=Decimal("5.0")),
                 name="ck_rating_score_half_5",
             ),
         ]

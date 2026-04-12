@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -77,7 +76,9 @@ class Migration(migrations.Migration):
                 ("overview", models.TextField(blank=True, verbose_name="Overview")),
                 (
                     "release_date",
-                    models.DateField(blank=True, null=True, verbose_name="Release date"),
+                    models.DateField(
+                        blank=True, null=True, verbose_name="Release date"
+                    ),
                 ),
                 (
                     "runtime_minutes",
@@ -87,7 +88,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "poster_url",
-                    models.URLField(blank=True, max_length=500, verbose_name="Poster URL"),
+                    models.URLField(
+                        blank=True, max_length=500, verbose_name="Poster URL"
+                    ),
                 ),
                 (
                     "backdrop_url",
@@ -149,6 +152,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="movie",
-            index=models.Index(fields=["-popularity"], name="movies_movi_popular_3c541f_idx"),
+            index=models.Index(
+                fields=["-popularity"], name="movies_movi_popular_3c541f_idx"
+            ),
         ),
     ]

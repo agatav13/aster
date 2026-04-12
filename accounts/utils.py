@@ -31,4 +31,3 @@ def send_activation_email(user: User) -> None:
     )
     email.attach_alternative(html_body, "text/html")
     email.send()
-

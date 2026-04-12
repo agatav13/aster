@@ -26,20 +26,17 @@ class HomeView(View):
         # user_movie_statuses filtered by status, while "ocenione" is derived
         # from ratings (no extra table needed).
         watched_rows = (
-            UserMovieStatus.objects
-            .filter(user=user, status=UserMovieStatus.WATCHED)
+            UserMovieStatus.objects.filter(user=user, status=UserMovieStatus.WATCHED)
             .select_related("movie")
             .order_by("-updated_at")
         )
         watchlist_rows = (
-            UserMovieStatus.objects
-            .filter(user=user, status=UserMovieStatus.WATCHLIST)
+            UserMovieStatus.objects.filter(user=user, status=UserMovieStatus.WATCHLIST)
             .select_related("movie")
             .order_by("-updated_at")
         )
         rated_rows = (
-            Rating.objects
-            .filter(user=user)
+            Rating.objects.filter(user=user)
             .select_related("movie")
             .order_by("-updated_at")
         )
@@ -48,9 +45,7 @@ class HomeView(View):
         watchlist_movies = [row.movie for row in watchlist_rows]
         # Templates need the score alongside the movie, so we annotate a
         # lightweight list of tuples; the template unpacks as {movie, score}.
-        rated_movies = [
-            {"movie": row.movie, "score": row.score} for row in rated_rows
-        ]
+        rated_movies = [{"movie": row.movie, "score": row.score} for row in rated_rows]
 
         recommendations = get_recommendations_for_user(user)
 
