@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from movies.models import Movie, Rating, UserMovieStatus
+from movies.models import Genre, Movie, MovieCredit, Person, Rating, UserMovieStatus
+from movies.services import get_recommendations_for_user
 
 
 class HomeViewTests(TestCase):
@@ -183,3 +184,217 @@ class DashboardActivityTests(TestCase):
             UserMovieStatus.objects.filter(user=self.user, movie=movie).count(),
             1,
         )
+
+
+class RecommendationTests(TestCase):
+    """Tests for the content-based recommendation engine."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        User = get_user_model()
+        cls.user = User.objects.create_user(
+            email="reco@example.com",
+            password="StrongPass123!",
+            is_active=True,
+            is_email_verified=True,
+        )
+
+        # Genres may already exist from seed migrations — fetch or create.
+        cls.genre_action, _ = Genre.objects.get_or_create(name="Akcja")
+        cls.genre_comedy, _ = Genre.objects.get_or_create(name="Komedia")
+        cls.genre_horror, _ = Genre.objects.get_or_create(name="Horror")
+
+        cls.liked_movie = Movie.objects.create(
+            tmdb_id=9001, title="Liked Movie", popularity=Decimal("50.00"),
+        )
+        cls.liked_movie.genres.set([cls.genre_action, cls.genre_comedy])
+
+        cls.candidate_action = Movie.objects.create(
+            tmdb_id=9002, title="Action Candidate", popularity=Decimal("80.00"),
+        )
+        cls.candidate_action.genres.set([cls.genre_action])
+
+        cls.candidate_comedy = Movie.objects.create(
+            tmdb_id=9003, title="Comedy Candidate", popularity=Decimal("60.00"),
+        )
+        cls.candidate_comedy.genres.set([cls.genre_comedy])
+
+        cls.candidate_both = Movie.objects.create(
+            tmdb_id=9004, title="Both Genres Candidate", popularity=Decimal("40.00"),
+        )
+        cls.candidate_both.genres.set([cls.genre_action, cls.genre_comedy])
+
+        cls.unrelated_movie = Movie.objects.create(
+            tmdb_id=9005, title="Horror Only", popularity=Decimal("90.00"),
+        )
+        cls.unrelated_movie.genres.set([cls.genre_horror])
+
+        # People for credit-based recommendation tests.
+        cls.director_a = Person.objects.create(tmdb_id=7001, name="Director A")
+        cls.actor_a = Person.objects.create(tmdb_id=7002, name="Actor A")
+
+        MovieCredit.objects.create(
+            movie=cls.liked_movie, person=cls.director_a,
+            credit_type=MovieCredit.DIRECTOR,
+        )
+        MovieCredit.objects.create(
+            movie=cls.liked_movie, person=cls.actor_a,
+            credit_type=MovieCredit.CAST, character="Hero", order=0,
+        )
+
+        # A candidate sharing the same director (but no genre overlap).
+        cls.candidate_same_director = Movie.objects.create(
+            tmdb_id=9006, title="Same Director Film", popularity=Decimal("30.00"),
+        )
+        cls.candidate_same_director.genres.set([cls.genre_horror])
+        MovieCredit.objects.create(
+            movie=cls.candidate_same_director, person=cls.director_a,
+            credit_type=MovieCredit.DIRECTOR,
+        )
+
+        # A candidate sharing the same actor (but no genre overlap).
+        cls.candidate_same_actor = Movie.objects.create(
+            tmdb_id=9007, title="Same Actor Film", popularity=Decimal("25.00"),
+        )
+        cls.candidate_same_actor.genres.set([cls.genre_horror])
+        MovieCredit.objects.create(
+            movie=cls.candidate_same_actor, person=cls.actor_a,
+            credit_type=MovieCredit.CAST, character="Sidekick", order=0,
+        )
+
+    def test_no_signals_returns_empty(self) -> None:
+        result = get_recommendations_for_user(self.user)
+        self.assertEqual(result, [])
+
+    def test_favorite_genres_produce_recommendations(self) -> None:
+        self.user.favorite_genres.set([self.genre_action])
+        result = get_recommendations_for_user(self.user)
+
+        tmdb_ids = [m.tmdb_id for m in result]
+        self.assertIn(9002, tmdb_ids)  # action candidate
+        self.assertIn(9004, tmdb_ids)  # both genres (has action)
+        self.assertIn(9001, tmdb_ids)  # liked_movie (has action, not rated)
+        self.assertNotIn(9005, tmdb_ids)  # horror only
+
+        self.user.favorite_genres.clear()
+
+    def test_liked_ratings_produce_recommendations(self) -> None:
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
+
+        result = get_recommendations_for_user(self.user)
+
+        tmdb_ids = [m.tmdb_id for m in result]
+        # liked_movie itself is excluded (user has rated it)
+        self.assertNotIn(9001, tmdb_ids)
+        # Candidates matching action or comedy genres appear
+        self.assertIn(9002, tmdb_ids)
+        self.assertIn(9003, tmdb_ids)
+        self.assertIn(9004, tmdb_ids)
+        # Horror-only is excluded (no genre overlap)
+        self.assertNotIn(9005, tmdb_ids)
+
+        Rating.objects.filter(user=self.user).delete()
+
+    def test_low_ratings_do_not_contribute_genres(self) -> None:
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=2)
+
+        result = get_recommendations_for_user(self.user)
+        self.assertEqual(result, [])
+
+        Rating.objects.filter(user=self.user).delete()
+
+    def test_watched_and_watchlisted_movies_are_excluded(self) -> None:
+        self.user.favorite_genres.set([self.genre_action])
+        UserMovieStatus.objects.create(
+            user=self.user, movie=self.candidate_action,
+            status=UserMovieStatus.WATCHED,
+        )
+        UserMovieStatus.objects.create(
+            user=self.user, movie=self.candidate_both,
+            status=UserMovieStatus.WATCHLIST,
+        )
+
+        result = get_recommendations_for_user(self.user)
+        tmdb_ids = [m.tmdb_id for m in result]
+        self.assertNotIn(9002, tmdb_ids)  # watched
+        self.assertNotIn(9004, tmdb_ids)  # watchlisted
+
+        UserMovieStatus.objects.filter(user=self.user).delete()
+        self.user.favorite_genres.clear()
+
+    def test_genre_overlap_ranks_higher_than_popularity(self) -> None:
+        self.user.favorite_genres.set([self.genre_action, self.genre_comedy])
+
+        result = get_recommendations_for_user(self.user)
+        # candidate_both (2 genre overlaps, pop=40) should rank above
+        # candidate_action (1 overlap, pop=80)
+        tmdb_ids = [m.tmdb_id for m in result]
+        both_idx = tmdb_ids.index(9004)
+        action_idx = tmdb_ids.index(9002)
+        self.assertLess(both_idx, action_idx)
+
+        self.user.favorite_genres.clear()
+
+    def test_director_signal_produces_recommendations(self) -> None:
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
+
+        result = get_recommendations_for_user(self.user)
+        tmdb_ids = [m.tmdb_id for m in result]
+        # Same-director candidate appears even though its genres don't overlap
+        # with the liked movie's action/comedy.
+        self.assertIn(9006, tmdb_ids)
+
+        Rating.objects.filter(user=self.user).delete()
+
+    def test_actor_signal_produces_recommendations(self) -> None:
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
+
+        result = get_recommendations_for_user(self.user)
+        tmdb_ids = [m.tmdb_id for m in result]
+        self.assertIn(9007, tmdb_ids)
+
+        Rating.objects.filter(user=self.user).delete()
+
+    def test_director_match_outranks_single_genre_overlap(self) -> None:
+        """A director match (weight 3) should rank above a single genre match (weight 1)."""
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
+
+        result = get_recommendations_for_user(self.user)
+        tmdb_ids = [m.tmdb_id for m in result]
+        # same-director film (score 3 for director) vs single-genre candidate (score 1)
+        director_idx = tmdb_ids.index(9006)
+        # candidate_action has 1 genre overlap → score 1
+        action_idx = tmdb_ids.index(9002)
+        self.assertLess(director_idx, action_idx)
+
+        Rating.objects.filter(user=self.user).delete()
+
+    def test_limit_caps_results(self) -> None:
+        self.user.favorite_genres.set([self.genre_action])
+        result = get_recommendations_for_user(self.user, limit=1)
+        self.assertEqual(len(result), 1)
+
+        self.user.favorite_genres.clear()
+
+    def test_recommendations_in_dashboard_context(self) -> None:
+        self.client.force_login(self.user)
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
+
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        recommendations = response.context["recommendations"]
+        self.assertTrue(len(recommendations) > 0)
+        # The liked movie itself must not appear
+        rec_ids = [m.tmdb_id for m in recommendations]
+        self.assertNotIn(9001, rec_ids)
+
+        Rating.objects.filter(user=self.user).delete()
+
+    def test_empty_recommendations_show_placeholder(self) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["recommendations"]), 0)
+        self.assertContains(response, "algorytm zacznie")

@@ -1097,10 +1097,76 @@ a:hover {
   margin: 1rem 0 1.5rem;
 }
 
+.movie-director {
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
 .movie-overview {
   color: var(--text-primary);
   line-height: 1.7;
   margin-bottom: 1.5rem;
+}
+
+.movie-cast-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+}
+
+.movie-cast-grid {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.cast-card {
+  flex: 0 0 100px;
+  text-align: center;
+}
+
+.cast-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 0.4rem;
+}
+
+.cast-photo-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.4rem;
+  font-size: 1.6rem;
+  color: var(--text-tertiary);
+}
+
+.cast-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.cast-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.cast-character {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.2;
 }
 
 .movie-detail-stats {
@@ -1272,12 +1338,16 @@ a:hover {
   gap: 1rem;
 }
 
-/* Star input — uses reverse flex so hover/checked siblings light up to the right */
+/* Star input — uses reverse flex so hover/checked siblings light up to the
+   right. Each star is split into two labels (.rating-half = left,
+   .rating-full = right) for half-star precision. Both halves render the
+   full star icon but clip to 50% width; the full label shifts the icon left
+   so only the right portion is visible. */
 .rating-stars {
   display: inline-flex;
   flex-direction: row-reverse;
   justify-content: flex-end;
-  gap: 0.35rem;
+  gap: 0;
   border: none;
   padding: 0;
   margin: 0;
@@ -1293,18 +1363,31 @@ a:hover {
   cursor: pointer;
   font-size: 1.85rem;
   color: var(--border);
-  transition: color 0.15s, transform 0.15s;
+  transition: color 0.15s;
   line-height: 1;
+  display: inline-block;
+  width: 0.5em;
+  overflow: hidden;
+}
+
+.rating-stars label i {
+  display: inline-block;
+}
+
+/* Right half of star: shift icon left so only right portion shows */
+.rating-stars .rating-full i {
+  margin-left: -0.5em;
+}
+
+/* Left half of star: add inter-star gap before each star group */
+.rating-stars .rating-half {
+  margin-left: 0.15rem;
 }
 
 .rating-stars label:hover,
 .rating-stars label:hover ~ label,
 .rating-stars input:checked ~ label {
   color: var(--accent);
-}
-
-.rating-stars label:hover {
-  transform: scale(1.1);
 }
 
 .rating-stars input:focus-visible + label {
@@ -1654,11 +1737,16 @@ a:hover {
   background: var(--border-accent);
 }
 
+.recommendation-grid > .movie-card {
+  /* Fixed card width inside the horizontal scroll strip so cards don't
+     compress; overflow is handled by the parent's overflow-x. */
+  flex: 0 0 175px;
+  scroll-snap-align: start;
+}
+
 .recommendation-card {
   display: flex;
   flex-direction: column;
-  /* Fixed card width so 8 cards never compress; if they overflow the row,
-     the parent's overflow-x handles it via scroll. */
   flex: 0 0 175px;
   scroll-snap-align: start;
   background: var(--bg-secondary);
@@ -1683,6 +1771,7 @@ a:hover {
   justify-content: center;
   color: var(--text-secondary);
   font-size: 1.75rem;
+  overflow: hidden;
 }
 
 .recommendation-body {
@@ -1929,6 +2018,7 @@ a:hover {
     justify-content: flex-start;
   }
 
+  .recommendation-grid > .movie-card,
   .recommendation-card {
     /* Slightly slimmer cards on mobile so a couple peek into view at once,
        hinting that the row scrolls. */

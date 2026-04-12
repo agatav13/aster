@@ -85,8 +85,8 @@
                     <i class="bi bi-film"></i>
                   </div>
                 {% endif %}
-                <span class="movie-card-score" aria-label="Twoja ocena: {{ entry.score }} z 5">
-                  <i class="bi bi-star-fill"></i> {{ entry.score }}/5
+                <span class="movie-card-score" aria-label="Twoja ocena: {{ entry.score|floatformat:"-1" }} z 5">
+                  <i class="bi bi-star-fill"></i> {{ entry.score|floatformat:"-1" }}/5
                 </span>
               </div>
               <div class="movie-card-body">
@@ -146,28 +146,55 @@
         <p class="eyebrow mb-1">Spersonalizowane</p>
         <h2 class="section-title"><i class="bi bi-magic"></i> Rekomendacje dla Ciebie</h2>
       </div>
-      <span class="soon-badge soon-badge--inline">Wkrótce</span>
     </div>
 
-    <p class="text-secondary mb-3">
-      Po wystawieniu kilku ocen i zaznaczeniu obejrzanych filmów algorytm zacznie
-      proponować tytuły dopasowane do Twoich preferencji.
-    </p>
+    {% if recommendations %}
+      <p class="text-secondary mb-3">
+        Na podstawie Twoich ulubionych gatunków i wysoko ocenionych filmów.
+      </p>
 
-    <div class="recommendation-grid">
-      {% for _ in "12345678" %}
-        <div class="recommendation-card recommendation-card--placeholder" aria-hidden="true">
-          <div class="recommendation-poster">
-            <i class="bi bi-film"></i>
+      <div class="recommendation-grid">
+        {% for movie in recommendations %}
+          <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
+            <div class="movie-poster">
+              {% if movie.poster_url %}
+                <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
+              {% else %}
+                <div class="movie-poster-placeholder">
+                  <i class="bi bi-film"></i>
+                </div>
+              {% endif %}
+            </div>
+            <div class="movie-card-body">
+              <h3 class="movie-title">{{ movie.title }}</h3>
+              {% if movie.release_date %}
+                <p class="movie-meta">{{ movie.release_date|date:"Y" }}</p>
+              {% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-secondary mb-3">
+        Po wystawieniu kilku ocen i zaznaczeniu obejrzanych filmów algorytm zacznie
+        proponować tytuły dopasowane do Twoich preferencji.
+      </p>
+
+      <div class="recommendation-grid">
+        {% for _ in "12345678" %}
+          <div class="recommendation-card recommendation-card--placeholder" aria-hidden="true">
+            <div class="recommendation-poster">
+              <i class="bi bi-film"></i>
+            </div>
+            <div class="recommendation-body">
+              <div class="placeholder-line placeholder-line--title"></div>
+              <div class="placeholder-line placeholder-line--meta"></div>
+              <div class="placeholder-line placeholder-line--meta short"></div>
+            </div>
           </div>
-          <div class="recommendation-body">
-            <div class="placeholder-line placeholder-line--title"></div>
-            <div class="placeholder-line placeholder-line--meta"></div>
-            <div class="placeholder-line placeholder-line--meta short"></div>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
+        {% endfor %}
+      </div>
+    {% endif %}
   </section>
 </section>
 {% endblock %}

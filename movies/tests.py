@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import Comment, Genre, Movie, Rating, UserMovieStatus
+from .models import Comment, Genre, Movie, MovieCredit, Person, Rating, UserMovieStatus
 from .services import (
     DEFAULT_PAGE_SIZE,
     TMDB_GENRE_PL_NAMES,
@@ -18,13 +18,17 @@ from .services import (
     remove_rating,
     set_movie_status,
     sync_all_genres,
+    sync_movie_credits,
     upsert_genre,
     upsert_rating,
     visible_comments_for,
 )
 from .tmdb import (
     TmdbApiError,
+    TmdbCastMember,
     TmdbConfigError,
+    TmdbCredits,
+    TmdbCrewMember,
     TmdbDiscoverResponse,
     TmdbGenre,
     TmdbMovieDetail,
@@ -117,6 +121,10 @@ class MovieDetailViewTests(TestCase):
             poster_path="/poster.jpg",
             popularity=88.5,
             genres=[TmdbGenre(id=28, name="Action")],
+            credits=TmdbCredits(
+                cast=[TmdbCastMember(id=1, name="Actor", order=0)],
+                crew=[TmdbCrewMember(id=2, name="Director", job="Director")],
+            ),
         )
         mock_client.image_url.side_effect = lambda path: (
             f"https://image.tmdb.org/t/p/w500{path}" if path else ""
@@ -371,18 +379,16 @@ class FavoritesFilterTests(TestCase):
         self.assertContains(response, "Action Hero")
         self.assertContains(response, "Spooky Night")
 
-    def test_logged_in_user_with_favorites_is_personalized_by_default(
+    def test_logged_in_user_with_favorites_sees_all_by_default(
         self,
     ) -> None:
-        """Dropping the explicit "Moje ulubione" toggle means the catalog
-        must auto-personalize on its own: a logged-in user with favorites
-        should see their preferred genres filtered in without touching
-        any query parameters."""
+        """The default catalog always shows trending / all movies.
+        Favourite-genre filtering only activates on explicit ?favorites=1."""
         self._login_user_with_favorites(self.action)
         response = self.client.get(reverse("movies:list"))
-        self.assertTrue(response.context["favorites_active"])
+        self.assertFalse(response.context["favorites_active"])
         self.assertContains(response, "Action Hero")
-        self.assertNotContains(response, "Spooky Night")
+        self.assertContains(response, "Spooky Night")
 
     def test_logged_in_user_without_favorites_sees_everything(self) -> None:
         self._login_user_with_favorites()  # no favorites
@@ -703,13 +709,12 @@ class TmdbDiscoverBrowseTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_browse_auto_personalizes_for_logged_in_user_with_favorites(
+    def test_browse_shows_trending_by_default_even_with_favorites(
         self, mock_client_class
     ) -> None:
-        """Logged-in users with favorite genres should land on a
-        personalized catalog by default — no need to click the
-        'Moje ulubione' toggle first. The absence of a favorites
-        query param means 'auto-activate'."""
+        """Logged-in users with favorite genres should still see trending
+        movies by default. Favourites only filter when explicitly requested
+        via ?favorites=1."""
         drama = Genre.objects.get(name="Dramat")
         drama.tmdb_id = 18
         drama.save(update_fields=["tmdb_id"])
@@ -724,24 +729,18 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.client.force_login(user)
 
         mock_client = mock_client_class.return_value
-        mock_client.discover_popular.return_value = self._build_response(
-            "Personalized Pick"
+        mock_client.list_trending.return_value = self._build_response(
+            "Trending Pick"
         )
         mock_client.image_url.side_effect = lambda path: ""
 
         response = self.client.get(reverse("movies:list"))  # no ?favorites=
 
         self.assertEqual(response.status_code, 200)
-        # Discover was called with the user's favorites OR-joined.
-        mock_client.discover_popular.assert_called_once()
-        call_kwargs = mock_client.discover_popular.call_args.kwargs
-        self.assertIn(call_kwargs["with_genres"], {"28|18", "18|28"})
-        # Trending is only for unfiltered browse; personalization routes
-        # around it.
-        mock_client.list_trending.assert_not_called()
-        # The context mirrors the auto-activation so the toggle renders
-        # as "on" for the user.
-        self.assertTrue(response.context["favorites_active"])
+        # Default browse hits trending, not discover_popular with genres.
+        mock_client.list_trending.assert_called_once()
+        mock_client.discover_popular.assert_not_called()
+        self.assertFalse(response.context["favorites_active"])
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
@@ -960,8 +959,25 @@ class RatingServiceTests(TestCase):
         self.assertEqual(self.movie.average_rating, Decimal("2.00"))
         self.assertEqual(self.movie.ratings_count, 1)
 
+    def test_half_star_rating(self) -> None:
+        upsert_rating(user=self.user, movie=self.movie, score=3.5)
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.ratings_count, 1)
+        self.assertEqual(self.movie.average_rating, Decimal("3.50"))
+
+    def test_half_star_average(self) -> None:
+        upsert_rating(user=self.user, movie=self.movie, score=4)
+        upsert_rating(user=self.other, movie=self.movie, score=3.5)
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.average_rating, Decimal("3.75"))
+
     def test_upsert_rejects_out_of_range(self) -> None:
-        for bad in (0, 6, -1, 10):
+        for bad in (0, 5.5, -1, 10):
+            with self.assertRaises(ValueError):
+                upsert_rating(user=self.user, movie=self.movie, score=bad)
+
+    def test_upsert_rejects_non_half_step(self) -> None:
+        for bad in (0.3, 1.2, 2.7, 4.9):
             with self.assertRaises(ValueError):
                 upsert_rating(user=self.user, movie=self.movie, score=bad)
 
@@ -1147,6 +1163,17 @@ class MovieRatingViewTests(TestCase):
         self.client.post(url, {"action": "save", "score": "not-a-number"})
         self.assertFalse(Rating.objects.filter(user=self.user).exists())
 
+    def test_half_star_score_via_view(self) -> None:
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"action": "save", "score": "3.5"})
+        self.assertRedirects(
+            response, reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        rating = Rating.objects.get(user=self.user, movie=self.movie)
+        self.assertEqual(rating.score, Decimal("3.5"))
+        self.movie.refresh_from_db()
+        self.assertEqual(self.movie.average_rating, Decimal("3.50"))
+
     def test_score_out_of_range_rejected(self) -> None:
         url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
         self.client.post(url, {"action": "save", "score": "9"})
@@ -1190,7 +1217,7 @@ class MovieDetailContextTests(TestCase):
             reverse("movies:detail", args=[self.movie.tmdb_id])
         )
         self.assertEqual(response.context["user_status"], UserMovieStatus.WATCHED)
-        self.assertEqual(response.context["user_rating"], 4)
+        self.assertEqual(response.context["user_rating"], Decimal("4.0"))
 
 
 class CommentServiceTests(TestCase):
@@ -1389,3 +1416,100 @@ class MovieDetailCommentContextTests(TestCase):
         self.assertContains(response, "widoczny")
         self.assertNotContains(response, "ukryty")
         self.assertEqual(response.context["comments_count"], 1)
+
+
+class CreditSyncTests(TestCase):
+    """Tests for sync_movie_credits service function."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.movie = make_movie(tmdb_id=8001, title="Credit Sync Movie")
+
+    @patch("movies.services.TmdbClient")
+    def test_sync_creates_director_and_cast(self, mock_client_class) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.image_url.side_effect = lambda p: f"https://img{p}" if p else ""
+
+        credits = TmdbCredits(
+            cast=[
+                TmdbCastMember(id=100, name="Actor One", character="Hero", order=0, profile_path="/a1.jpg"),
+                TmdbCastMember(id=101, name="Actor Two", character="Villain", order=1),
+            ],
+            crew=[
+                TmdbCrewMember(id=200, name="Dir One", job="Director", profile_path="/d1.jpg"),
+                TmdbCrewMember(id=201, name="Producer One", job="Producer"),
+            ],
+        )
+
+        sync_movie_credits(self.movie, credits, mock_client)
+
+        self.assertEqual(Person.objects.filter(tmdb_id=100).count(), 1)
+        self.assertEqual(Person.objects.filter(tmdb_id=200).count(), 1)
+        # Producer should NOT be stored
+        self.assertFalse(Person.objects.filter(tmdb_id=201).exists())
+
+        directors = MovieCredit.objects.filter(
+            movie=self.movie, credit_type=MovieCredit.DIRECTOR
+        )
+        self.assertEqual(directors.count(), 1)
+        self.assertEqual(directors.first().person.name, "Dir One")
+
+        cast = MovieCredit.objects.filter(
+            movie=self.movie, credit_type=MovieCredit.CAST
+        ).order_by("order")
+        self.assertEqual(cast.count(), 2)
+        self.assertEqual(cast[0].character, "Hero")
+        self.assertEqual(cast[1].character, "Villain")
+
+    @patch("movies.services.TmdbClient")
+    def test_sync_replaces_existing_credits(self, mock_client_class) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.image_url.return_value = ""
+
+        old_person = Person.objects.create(tmdb_id=999, name="Old Actor")
+        MovieCredit.objects.create(
+            movie=self.movie, person=old_person,
+            credit_type=MovieCredit.CAST, order=0,
+        )
+
+        credits = TmdbCredits(
+            cast=[TmdbCastMember(id=100, name="New Actor", order=0)],
+            crew=[],
+        )
+        sync_movie_credits(self.movie, credits, mock_client)
+
+        remaining = MovieCredit.objects.filter(movie=self.movie)
+        self.assertEqual(remaining.count(), 1)
+        self.assertEqual(remaining.first().person.name, "New Actor")
+
+
+class MovieDetailCreditsContextTests(TestCase):
+    """Tests that the movie detail view passes credits to the template."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.movie = make_movie(tmdb_id=8002, title="Detail Credits Movie")
+        director = Person.objects.create(tmdb_id=300, name="Test Director")
+        actor = Person.objects.create(tmdb_id=301, name="Test Actor")
+        MovieCredit.objects.create(
+            movie=cls.movie, person=director,
+            credit_type=MovieCredit.DIRECTOR,
+        )
+        MovieCredit.objects.create(
+            movie=cls.movie, person=actor,
+            credit_type=MovieCredit.CAST, character="Main Role", order=0,
+        )
+
+    def test_detail_renders_director(self) -> None:
+        response = self.client.get(
+            reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Test Director")
+
+    def test_detail_renders_cast(self) -> None:
+        response = self.client.get(
+            reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertContains(response, "Test Actor")
+        self.assertContains(response, "Main Role")

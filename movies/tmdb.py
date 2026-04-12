@@ -75,8 +75,32 @@ class TmdbDiscoverResponse(BaseModel):
     results: list[TmdbMovieSummary]
 
 
+class TmdbCastMember(BaseModel):
+    """Single cast entry from /movie/{id}/credits."""
+
+    id: int
+    name: str
+    character: str = ""
+    order: int = 0
+    profile_path: str | None = None
+
+
+class TmdbCrewMember(BaseModel):
+    """Single crew entry from /movie/{id}/credits."""
+
+    id: int
+    name: str
+    job: str = ""
+    profile_path: str | None = None
+
+
+class TmdbCredits(BaseModel):
+    cast: list[TmdbCastMember] = Field(default_factory=list)
+    crew: list[TmdbCrewMember] = Field(default_factory=list)
+
+
 class TmdbMovieDetail(BaseModel):
-    """Shape returned by /movie/{id}."""
+    """Shape returned by /movie/{id} (with optional append_to_response=credits)."""
 
     id: int
     title: str
@@ -89,6 +113,7 @@ class TmdbMovieDetail(BaseModel):
     original_language: str = ""
     popularity: float | None = None
     genres: list[TmdbGenre] = Field(default_factory=list)
+    credits: TmdbCredits | None = None
 
 
 class TmdbClient:
@@ -195,7 +220,10 @@ class TmdbClient:
         return TmdbDiscoverResponse.model_validate(payload)
 
     def get_movie(self, tmdb_id: int) -> TmdbMovieDetail:
-        payload = self._get(f"/movie/{tmdb_id}")
+        payload = self._get(
+            f"/movie/{tmdb_id}",
+            params={"append_to_response": "credits"},
+        )
         return TmdbMovieDetail.model_validate(payload)
 
     def image_url(self, path: str | None) -> str:

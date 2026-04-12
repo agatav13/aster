@@ -38,8 +38,38 @@
         {% endfor %}
       </div>
 
+      {% if directors %}
+        <p class="movie-director">
+          <strong>Reżyseria:</strong>
+          {% for credit in directors %}{{ credit.person.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
+      {% endif %}
+
       {% if movie.overview %}
         <p class="movie-overview">{{ movie.overview }}</p>
+      {% endif %}
+
+      {% if cast %}
+        <div class="movie-cast">
+          <h2 class="movie-cast-heading">Obsada</h2>
+          <div class="movie-cast-grid">
+            {% for credit in cast %}
+              <div class="cast-card">
+                {% if credit.person.profile_url %}
+                  <img src="{{ credit.person.profile_url }}" alt="{{ credit.person.name }}" class="cast-photo" loading="lazy">
+                {% else %}
+                  <div class="cast-photo-placeholder"><i class="bi bi-person"></i></div>
+                {% endif %}
+                <div class="cast-info">
+                  <span class="cast-name">{{ credit.person.name }}</span>
+                  {% if credit.character %}
+                    <span class="cast-character">{{ credit.character }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
       {% endif %}
 
       <div class="movie-detail-stats">
@@ -57,7 +87,7 @@
           <h2><i class="bi bi-person-check"></i> Twoja ocena</h2>
           <p class="mb-0 user-rating-display">
             {% if user_rating %}
-              <strong>{{ user_rating }}/5</strong>
+              <strong>{{ user_rating|floatformat:"-1" }}/5</strong>
             {% else %}
               <span class="text-secondary">Brak oceny</span>
             {% endif %}
@@ -95,7 +125,7 @@
             <i class="bi bi-star"></i>
             <span>
               {% if user_rating %}
-                Zmień ocenę ({{ user_rating }}/5)
+                Zmień ocenę ({{ user_rating|floatformat:"-1" }}/5)
               {% else %}
                 Oceń film
               {% endif %}

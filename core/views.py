@@ -3,6 +3,7 @@ from django.shortcuts import redirect, render
 from django.views import View
 
 from movies.models import Rating, UserMovieStatus
+from movies.services import get_recommendations_for_user
 
 
 class HomeView(View):
@@ -51,6 +52,8 @@ class HomeView(View):
             {"movie": row.movie, "score": row.score} for row in rated_rows
         ]
 
+        recommendations = get_recommendations_for_user(user)
+
         return render(
             request,
             "core/dashboard.html",
@@ -61,5 +64,6 @@ class HomeView(View):
                 "watched_count": len(watched_movies),
                 "watchlist_count": len(watchlist_movies),
                 "rated_count": len(rated_movies),
+                "recommendations": recommendations,
             },
         )

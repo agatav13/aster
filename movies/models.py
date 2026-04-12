@@ -109,7 +109,7 @@ class UserMovieStatus(models.Model):
 
 
 class Rating(models.Model):
-    """User's 1–5 star rating for a movie.
+    """User's 0.5–5 star rating for a movie (half-star precision).
 
     Maps to the `ratings` table from docs/database-design.md. The cached
     `movies.average_rating` / `movies.ratings_count` aggregates are
@@ -117,8 +117,9 @@ class Rating(models.Model):
     or deleted.
     """
 
-    MIN_SCORE = 1
-    MAX_SCORE = 5
+    MIN_SCORE = Decimal("0.5")
+    MAX_SCORE = Decimal("5.0")
+    SCORE_STEP = Decimal("0.5")
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -130,9 +131,14 @@ class Rating(models.Model):
         on_delete=models.CASCADE,
         related_name="ratings",
     )
-    score: int = models.PositiveSmallIntegerField(
+    score: Decimal = models.DecimalField(
         "Ocena",
-        validators=[MinValueValidator(MIN_SCORE), MaxValueValidator(MAX_SCORE)],
+        max_digits=2,
+        decimal_places=1,
+        validators=[
+            MinValueValidator(Decimal("0.5")),
+            MaxValueValidator(Decimal("5.0")),
+        ],
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -141,8 +147,8 @@ class Rating(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["user", "movie"], name="uq_user_movie_rating"),
             models.CheckConstraint(
-                check=models.Q(score__gte=1) & models.Q(score__lte=5),
-                name="ck_rating_score_1_5",
+                check=models.Q(score__gte=Decimal("0.5")) & models.Q(score__lte=Decimal("5.0")),
+                name="ck_rating_score_half_5",
             ),
         ]
         indexes = [
@@ -153,6 +159,66 @@ class Rating(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} → {self.movie}: {self.score}/5"
+
+
+class Person(models.Model):
+    """Actor or director fetched from TMDB credits."""
+
+    tmdb_id: int = models.IntegerField("TMDB id", unique=True)
+    name: str = models.CharField("Name", max_length=255)
+    profile_url: str = models.URLField("Profile image URL", max_length=500, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "person"
+        verbose_name_plural = "people"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class MovieCredit(models.Model):
+    """Links a Person to a Movie as either cast or director."""
+
+    CAST = "cast"
+    DIRECTOR = "director"
+    CREDIT_TYPE_CHOICES = [
+        (CAST, "Aktor"),
+        (DIRECTOR, "Reżyser"),
+    ]
+
+    movie = models.ForeignKey(
+        Movie,
+        on_delete=models.CASCADE,
+        related_name="credits",
+    )
+    person = models.ForeignKey(
+        Person,
+        on_delete=models.CASCADE,
+        related_name="credits",
+    )
+    credit_type: str = models.CharField(
+        "Credit type", max_length=20, choices=CREDIT_TYPE_CHOICES
+    )
+    character: str = models.CharField("Character", max_length=255, blank=True)
+    order: int = models.IntegerField("Billing order", default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["movie", "person", "credit_type"],
+                name="uq_movie_person_credit",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["movie", "credit_type", "order"]),
+        ]
+        ordering = ["order"]
+        verbose_name = "movie credit"
+        verbose_name_plural = "movie credits"
+
+    def __str__(self) -> str:
+        return f"{self.person.name} — {self.movie.title} ({self.get_credit_type_display()})"
 
 
 class Comment(models.Model):

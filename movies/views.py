@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.contrib import messages
@@ -11,7 +12,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 
-from .models import Comment, Genre, Rating, UserMovieStatus
+from .models import Comment, Genre, MovieCredit, Rating, UserMovieStatus
 from .services import (
     MovieListPage,
     browse_local_movies,
@@ -78,22 +79,13 @@ class MovieListView(TemplateView):
     ) -> bool:
         """Decide whether the favorites filter should be on for this request.
 
-        Behaviour matrix:
-          * No `favorites` param + user has favorites → on (auto-personalize
-            so the catalog defaults to the user's preferred genres).
-          * `favorites=0` → explicitly off, even if the user has favorites.
-            This is the escape hatch the "Pokaż wszystkie" state uses.
-          * `favorites=1` → on, if the user actually has favorites to filter by.
-          * User has no favorite genres (or is anonymous) → always off; the
-            filter would be a no-op anyway.
+        The default listing always shows trending / all movies so that the
+        catalog feels fresh. Favourite-genre filtering only activates when
+        the user explicitly opts in via ``?favorites=1``.
         """
         if not has_favorite_genres:
             return False
-        if raw_favorites == "0":
-            return False
-        if raw_favorites == "1":
-            return True
-        return raw_favorites is None
+        return raw_favorites == "1"
 
     @staticmethod
     def _parse_page(raw: str | None) -> int:
@@ -190,12 +182,18 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
 
     comments = list(visible_comments_for(movie))
 
+    credits = movie.credits.select_related("person").order_by("credit_type", "order")
+    directors = [c for c in credits if c.credit_type == MovieCredit.DIRECTOR]
+    cast = [c for c in credits if c.credit_type == MovieCredit.CAST]
+
     return render(
         request,
         "movies/detail.html",
         {
             "movie": movie,
             "genres": movie.genres.all(),
+            "directors": directors,
+            "cast": cast,
             "user_status": user_status,
             "user_rating": user_rating,
             "status_watchlist": UserMovieStatus.WATCHLIST,
@@ -289,9 +287,9 @@ def update_movie_rating(request: HttpRequest, tmdb_id: int) -> HttpResponse:
 
     raw_score = request.POST.get("score", "").strip()
     try:
-        score = int(raw_score)
-    except ValueError:
-        messages.error(request, "Wybierz ocenę od 1 do 5 gwiazdek.")
+        score = Decimal(raw_score)
+    except (ValueError, InvalidOperation):
+        messages.error(request, "Wybierz ocenę od 0.5 do 5 gwiazdek.")
         return _detail_redirect(tmdb_id)
 
     # Detect "watchlist → watched" promotion before the rating upsert so we
@@ -304,10 +302,11 @@ def update_movie_rating(request: HttpRequest, tmdb_id: int) -> HttpResponse:
     try:
         upsert_rating(user=request.user, movie=movie, score=score)
     except ValueError:
-        messages.error(request, "Ocena musi mieścić się w zakresie 1–5.")
+        messages.error(request, "Ocena musi mieścić się w zakresie 0.5–5.")
         return _detail_redirect(tmdb_id)
 
-    messages.success(request, f"Zapisano ocenę {score}/5 dla „{movie.title}”.")
+    display_score = score.normalize()
+    messages.success(request, f"Zapisano ocenę {display_score}/5 dla „{movie.title}”.")
     if was_on_watchlist:
         messages.info(
             request,

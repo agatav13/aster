@@ -1,6 +1,7 @@
 {% comment %}
-  Rating modal. Submits to movies:update_rating. Delete is rendered as a
-  separate form so the "delete" action doesn't have to share the star input.
+  Rating modal with half-star precision. Submits to movies:update_rating.
+  Each star position is split into two radio inputs (half + full) using CSS
+  clipping so clicking the left or right side of a star sets 0.5 increments.
 {% endcomment %}
 <div class="modal fade rating-modal" id="ratingModal" tabindex="-1" aria-labelledby="ratingModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -17,26 +18,55 @@
           </button>
         </div>
         <div class="modal-body">
-          <fieldset class="rating-stars" aria-label="Wybierz ocenę od 1 do 5 gwiazdek">
-            {% for value in "54321" %}
-              <input
-                type="radio"
-                name="score"
-                id="rating-star-{{ value }}"
-                value="{{ value }}"
-                {% if user_rating|stringformat:"s" == value %}checked{% endif %}
-                required
-              >
-              <label for="rating-star-{{ value }}" title="{{ value }} z 5">
-                <i class="bi bi-star-fill"></i>
-              </label>
-            {% endfor %}
+          <fieldset class="rating-stars" aria-label="Wybierz ocenę od 0.5 do 5 gwiazdek">
+            {% comment %}Reverse DOM order for the CSS sibling highlight trick.
+               Each star = two inputs: full (right half) then half (left half).{% endcomment %}
+
+            <input type="radio" name="score" id="rs-50" value="5.0"
+              {% if user_rating|stringformat:"s" == "5.0" %}checked{% endif %} required>
+            <label for="rs-50" class="rating-full" title="5 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-45" value="4.5"
+              {% if user_rating|stringformat:"s" == "4.5" %}checked{% endif %}>
+            <label for="rs-45" class="rating-half" title="4.5 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-40" value="4.0"
+              {% if user_rating|stringformat:"s" == "4.0" %}checked{% endif %}>
+            <label for="rs-40" class="rating-full" title="4 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-35" value="3.5"
+              {% if user_rating|stringformat:"s" == "3.5" %}checked{% endif %}>
+            <label for="rs-35" class="rating-half" title="3.5 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-30" value="3.0"
+              {% if user_rating|stringformat:"s" == "3.0" %}checked{% endif %}>
+            <label for="rs-30" class="rating-full" title="3 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-25" value="2.5"
+              {% if user_rating|stringformat:"s" == "2.5" %}checked{% endif %}>
+            <label for="rs-25" class="rating-half" title="2.5 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-20" value="2.0"
+              {% if user_rating|stringformat:"s" == "2.0" %}checked{% endif %}>
+            <label for="rs-20" class="rating-full" title="2 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-15" value="1.5"
+              {% if user_rating|stringformat:"s" == "1.5" %}checked{% endif %}>
+            <label for="rs-15" class="rating-half" title="1.5 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-10" value="1.0"
+              {% if user_rating|stringformat:"s" == "1.0" %}checked{% endif %}>
+            <label for="rs-10" class="rating-full" title="1 z 5"><i class="bi bi-star-fill"></i></label>
+
+            <input type="radio" name="score" id="rs-05" value="0.5"
+              {% if user_rating|stringformat:"s" == "0.5" %}checked{% endif %}>
+            <label for="rs-05" class="rating-half" title="0.5 z 5"><i class="bi bi-star-fill"></i></label>
           </fieldset>
 
           {% if user_rating %}
             <p class="text-secondary small mb-0">
               <i class="bi bi-info-circle"></i>
-              Twoja obecna ocena: <strong>{{ user_rating }}/5</strong>.
+              Twoja obecna ocena: <strong>{{ user_rating|floatformat:"-1" }}/5</strong>.
             </p>
           {% endif %}
         </div>

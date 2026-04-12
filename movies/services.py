@@ -11,11 +11,18 @@ from typing import Any, Iterator
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Avg, Count, QuerySet
+from django.db.models import Avg, Count, Q, QuerySet
 from django.utils import timezone
 
-from .models import Comment, Genre, Movie, Rating, UserMovieStatus
-from .tmdb import TmdbClient, TmdbMovieDetail, TmdbMovieSummary
+from .models import Comment, Genre, Movie, MovieCredit, Person, Rating, UserMovieStatus
+from .tmdb import (
+    TmdbApiError,
+    TmdbClient,
+    TmdbConfigError,
+    TmdbCredits,
+    TmdbMovieDetail,
+    TmdbMovieSummary,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -271,14 +278,83 @@ def upsert_movie_detail(payload: TmdbMovieDetail, client: TmdbClient) -> Movie:
             Genre.objects.filter(tmdb_id__in=[g.id for g in payload.genres])
         )
         movie.genres.set(genres)
+    if payload.credits:
+        sync_movie_credits(movie, payload.credits, client)
     return movie
 
 
+# Maximum number of cast members to store per movie.
+MAX_CAST_PER_MOVIE = 10
+
+
+def sync_movie_credits(
+    movie: Movie, credits: TmdbCredits, client: TmdbClient
+) -> None:
+    """Persist directors and top-billed cast from a TMDB credits payload."""
+    directors = [c for c in credits.crew if c.job == "Director"]
+    cast = sorted(credits.cast, key=lambda c: c.order)[:MAX_CAST_PER_MOVIE]
+
+    bulk: list[MovieCredit] = []
+    for member in directors:
+        person, _ = Person.objects.update_or_create(
+            tmdb_id=member.id,
+            defaults={
+                "name": member.name,
+                "profile_url": client.image_url(member.profile_path),
+            },
+        )
+        bulk.append(
+            MovieCredit(
+                movie=movie,
+                person=person,
+                credit_type=MovieCredit.DIRECTOR,
+                order=0,
+            )
+        )
+
+    for member in cast:
+        person, _ = Person.objects.update_or_create(
+            tmdb_id=member.id,
+            defaults={
+                "name": member.name,
+                "profile_url": client.image_url(member.profile_path),
+            },
+        )
+        bulk.append(
+            MovieCredit(
+                movie=movie,
+                person=person,
+                credit_type=MovieCredit.CAST,
+                character=member.character or "",
+                order=member.order,
+            )
+        )
+
+    # Replace existing credits for this movie.
+    MovieCredit.objects.filter(movie=movie).delete()
+    MovieCredit.objects.bulk_create(bulk)
+
+
 def fetch_and_cache_movie(tmdb_id: int, client: TmdbClient | None = None) -> Movie:
-    """Look up a movie locally; if missing, fetch from TMDB and persist."""
+    """Look up a movie locally; if missing, fetch from TMDB and persist.
+
+    Also backfills credits for movies that were cached before the credits
+    feature was added (no MovieCredit rows yet).
+    """
     existing = Movie.objects.filter(tmdb_id=tmdb_id).first()
     if existing is not None:
-        logger.debug("Movie cache hit tmdb_id=%s", tmdb_id)
+        if existing.credits.exists():
+            logger.debug("Movie cache hit tmdb_id=%s", tmdb_id)
+            return existing
+        # Cached before credits feature — backfill from TMDB.
+        logger.info("Backfilling credits for tmdb_id=%s", tmdb_id)
+        try:
+            client = client or TmdbClient()
+            detail = client.get_movie(tmdb_id)
+            if detail.credits:
+                sync_movie_credits(existing, detail.credits, client)
+        except (TmdbConfigError, TmdbApiError) as exc:
+            logger.warning("Credit backfill failed for tmdb_id=%s: %s", tmdb_id, exc)
         return existing
     logger.info("Movie cache miss tmdb_id=%s, fetching from TMDB", tmdb_id)
     client = client or TmdbClient()
@@ -659,20 +735,24 @@ def _refresh_movie_rating_aggregates(movie: Movie) -> None:
 
 
 @transaction.atomic
-def upsert_rating(*, user, movie: Movie, score: int) -> Rating:
+def upsert_rating(*, user, movie: Movie, score: Decimal | float | int) -> Rating:
     """Create or update a user's rating and refresh the movie aggregates.
 
-    Rating a movie implies the user has watched it, so we also ensure the
-    user↔movie status row exists with `status=WATCHED`. This promotes a
+    Accepts int, float, or Decimal scores in 0.5 increments between 0.5 and
+    5.0. Rating a movie implies the user has watched it, so we also ensure
+    the user↔movie status row exists with `status=WATCHED`. This promotes a
     prior `watchlist` row to `watched` via update_or_create, and is a no-op
     when the row is already watched.
     """
-    if not (Rating.MIN_SCORE <= score <= Rating.MAX_SCORE):
+    score_dec = Decimal(str(score))
+    if not (Rating.MIN_SCORE <= score_dec <= Rating.MAX_SCORE):
         raise ValueError(
             f"Score must be between {Rating.MIN_SCORE} and {Rating.MAX_SCORE}"
         )
+    if score_dec % Rating.SCORE_STEP != 0:
+        raise ValueError("Score must be in 0.5 increments")
     rating, created = Rating.objects.update_or_create(
-        user=user, movie=movie, defaults={"score": score}
+        user=user, movie=movie, defaults={"score": score_dec}
     )
     _refresh_movie_rating_aggregates(movie)
     UserMovieStatus.objects.update_or_create(
@@ -682,7 +762,7 @@ def upsert_rating(*, user, movie: Movie, score: int) -> Rating:
     )
     logger.info(
         "User id=%s %s rating=%s for movie tmdb_id=%s (status auto-set to watched)",
-        user.pk, "created" if created else "updated", score, movie.tmdb_id,
+        user.pk, "created" if created else "updated", score_dec, movie.tmdb_id,
     )
     return rating
 
@@ -759,3 +839,137 @@ def delete_own_comment(*, user, comment: Comment) -> bool:
         user.pk, comment_id, movie_tmdb_id,
     )
     return True
+
+
+# ── Recommendations ────────────────────────────────────────────────────────
+# Content-based recommendations using three signal types extracted from
+# movies the user rated highly plus their explicit favorite genres:
+#   1. Genre overlap  (weight 1 per matching genre)
+#   2. Director match (weight 3 — strong auteur signal)
+#   3. Actor match    (weight 2 — familiar cast)
+# The weighted sum is the primary sort key, with TMDB popularity as tiebreaker.
+
+# Minimum rating score for a movie to count as "liked" and contribute its
+# genres / credits to the recommendation pool.
+LIKED_RATING_THRESHOLD = 4
+# Default cap on how many recommendations to return.
+DEFAULT_RECOMMENDATION_LIMIT = 12
+
+# Scoring weights for each signal type.
+WEIGHT_GENRE = 1
+WEIGHT_DIRECTOR = 3
+WEIGHT_ACTOR = 2
+
+
+def get_recommendations_for_user(
+    user: AbstractBaseUser,
+    *,
+    limit: int = DEFAULT_RECOMMENDATION_LIMIT,
+) -> list[Movie]:
+    """Return content-based movie recommendations for an authenticated user.
+
+    Three signal types are combined:
+      1. Genre overlap — genres from highly-rated movies + user's favourites.
+      2. Director match — directors of highly-rated movies.
+      3. Actor match — top-billed actors from highly-rated movies.
+
+    Movies the user has already interacted with (rated, watchlisted, or
+    watched) are excluded. Candidates are scored by a weighted sum of the
+    three signals, then sorted by score descending and popularity as
+    tiebreaker.
+
+    Returns an empty list when there are no signals or no candidates.
+    """
+    liked_ratings = Rating.objects.filter(
+        user=user, score__gte=LIKED_RATING_THRESHOLD
+    )
+    liked_movie_ids: set[int] = set(
+        liked_ratings.values_list("movie_id", flat=True)
+    )
+
+    # ── Genre signals ──────────────────────────────────────────────────
+    liked_genre_ids: set[int] = set(
+        Genre.objects
+        .filter(movies__id__in=liked_movie_ids)
+        .values_list("id", flat=True)
+    )
+    favorite_genre_ids: set[int] = set(
+        user.favorite_genres.values_list("id", flat=True)
+    )
+    target_genre_ids = liked_genre_ids | favorite_genre_ids
+
+    # ── Credit signals ─────────────────────────────────────────────────
+    target_director_ids: set[int] = set(
+        MovieCredit.objects
+        .filter(movie_id__in=liked_movie_ids, credit_type=MovieCredit.DIRECTOR)
+        .values_list("person_id", flat=True)
+    )
+    target_actor_ids: set[int] = set(
+        MovieCredit.objects
+        .filter(movie_id__in=liked_movie_ids, credit_type=MovieCredit.CAST)
+        .values_list("person_id", flat=True)
+    )
+
+    has_signals = target_genre_ids or target_director_ids or target_actor_ids
+    if not has_signals:
+        return []
+
+    # ── Exclude already-interacted movies ──────────────────────────────
+    interacted_movie_ids: set[int] = set()
+    interacted_movie_ids.update(
+        Rating.objects.filter(user=user).values_list("movie_id", flat=True)
+    )
+    interacted_movie_ids.update(
+        UserMovieStatus.objects.filter(user=user).values_list("movie_id", flat=True)
+    )
+
+    # ── Build candidate queryset with weighted scoring ─────────────────
+    # Start with movies that match at least one signal.
+    genre_q = Q(genres__id__in=target_genre_ids) if target_genre_ids else Q()
+    director_q = (
+        Q(credits__person_id__in=target_director_ids, credits__credit_type=MovieCredit.DIRECTOR)
+        if target_director_ids else Q()
+    )
+    actor_q = (
+        Q(credits__person_id__in=target_actor_ids, credits__credit_type=MovieCredit.CAST)
+        if target_actor_ids else Q()
+    )
+    match_q = genre_q | director_q | actor_q
+
+    genre_score = (
+        Count("genres", filter=Q(genres__id__in=target_genre_ids), distinct=True) * WEIGHT_GENRE
+        if target_genre_ids else 0
+    )
+    director_score = (
+        Count(
+            "credits",
+            filter=Q(
+                credits__person_id__in=target_director_ids,
+                credits__credit_type=MovieCredit.DIRECTOR,
+            ),
+            distinct=True,
+        ) * WEIGHT_DIRECTOR
+        if target_director_ids else 0
+    )
+    actor_score = (
+        Count(
+            "credits",
+            filter=Q(
+                credits__person_id__in=target_actor_ids,
+                credits__credit_type=MovieCredit.CAST,
+            ),
+            distinct=True,
+        ) * WEIGHT_ACTOR
+        if target_actor_ids else 0
+    )
+
+    candidates = (
+        Movie.objects
+        .filter(match_q)
+        .exclude(id__in=interacted_movie_ids)
+        .annotate(rec_score=genre_score + director_score + actor_score)
+        .order_by("-rec_score", "-popularity")
+        .distinct()[:limit]
+    )
+
+    return list(candidates)
