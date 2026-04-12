@@ -50,25 +50,25 @@ TMDB_SEARCH_PAGES_PER_REQUEST = 2
 # synced when language was still en-US) can be normalized to Polish without
 # trusting whatever TMDB returns at sync time.
 TMDB_GENRE_PL_NAMES: dict[int, str] = {
-    28: "Akcja",            # Action
-    12: "Przygodowy",       # Adventure
-    16: "Animacja",         # Animation
-    35: "Komedia",          # Comedy
-    80: "Kryminał",         # Crime
-    99: "Dokumentalny",     # Documentary
-    18: "Dramat",           # Drama
-    10751: "Familijny",     # Family
-    14: "Fantasy",          # Fantasy
-    36: "Historyczny",      # History
-    27: "Horror",           # Horror
-    10402: "Muzyka",        # Music
-    9648: "Tajemnica",      # Mystery
-    10749: "Romans",        # Romance
-    878: "Science Fiction", # Science Fiction
+    28: "Akcja",  # Action
+    12: "Przygodowy",  # Adventure
+    16: "Animacja",  # Animation
+    35: "Komedia",  # Comedy
+    80: "Kryminał",  # Crime
+    99: "Dokumentalny",  # Documentary
+    18: "Dramat",  # Drama
+    10751: "Familijny",  # Family
+    14: "Fantasy",  # Fantasy
+    36: "Historyczny",  # History
+    27: "Horror",  # Horror
+    10402: "Muzyka",  # Music
+    9648: "Tajemnica",  # Mystery
+    10749: "Romans",  # Romance
+    878: "Science Fiction",  # Science Fiction
     10770: "Film telewizyjny",  # TV Movie
-    53: "Thriller",         # Thriller
-    10752: "Wojenny",       # War
-    37: "Western",          # Western
+    53: "Thriller",  # Thriller
+    10752: "Wojenny",  # War
+    37: "Western",  # Western
 }
 
 # English → Polish mapping for stragglers that exist in the DB without a
@@ -116,7 +116,12 @@ def _merge_genre(source: Genre, target: Genre) -> None:
     logger.info(
         "Merged genre id=%s name=%r into id=%s name=%r "
         "(moved %d user favorite(s), %d movie link(s))",
-        source_pk, source_name, target.pk, target.name, user_count, movie_count,
+        source_pk,
+        source_name,
+        target.pk,
+        target.name,
+        user_count,
+        movie_count,
     )
 
 
@@ -139,9 +144,7 @@ def upsert_genre(tmdb_id: int, name: str) -> Genre:
     if by_id is not None:
         if by_id.name == name:
             return by_id
-        collision = (
-            Genre.objects.filter(name__iexact=name).exclude(pk=by_id.pk).first()
-        )
+        collision = Genre.objects.filter(name__iexact=name).exclude(pk=by_id.pk).first()
         if collision is None:
             logger.debug(
                 "Renaming genre tmdb_id=%s from %r to %r", tmdb_id, by_id.name, name
@@ -153,7 +156,9 @@ def upsert_genre(tmdb_id: int, name: str) -> Genre:
         # promote collision as the canonical row for this tmdb_id.
         logger.info(
             "Genre name collision for tmdb_id=%s (%r); merging into existing row id=%s",
-            tmdb_id, name, collision.pk,
+            tmdb_id,
+            name,
+            collision.pk,
         )
         _merge_genre(source=by_id, target=collision)
         collision.tmdb_id = tmdb_id
@@ -165,7 +170,9 @@ def upsert_genre(tmdb_id: int, name: str) -> Genre:
     if by_name is not None:
         logger.debug(
             "Attaching tmdb_id=%s to seeded genre id=%s (%r)",
-            tmdb_id, by_name.pk, by_name.name,
+            tmdb_id,
+            by_name.pk,
+            by_name.name,
         )
         by_name.tmdb_id = tmdb_id
         by_name.name = name  # normalize case to TMDB's
@@ -220,9 +227,7 @@ def normalize_all_genres() -> dict[str, int]:
         if orphan is None:
             continue
         target = (
-            Genre.objects.filter(name__iexact=polish_name)
-            .exclude(pk=orphan.pk)
-            .first()
+            Genre.objects.filter(name__iexact=polish_name).exclude(pk=orphan.pk).first()
         )
         if target is not None:
             _merge_genre(source=orphan, target=target)
@@ -274,9 +279,7 @@ def upsert_movie_detail(payload: TmdbMovieDetail, client: TmdbClient) -> Movie:
     if payload.genres:
         for tmdb_genre in payload.genres:
             upsert_genre(tmdb_genre.id, tmdb_genre.name)
-        genres = list(
-            Genre.objects.filter(tmdb_id__in=[g.id for g in payload.genres])
-        )
+        genres = list(Genre.objects.filter(tmdb_id__in=[g.id for g in payload.genres]))
         movie.genres.set(genres)
     if payload.credits:
         sync_movie_credits(movie, payload.credits, client)
@@ -287,9 +290,7 @@ def upsert_movie_detail(payload: TmdbMovieDetail, client: TmdbClient) -> Movie:
 MAX_CAST_PER_MOVIE = 10
 
 
-def sync_movie_credits(
-    movie: Movie, credits: TmdbCredits, client: TmdbClient
-) -> None:
+def sync_movie_credits(movie: Movie, credits: TmdbCredits, client: TmdbClient) -> None:
     """Persist directors and top-billed cast from a TMDB credits payload."""
     directors = [c for c in credits.crew if c.job == "Director"]
     cast = sorted(credits.cast, key=lambda c: c.order)[:MAX_CAST_PER_MOVIE]
@@ -388,7 +389,9 @@ class MovieListItem:
             title=movie.title,
             poster_url=movie.poster_url,
             release_date=movie.release_date,
-            popularity=float(movie.popularity) if movie.popularity is not None else None,
+            popularity=float(movie.popularity)
+            if movie.popularity is not None
+            else None,
         )
 
     @classmethod
@@ -525,9 +528,9 @@ def _build_with_genres_filter(
 
     if favorites_active and user is not None and user.is_authenticated:
         favorite_tmdb_ids = list(
-            user.favorite_genres
-            .filter(tmdb_id__isnull=False)
-            .values_list("tmdb_id", flat=True)
+            user.favorite_genres.filter(tmdb_id__isnull=False).values_list(
+                "tmdb_id", flat=True
+            )
         )
         if favorite_tmdb_ids:
             return "|".join(str(t) for t in favorite_tmdb_ids)
@@ -584,9 +587,7 @@ def discover_tmdb_movies(
         if use_trending:
             response = client.list_trending(time_window="week", page=tmdb_page)
         else:
-            response = client.discover_popular(
-                page=tmdb_page, with_genres=with_genres
-            )
+            response = client.discover_popular(page=tmdb_page, with_genres=with_genres)
 
         if offset == 0:
             tmdb_total_pages = response.total_pages
@@ -697,7 +698,9 @@ def set_movie_status(*, user, movie: Movie, status: str) -> UserMovieStatus:
     )
     logger.info(
         "User id=%s set status=%s on movie tmdb_id=%s",
-        user.pk, status, movie.tmdb_id,
+        user.pk,
+        status,
+        movie.tmdb_id,
     )
     return obj
 
@@ -709,7 +712,8 @@ def remove_movie_status(*, user, movie: Movie) -> bool:
     if deleted:
         logger.info(
             "User id=%s cleared status on movie tmdb_id=%s",
-            user.pk, movie.tmdb_id,
+            user.pk,
+            movie.tmdb_id,
         )
     return bool(deleted)
 
@@ -762,7 +766,10 @@ def upsert_rating(*, user, movie: Movie, score: Decimal | float | int) -> Rating
     )
     logger.info(
         "User id=%s %s rating=%s for movie tmdb_id=%s (status auto-set to watched)",
-        user.pk, "created" if created else "updated", score_dec, movie.tmdb_id,
+        user.pk,
+        "created" if created else "updated",
+        score_dec,
+        movie.tmdb_id,
     )
     return rating
 
@@ -775,7 +782,8 @@ def remove_rating(*, user, movie: Movie) -> bool:
         _refresh_movie_rating_aggregates(movie)
         logger.info(
             "User id=%s removed rating on movie tmdb_id=%s",
-            user.pk, movie.tmdb_id,
+            user.pk,
+            movie.tmdb_id,
         )
     return bool(deleted)
 
@@ -789,9 +797,8 @@ def remove_rating(*, user, movie: Movie) -> bool:
 
 def visible_comments_for(movie: Movie) -> QuerySet[Comment]:
     """All user-facing comments for a movie, newest first."""
-    return (
-        Comment.objects.filter(movie=movie, status=Comment.VISIBLE)
-        .select_related("user")
+    return Comment.objects.filter(movie=movie, status=Comment.VISIBLE).select_related(
+        "user"
     )
 
 
@@ -817,7 +824,9 @@ def create_comment(*, user, movie: Movie, content: str) -> Comment:
     )
     logger.info(
         "User id=%s added comment id=%s on movie tmdb_id=%s",
-        user.pk, comment.pk, movie.tmdb_id,
+        user.pk,
+        comment.pk,
+        movie.tmdb_id,
     )
     return comment
 
@@ -836,7 +845,9 @@ def delete_own_comment(*, user, comment: Comment) -> bool:
     comment.delete()
     logger.info(
         "User id=%s deleted own comment id=%s on movie tmdb_id=%s",
-        user.pk, comment_id, movie_tmdb_id,
+        user.pk,
+        comment_id,
+        movie_tmdb_id,
     )
     return True
 
@@ -880,18 +891,14 @@ def get_recommendations_for_user(
 
     Returns an empty list when there are no signals or no candidates.
     """
-    liked_ratings = Rating.objects.filter(
-        user=user, score__gte=LIKED_RATING_THRESHOLD
-    )
-    liked_movie_ids: set[int] = set(
-        liked_ratings.values_list("movie_id", flat=True)
-    )
+    liked_ratings = Rating.objects.filter(user=user, score__gte=LIKED_RATING_THRESHOLD)
+    liked_movie_ids: set[int] = set(liked_ratings.values_list("movie_id", flat=True))
 
     # ── Genre signals ──────────────────────────────────────────────────
     liked_genre_ids: set[int] = set(
-        Genre.objects
-        .filter(movies__id__in=liked_movie_ids)
-        .values_list("id", flat=True)
+        Genre.objects.filter(movies__id__in=liked_movie_ids).values_list(
+            "id", flat=True
+        )
     )
     favorite_genre_ids: set[int] = set(
         user.favorite_genres.values_list("id", flat=True)
@@ -900,14 +907,14 @@ def get_recommendations_for_user(
 
     # ── Credit signals ─────────────────────────────────────────────────
     target_director_ids: set[int] = set(
-        MovieCredit.objects
-        .filter(movie_id__in=liked_movie_ids, credit_type=MovieCredit.DIRECTOR)
-        .values_list("person_id", flat=True)
+        MovieCredit.objects.filter(
+            movie_id__in=liked_movie_ids, credit_type=MovieCredit.DIRECTOR
+        ).values_list("person_id", flat=True)
     )
     target_actor_ids: set[int] = set(
-        MovieCredit.objects
-        .filter(movie_id__in=liked_movie_ids, credit_type=MovieCredit.CAST)
-        .values_list("person_id", flat=True)
+        MovieCredit.objects.filter(
+            movie_id__in=liked_movie_ids, credit_type=MovieCredit.CAST
+        ).values_list("person_id", flat=True)
     )
 
     has_signals = target_genre_ids or target_director_ids or target_actor_ids
@@ -927,18 +934,28 @@ def get_recommendations_for_user(
     # Start with movies that match at least one signal.
     genre_q = Q(genres__id__in=target_genre_ids) if target_genre_ids else Q()
     director_q = (
-        Q(credits__person_id__in=target_director_ids, credits__credit_type=MovieCredit.DIRECTOR)
-        if target_director_ids else Q()
+        Q(
+            credits__person_id__in=target_director_ids,
+            credits__credit_type=MovieCredit.DIRECTOR,
+        )
+        if target_director_ids
+        else Q()
     )
     actor_q = (
-        Q(credits__person_id__in=target_actor_ids, credits__credit_type=MovieCredit.CAST)
-        if target_actor_ids else Q()
+        Q(
+            credits__person_id__in=target_actor_ids,
+            credits__credit_type=MovieCredit.CAST,
+        )
+        if target_actor_ids
+        else Q()
     )
     match_q = genre_q | director_q | actor_q
 
     genre_score = (
-        Count("genres", filter=Q(genres__id__in=target_genre_ids), distinct=True) * WEIGHT_GENRE
-        if target_genre_ids else 0
+        Count("genres", filter=Q(genres__id__in=target_genre_ids), distinct=True)
+        * WEIGHT_GENRE
+        if target_genre_ids
+        else 0
     )
     director_score = (
         Count(
@@ -948,8 +965,10 @@ def get_recommendations_for_user(
                 credits__credit_type=MovieCredit.DIRECTOR,
             ),
             distinct=True,
-        ) * WEIGHT_DIRECTOR
-        if target_director_ids else 0
+        )
+        * WEIGHT_DIRECTOR
+        if target_director_ids
+        else 0
     )
     actor_score = (
         Count(
@@ -959,13 +978,14 @@ def get_recommendations_for_user(
                 credits__credit_type=MovieCredit.CAST,
             ),
             distinct=True,
-        ) * WEIGHT_ACTOR
-        if target_actor_ids else 0
+        )
+        * WEIGHT_ACTOR
+        if target_actor_ids
+        else 0
     )
 
     candidates = (
-        Movie.objects
-        .filter(match_q)
+        Movie.objects.filter(match_q)
         .exclude(id__in=interacted_movie_ids)
         .annotate(rec_score=genre_score + director_score + actor_score)
         .order_by("-rec_score", "-popularity")

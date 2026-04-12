@@ -7,45 +7,127 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('movies', '0003_seed_all_tmdb_genres'),
+        ("movies", "0003_seed_all_tmdb_genres"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Rating',
+            name="Rating",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('score', models.PositiveSmallIntegerField(validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)], verbose_name='Ocena')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('movie', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ratings', to='movies.movie')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ratings', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "score",
+                    models.PositiveSmallIntegerField(
+                        validators=[
+                            django.core.validators.MinValueValidator(1),
+                            django.core.validators.MaxValueValidator(5),
+                        ],
+                        verbose_name="Ocena",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "movie",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="ratings",
+                        to="movies.movie",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="ratings",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'rating',
-                'verbose_name_plural': 'ratings',
-                'indexes': [models.Index(fields=['movie'], name='movies_rati_movie_i_933b83_idx')],
-                'constraints': [models.UniqueConstraint(fields=('user', 'movie'), name='uq_user_movie_rating'), models.CheckConstraint(condition=models.Q(('score__gte', 1), ('score__lte', 5)), name='ck_rating_score_1_5')],
+                "verbose_name": "rating",
+                "verbose_name_plural": "ratings",
+                "indexes": [
+                    models.Index(
+                        fields=["movie"], name="movies_rati_movie_i_933b83_idx"
+                    )
+                ],
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("user", "movie"), name="uq_user_movie_rating"
+                    ),
+                    models.CheckConstraint(
+                        condition=models.Q(("score__gte", 1), ("score__lte", 5)),
+                        name="ck_rating_score_1_5",
+                    ),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='UserMovieStatus',
+            name="UserMovieStatus",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('watchlist', 'Do obejrzenia'), ('watched', 'Obejrzane')], max_length=20, verbose_name='Status')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('movie', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='user_statuses', to='movies.movie')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='movie_statuses', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("watchlist", "Do obejrzenia"),
+                            ("watched", "Obejrzane"),
+                        ],
+                        max_length=20,
+                        verbose_name="Status",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "movie",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="user_statuses",
+                        to="movies.movie",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="movie_statuses",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'user movie status',
-                'verbose_name_plural': 'user movie statuses',
-                'indexes': [models.Index(fields=['user', 'status'], name='movies_user_user_id_137221_idx')],
-                'constraints': [models.UniqueConstraint(fields=('user', 'movie'), name='uq_user_movie_status')],
+                "verbose_name": "user movie status",
+                "verbose_name_plural": "user movie statuses",
+                "indexes": [
+                    models.Index(
+                        fields=["user", "status"], name="movies_user_user_id_137221_idx"
+                    )
+                ],
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("user", "movie"), name="uq_user_movie_status"
+                    )
+                ],
             },
         ),
     ]

@@ -38,7 +38,9 @@ class AuthFlowTests(TestCase):
         self.assertEqual(user.display_name, "Agata")
         self.assertQuerySetEqual(
             user.favorite_genres.order_by("name"),
-            Genre.objects.filter(pk__in=[self.action.pk, self.drama.pk]).order_by("name"),
+            Genre.objects.filter(pk__in=[self.action.pk, self.drama.pk]).order_by(
+                "name"
+            ),
             transform=lambda genre: genre,
         )
         self.assertEqual(len(mail.outbox), 1)

@@ -6,31 +6,79 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('movies', '0004_rating_usermoviestatus'),
+        ("movies", "0004_rating_usermoviestatus"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Comment',
+            name="Comment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('content', models.TextField(max_length=2000, verbose_name='Treść')),
-                ('status', models.CharField(choices=[('visible', 'Widoczny'), ('flagged', 'Zgłoszony'), ('hidden', 'Ukryty'), ('deleted', 'Usunięty')], default='visible', max_length=20, verbose_name='Status')),
-                ('toxicity_score', models.DecimalField(blank=True, decimal_places=4, max_digits=5, null=True, verbose_name='Toxicity score')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('moderated_at', models.DateTimeField(blank=True, null=True)),
-                ('movie', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='comments', to='movies.movie')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='comments', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("content", models.TextField(max_length=2000, verbose_name="Treść")),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("visible", "Widoczny"),
+                            ("flagged", "Zgłoszony"),
+                            ("hidden", "Ukryty"),
+                            ("deleted", "Usunięty"),
+                        ],
+                        default="visible",
+                        max_length=20,
+                        verbose_name="Status",
+                    ),
+                ),
+                (
+                    "toxicity_score",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=4,
+                        max_digits=5,
+                        null=True,
+                        verbose_name="Toxicity score",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("moderated_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "movie",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="comments",
+                        to="movies.movie",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="comments",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'comment',
-                'verbose_name_plural': 'comments',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['movie', 'status', '-created_at'], name='ix_comments_movie_status')],
+                "verbose_name": "comment",
+                "verbose_name_plural": "comments",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["movie", "status", "-created_at"],
+                        name="ix_comments_movie_status",
+                    )
+                ],
             },
         ),
     ]

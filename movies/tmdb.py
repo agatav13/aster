@@ -127,7 +127,9 @@ class TmdbClient:
     ) -> None:
         self.api_key = api_key if api_key is not None else settings.TMDB_API_KEY
         self.base_url = (base_url or settings.TMDB_API_BASE_URL).rstrip("/")
-        self.image_base_url = (image_base_url or settings.TMDB_IMAGE_BASE_URL).rstrip("/")
+        self.image_base_url = (image_base_url or settings.TMDB_IMAGE_BASE_URL).rstrip(
+            "/"
+        )
         self.timeout = timeout if timeout is not None else settings.TMDB_REQUEST_TIMEOUT
         self.language = language if language is not None else settings.TMDB_LANGUAGE
 
@@ -139,7 +141,10 @@ class TmdbClient:
 
     def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         url = f"{self.base_url}/{path.lstrip('/')}"
-        merged_params: dict[str, Any] = {"api_key": self.api_key, "language": self.language}
+        merged_params: dict[str, Any] = {
+            "api_key": self.api_key,
+            "language": self.language,
+        }
         if params:
             merged_params.update(params)
         # Log only the public params — never the api_key.
@@ -155,7 +160,9 @@ class TmdbClient:
             # message generic so it's safe to show to end users.
             logger.warning(
                 "TMDB %s returned HTTP %s; body=%r",
-                path, response.status_code, response.text[:500],
+                path,
+                response.status_code,
+                response.text[:500],
             )
             raise TmdbApiError(
                 f"TMDB request to {path} failed with status {response.status_code}"

@@ -25,7 +25,9 @@ urlpatterns = [
     path("genres/", EditFavoriteGenresView.as_view(), name="edit_favorite_genres"),
     path("activate/<uidb64>/<token>/", ActivateAccountView.as_view(), name="activate"),
     path("activation-sent/", ActivationSentView.as_view(), name="activation_sent"),
-    path("resend-activation/", ResendActivationView.as_view(), name="resend_activation"),
+    path(
+        "resend-activation/", ResendActivationView.as_view(), name="resend_activation"
+    ),
     path(
         "password-reset/",
         auth_views.PasswordResetView.as_view(
@@ -61,4 +63,3 @@ urlpatterns = [
         name="password_reset_complete",
     ),
 ]
-

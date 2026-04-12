@@ -61,7 +61,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("name", models.CharField(max_length=50, unique=True, verbose_name="Nazwa")),
+                (
+                    "name",
+                    models.CharField(max_length=50, unique=True, verbose_name="Nazwa"),
+                ),
             ],
             options={
                 "verbose_name": "gatunek",
@@ -81,4 +84,3 @@ class Migration(migrations.Migration):
         ),
         migrations.RunPython(seed_genres, unseed_genres),
     ]
-

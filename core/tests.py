@@ -105,9 +105,7 @@ class DashboardActivityTests(TestCase):
         self.assertIn(self.watchlist_movie, response.context["watchlist_movies"])
 
     def test_rated_tab_shows_rated_movies_with_score(self) -> None:
-        Rating.objects.create(
-            user=self.user, movie=self.rated_movie, score=4
-        )
+        Rating.objects.create(user=self.user, movie=self.rated_movie, score=4)
 
         response = self.client.get(reverse("home"))
 
@@ -205,27 +203,37 @@ class RecommendationTests(TestCase):
         cls.genre_horror, _ = Genre.objects.get_or_create(name="Horror")
 
         cls.liked_movie = Movie.objects.create(
-            tmdb_id=9001, title="Liked Movie", popularity=Decimal("50.00"),
+            tmdb_id=9001,
+            title="Liked Movie",
+            popularity=Decimal("50.00"),
         )
         cls.liked_movie.genres.set([cls.genre_action, cls.genre_comedy])
 
         cls.candidate_action = Movie.objects.create(
-            tmdb_id=9002, title="Action Candidate", popularity=Decimal("80.00"),
+            tmdb_id=9002,
+            title="Action Candidate",
+            popularity=Decimal("80.00"),
         )
         cls.candidate_action.genres.set([cls.genre_action])
 
         cls.candidate_comedy = Movie.objects.create(
-            tmdb_id=9003, title="Comedy Candidate", popularity=Decimal("60.00"),
+            tmdb_id=9003,
+            title="Comedy Candidate",
+            popularity=Decimal("60.00"),
         )
         cls.candidate_comedy.genres.set([cls.genre_comedy])
 
         cls.candidate_both = Movie.objects.create(
-            tmdb_id=9004, title="Both Genres Candidate", popularity=Decimal("40.00"),
+            tmdb_id=9004,
+            title="Both Genres Candidate",
+            popularity=Decimal("40.00"),
         )
         cls.candidate_both.genres.set([cls.genre_action, cls.genre_comedy])
 
         cls.unrelated_movie = Movie.objects.create(
-            tmdb_id=9005, title="Horror Only", popularity=Decimal("90.00"),
+            tmdb_id=9005,
+            title="Horror Only",
+            popularity=Decimal("90.00"),
         )
         cls.unrelated_movie.genres.set([cls.genre_horror])
 
@@ -234,32 +242,44 @@ class RecommendationTests(TestCase):
         cls.actor_a = Person.objects.create(tmdb_id=7002, name="Actor A")
 
         MovieCredit.objects.create(
-            movie=cls.liked_movie, person=cls.director_a,
+            movie=cls.liked_movie,
+            person=cls.director_a,
             credit_type=MovieCredit.DIRECTOR,
         )
         MovieCredit.objects.create(
-            movie=cls.liked_movie, person=cls.actor_a,
-            credit_type=MovieCredit.CAST, character="Hero", order=0,
+            movie=cls.liked_movie,
+            person=cls.actor_a,
+            credit_type=MovieCredit.CAST,
+            character="Hero",
+            order=0,
         )
 
         # A candidate sharing the same director (but no genre overlap).
         cls.candidate_same_director = Movie.objects.create(
-            tmdb_id=9006, title="Same Director Film", popularity=Decimal("30.00"),
+            tmdb_id=9006,
+            title="Same Director Film",
+            popularity=Decimal("30.00"),
         )
         cls.candidate_same_director.genres.set([cls.genre_horror])
         MovieCredit.objects.create(
-            movie=cls.candidate_same_director, person=cls.director_a,
+            movie=cls.candidate_same_director,
+            person=cls.director_a,
             credit_type=MovieCredit.DIRECTOR,
         )
 
         # A candidate sharing the same actor (but no genre overlap).
         cls.candidate_same_actor = Movie.objects.create(
-            tmdb_id=9007, title="Same Actor Film", popularity=Decimal("25.00"),
+            tmdb_id=9007,
+            title="Same Actor Film",
+            popularity=Decimal("25.00"),
         )
         cls.candidate_same_actor.genres.set([cls.genre_horror])
         MovieCredit.objects.create(
-            movie=cls.candidate_same_actor, person=cls.actor_a,
-            credit_type=MovieCredit.CAST, character="Sidekick", order=0,
+            movie=cls.candidate_same_actor,
+            person=cls.actor_a,
+            credit_type=MovieCredit.CAST,
+            character="Sidekick",
+            order=0,
         )
 
     def test_no_signals_returns_empty(self) -> None:
@@ -306,11 +326,13 @@ class RecommendationTests(TestCase):
     def test_watched_and_watchlisted_movies_are_excluded(self) -> None:
         self.user.favorite_genres.set([self.genre_action])
         UserMovieStatus.objects.create(
-            user=self.user, movie=self.candidate_action,
+            user=self.user,
+            movie=self.candidate_action,
             status=UserMovieStatus.WATCHED,
         )
         UserMovieStatus.objects.create(
-            user=self.user, movie=self.candidate_both,
+            user=self.user,
+            movie=self.candidate_both,
             status=UserMovieStatus.WATCHLIST,
         )
 

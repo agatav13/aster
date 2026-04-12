@@ -218,7 +218,9 @@ class UpsertGenreTests(TestCase):
         self.assertEqual(drama.name, "Dramat")
         self.assertEqual(family.name, "Familijny")
         # No English duplicates should remain.
-        self.assertFalse(Genre.objects.filter(name__in=["Action", "Drama", "Family"]).exists())
+        self.assertFalse(
+            Genre.objects.filter(name__in=["Action", "Drama", "Family"]).exists()
+        )
 
     def test_rename_collision_merges_into_existing_row(self) -> None:
         """Reproduces the en-US-then-pl-PL upgrade path: an English row
@@ -442,15 +444,11 @@ class TmdbLiveSearchTests(TestCase):
         # The local row whose title doesn't match must NOT leak in.
         self.assertNotContains(response, "Local Only")
         self.assertContains(response, "Wyniki na żywo z TMDB")
-        mock_client.search_movies.assert_called_once_with(
-            query="galactic", page=1
-        )
+        mock_client.search_movies.assert_called_once_with(query="galactic", page=1)
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_search_falls_back_to_local_on_tmdb_error(
-        self, mock_client_class
-    ) -> None:
+    def test_search_falls_back_to_local_on_tmdb_error(self, mock_client_class) -> None:
         mock_client = mock_client_class.return_value
         mock_client.search_movies.side_effect = TmdbApiError("boom")
 
@@ -478,9 +476,7 @@ class TmdbLiveSearchTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_search_empty_results_renders_empty_state(
-        self, mock_client_class
-    ) -> None:
+    def test_search_empty_results_renders_empty_state(self, mock_client_class) -> None:
         mock_client = mock_client_class.return_value
         mock_client.search_movies.return_value = TmdbDiscoverResponse(
             page=1, total_pages=1, total_results=0, results=[]
@@ -494,9 +490,7 @@ class TmdbLiveSearchTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_search_handles_empty_release_date_string(
-        self, mock_client_class
-    ) -> None:
+    def test_search_handles_empty_release_date_string(self, mock_client_class) -> None:
         """Regression: TMDB returns release_date as "" for unreleased movies.
         Pydantic v2's date parser used to crash on this; OptionalDate should
         coerce it to None so the listing renders cleanly."""
@@ -518,8 +512,8 @@ class TmdbLiveSearchTests(TestCase):
         # Validate through the real Pydantic model so we exercise the
         # OptionalDate BeforeValidator end-to-end.
         mock_client = mock_client_class.return_value
-        mock_client.search_movies.return_value = (
-            TmdbDiscoverResponse.model_validate(raw_payload)
+        mock_client.search_movies.return_value = TmdbDiscoverResponse.model_validate(
+            raw_payload
         )
         mock_client.image_url.side_effect = lambda path: (
             f"https://image.tmdb.org/t/p/w500{path}" if path else ""
@@ -630,17 +624,13 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.assertContains(response, "Trending Two")
         # The local row whose title doesn't match must NOT leak in.
         self.assertNotContains(response, "Local Cached")
-        mock_client.list_trending.assert_called_once_with(
-            time_window="week", page=1
-        )
+        mock_client.list_trending.assert_called_once_with(time_window="week", page=1)
         # /discover is only used when a genre or favorites filter applies.
         mock_client.discover_popular.assert_not_called()
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_browse_falls_back_to_local_on_tmdb_error(
-        self, mock_client_class
-    ) -> None:
+    def test_browse_falls_back_to_local_on_tmdb_error(self, mock_client_class) -> None:
         mock_client = mock_client_class.return_value
         mock_client.list_trending.side_effect = TmdbApiError("boom")
 
@@ -671,9 +661,7 @@ class TmdbDiscoverBrowseTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Action Pick")
-        mock_client.discover_popular.assert_called_once_with(
-            page=1, with_genres="28"
-        )
+        mock_client.discover_popular.assert_called_once_with(page=1, with_genres="28")
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
@@ -729,9 +717,7 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.client.force_login(user)
 
         mock_client = mock_client_class.return_value
-        mock_client.list_trending.return_value = self._build_response(
-            "Trending Pick"
-        )
+        mock_client.list_trending.return_value = self._build_response("Trending Pick")
         mock_client.image_url.side_effect = lambda path: ""
 
         response = self.client.get(reverse("movies:list"))  # no ?favorites=
@@ -765,9 +751,7 @@ class TmdbDiscoverBrowseTests(TestCase):
         response = self.client.get(reverse("movies:list"), {"favorites": "0"})
 
         self.assertEqual(response.status_code, 200)
-        mock_client.list_trending.assert_called_once_with(
-            time_window="week", page=1
-        )
+        mock_client.list_trending.assert_called_once_with(time_window="week", page=1)
         mock_client.discover_popular.assert_not_called()
         self.assertFalse(response.context["favorites_active"])
 
@@ -854,9 +838,7 @@ class TmdbDiscoverBrowseTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_browse_caps_ui_pagination_to_max_ui_pages(
-        self, mock_client_class
-    ) -> None:
+    def test_browse_caps_ui_pagination_to_max_ui_pages(self, mock_client_class) -> None:
         """Even when TMDB claims thousands of pages, the UI paginator must
         never offer more than MAX_UI_PAGES — we don't want the grid letting
         users click into noise-territory popularity rankings."""
@@ -1037,9 +1019,7 @@ class RatingServiceTests(TestCase):
         with self.assertRaises(ValueError):
             upsert_rating(user=self.user, movie=self.movie, score=99)
         self.assertFalse(
-            UserMovieStatus.objects.filter(
-                user=self.user, movie=self.movie
-            ).exists()
+            UserMovieStatus.objects.filter(user=self.user, movie=self.movie).exists()
         )
 
 
@@ -1084,9 +1064,7 @@ class MovieStatusViewTests(TestCase):
         # (user, movie) is what implements "rated/watched removes from
         # watchlist" for free.
         self.assertEqual(
-            UserMovieStatus.objects.filter(
-                user=self.user, movie=self.movie
-            ).count(),
+            UserMovieStatus.objects.filter(user=self.user, movie=self.movie).count(),
             1,
         )
 
@@ -1143,9 +1121,7 @@ class MovieRatingViewTests(TestCase):
         self.client.post(url, {"action": "save", "score": "5"})
         self.client.post(url, {"action": "save", "score": "2"})
         self.assertEqual(Rating.objects.filter(user=self.user).count(), 1)
-        self.assertEqual(
-            Rating.objects.get(user=self.user, movie=self.movie).score, 2
-        )
+        self.assertEqual(Rating.objects.get(user=self.user, movie=self.movie).score, 2)
 
     def test_delete_action_removes_rating(self) -> None:
         url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
@@ -1200,9 +1176,7 @@ class MovieDetailContextTests(TestCase):
         cls.movie = make_movie(tmdb_id=904, title="Context Flick")
 
     def test_anonymous_context_has_no_user_activity(self) -> None:
-        response = self.client.get(
-            reverse("movies:detail", args=[self.movie.tmdb_id])
-        )
+        response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
         self.assertIsNone(response.context["user_status"])
         self.assertIsNone(response.context["user_rating"])
 
@@ -1213,9 +1187,7 @@ class MovieDetailContextTests(TestCase):
         upsert_rating(user=self.user, movie=self.movie, score=4)
 
         self.client.force_login(self.user)
-        response = self.client.get(
-            reverse("movies:detail", args=[self.movie.tmdb_id])
-        )
+        response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
         self.assertEqual(response.context["user_status"], UserMovieStatus.WATCHED)
         self.assertEqual(response.context["user_rating"], Decimal("4.0"))
 
@@ -1281,16 +1253,12 @@ class CommentServiceTests(TestCase):
         self.assertEqual(rows[0].content, "ok-1")
 
     def test_delete_own_comment_succeeds(self) -> None:
-        comment = create_comment(
-            user=self.user, movie=self.movie, content="usuwalny"
-        )
+        comment = create_comment(user=self.user, movie=self.movie, content="usuwalny")
         self.assertTrue(delete_own_comment(user=self.user, comment=comment))
         self.assertFalse(Comment.objects.filter(pk=comment.pk).exists())
 
     def test_delete_own_comment_refuses_other_users_row(self) -> None:
-        comment = create_comment(
-            user=self.other, movie=self.movie, content="cudzy"
-        )
+        comment = create_comment(user=self.other, movie=self.movie, content="cudzy")
         self.assertFalse(delete_own_comment(user=self.user, comment=comment))
         self.assertTrue(Comment.objects.filter(pk=comment.pk).exists())
 
@@ -1339,13 +1307,9 @@ class CommentViewTests(TestCase):
         self.assertFalse(Comment.objects.exists())
 
     def test_delete_own_comment_removes_row(self) -> None:
-        comment = create_comment(
-            user=self.user, movie=self.movie, content="moje"
-        )
+        comment = create_comment(user=self.user, movie=self.movie, content="moje")
         self.client.force_login(self.user)
-        url = reverse(
-            "movies:delete_comment", args=[self.movie.tmdb_id, comment.pk]
-        )
+        url = reverse("movies:delete_comment", args=[self.movie.tmdb_id, comment.pk])
         response = self.client.post(url)
         self.assertRedirects(
             response, reverse("movies:detail", args=[self.movie.tmdb_id])
@@ -1353,13 +1317,9 @@ class CommentViewTests(TestCase):
         self.assertFalse(Comment.objects.filter(pk=comment.pk).exists())
 
     def test_cannot_delete_someone_elses_comment(self) -> None:
-        comment = create_comment(
-            user=self.other, movie=self.movie, content="cudze"
-        )
+        comment = create_comment(user=self.other, movie=self.movie, content="cudze")
         self.client.force_login(self.user)
-        url = reverse(
-            "movies:delete_comment", args=[self.movie.tmdb_id, comment.pk]
-        )
+        url = reverse("movies:delete_comment", args=[self.movie.tmdb_id, comment.pk])
         response = self.client.post(url)
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Comment.objects.filter(pk=comment.pk).exists())
@@ -1372,9 +1332,7 @@ class CommentViewTests(TestCase):
             user=self.user, movie=other_movie, content="na innym filmie"
         )
         self.client.force_login(self.user)
-        url = reverse(
-            "movies:delete_comment", args=[self.movie.tmdb_id, comment.pk]
-        )
+        url = reverse("movies:delete_comment", args=[self.movie.tmdb_id, comment.pk])
         response = self.client.post(url)
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Comment.objects.filter(pk=comment.pk).exists())
@@ -1393,9 +1351,7 @@ class MovieDetailCommentContextTests(TestCase):
         old = create_comment(user=self.user, movie=self.movie, content="stary")
         new = create_comment(user=self.user, movie=self.movie, content="nowy")
 
-        response = self.client.get(
-            reverse("movies:detail", args=[self.movie.tmdb_id])
-        )
+        response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
         self.assertEqual(response.status_code, 200)
         ctx_comments = list(response.context["comments"])
         self.assertEqual([c.pk for c in ctx_comments], [new.pk, old.pk])
@@ -1410,9 +1366,7 @@ class MovieDetailCommentContextTests(TestCase):
             status=Comment.HIDDEN,
         )
 
-        response = self.client.get(
-            reverse("movies:detail", args=[self.movie.tmdb_id])
-        )
+        response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
         self.assertContains(response, "widoczny")
         self.assertNotContains(response, "ukryty")
         self.assertEqual(response.context["comments_count"], 1)
@@ -1432,11 +1386,19 @@ class CreditSyncTests(TestCase):
 
         credits = TmdbCredits(
             cast=[
-                TmdbCastMember(id=100, name="Actor One", character="Hero", order=0, profile_path="/a1.jpg"),
+                TmdbCastMember(
+                    id=100,
+                    name="Actor One",
+                    character="Hero",
+                    order=0,
+                    profile_path="/a1.jpg",
+                ),
                 TmdbCastMember(id=101, name="Actor Two", character="Villain", order=1),
             ],
             crew=[
-                TmdbCrewMember(id=200, name="Dir One", job="Director", profile_path="/d1.jpg"),
+                TmdbCrewMember(
+                    id=200, name="Dir One", job="Director", profile_path="/d1.jpg"
+                ),
                 TmdbCrewMember(id=201, name="Producer One", job="Producer"),
             ],
         )
@@ -1468,8 +1430,10 @@ class CreditSyncTests(TestCase):
 
         old_person = Person.objects.create(tmdb_id=999, name="Old Actor")
         MovieCredit.objects.create(
-            movie=self.movie, person=old_person,
-            credit_type=MovieCredit.CAST, order=0,
+            movie=self.movie,
+            person=old_person,
+            credit_type=MovieCredit.CAST,
+            order=0,
         )
 
         credits = TmdbCredits(
@@ -1492,24 +1456,24 @@ class MovieDetailCreditsContextTests(TestCase):
         director = Person.objects.create(tmdb_id=300, name="Test Director")
         actor = Person.objects.create(tmdb_id=301, name="Test Actor")
         MovieCredit.objects.create(
-            movie=cls.movie, person=director,
+            movie=cls.movie,
+            person=director,
             credit_type=MovieCredit.DIRECTOR,
         )
         MovieCredit.objects.create(
-            movie=cls.movie, person=actor,
-            credit_type=MovieCredit.CAST, character="Main Role", order=0,
+            movie=cls.movie,
+            person=actor,
+            credit_type=MovieCredit.CAST,
+            character="Main Role",
+            order=0,
         )
 
     def test_detail_renders_director(self) -> None:
-        response = self.client.get(
-            reverse("movies:detail", args=[self.movie.tmdb_id])
-        )
+        response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Test Director")
 
     def test_detail_renders_cast(self) -> None:
-        response = self.client.get(
-            reverse("movies:detail", args=[self.movie.tmdb_id])
-        )
+        response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
         self.assertContains(response, "Test Actor")
         self.assertContains(response, "Main Role")

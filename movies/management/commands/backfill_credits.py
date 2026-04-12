@@ -8,7 +8,9 @@ from movies.tmdb import TmdbApiError, TmdbClient, TmdbConfigError
 
 
 class Command(BaseCommand):
-    help = "Backfill director and cast credits from TMDB for cached movies that have none."
+    help = (
+        "Backfill director and cast credits from TMDB for cached movies that have none."
+    )
 
     def add_arguments(self, parser: object) -> None:
         parser.add_argument(  # type: ignore[attr-defined]
@@ -28,7 +30,9 @@ class Command(BaseCommand):
         movies = Movie.objects.filter(credits__isnull=True).distinct()
         total = movies.count()
         if total == 0:
-            self.stdout.write(self.style.SUCCESS("All cached movies already have credits."))
+            self.stdout.write(
+                self.style.SUCCESS("All cached movies already have credits.")
+            )
             return
 
         self.stdout.write(f"Found {total} movies without credits. Backfilling...")
@@ -39,14 +43,18 @@ class Command(BaseCommand):
             try:
                 detail = client.get_movie(movie.tmdb_id)
             except TmdbApiError as exc:
-                self.stderr.write(f"  [{i}/{total}] TMDB error for {movie.title} (tmdb_id={movie.tmdb_id}): {exc}")
+                self.stderr.write(
+                    f"  [{i}/{total}] TMDB error for {movie.title} (tmdb_id={movie.tmdb_id}): {exc}"
+                )
                 failed += 1
                 continue
 
             if detail.credits:
                 sync_movie_credits(movie, detail.credits, client)
                 credit_count = movie.credits.count()
-                self.stdout.write(f"  [{i}/{total}] {movie.title}: {credit_count} credits synced.")
+                self.stdout.write(
+                    f"  [{i}/{total}] {movie.title}: {credit_count} credits synced."
+                )
             else:
                 self.stdout.write(f"  [{i}/{total}] {movie.title}: no credits on TMDB.")
 

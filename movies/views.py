@@ -42,8 +42,7 @@ class MovieListView(TemplateView):
         query = request.GET.get("q", "").strip()
         genre_id_raw = request.GET.get("genre", "").strip()
         has_favorite_genres = (
-            request.user.is_authenticated
-            and request.user.favorite_genres.exists()
+            request.user.is_authenticated and request.user.favorite_genres.exists()
         )
         favorites_active = self._resolve_favorites_active(
             request.GET.get("favorites"), has_favorite_genres
@@ -244,9 +243,7 @@ def update_movie_status(request: HttpRequest, tmdb_id: int) -> HttpResponse:
         messages.error(request, "Nieprawidłowa akcja.")
         return _detail_redirect(tmdb_id)
 
-    existing = UserMovieStatus.objects.filter(
-        user=request.user, movie=movie
-    ).first()
+    existing = UserMovieStatus.objects.filter(user=request.user, movie=movie).first()
     if existing is not None and existing.status == action:
         remove_movie_status(user=request.user, movie=movie)
         messages.info(request, f"„{movie.title}” usunięty z Twoich list.")
@@ -264,11 +261,7 @@ def update_movie_status(request: HttpRequest, tmdb_id: int) -> HttpResponse:
             f"„{movie.title}” przeniesiony z „do obejrzenia” do „obejrzane”.",
         )
     else:
-        label = (
-            "do obejrzenia"
-            if action == UserMovieStatus.WATCHLIST
-            else "obejrzane"
-        )
+        label = "do obejrzenia" if action == UserMovieStatus.WATCHLIST else "obejrzane"
         messages.success(request, f"„{movie.title}” dodany do listy „{label}”.")
     return _detail_redirect(tmdb_id)
 
@@ -282,7 +275,9 @@ def update_movie_rating(request: HttpRequest, tmdb_id: int) -> HttpResponse:
 
     if action == "delete":
         if remove_rating(user=request.user, movie=movie):
-            messages.info(request, f"Twoja ocena filmu „{movie.title}” została usunięta.")
+            messages.info(
+                request, f"Twoja ocena filmu „{movie.title}” została usunięta."
+            )
         return _detail_redirect(tmdb_id)
 
     raw_score = request.POST.get("score", "").strip()
@@ -348,9 +343,7 @@ def delete_movie_comment(
     request: HttpRequest, tmdb_id: int, comment_id: int
 ) -> HttpResponse:
     """Delete a comment the current user owns; 404 for anything else."""
-    comment = get_object_or_404(
-        Comment, pk=comment_id, movie__tmdb_id=tmdb_id
-    )
+    comment = get_object_or_404(Comment, pk=comment_id, movie__tmdb_id=tmdb_id)
     if not delete_own_comment(user=request.user, comment=comment):
         raise Http404("Nie można usunąć tego komentarza.")
     messages.info(request, "Komentarz usunięty.")

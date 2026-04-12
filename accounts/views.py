@@ -139,7 +139,9 @@ class ResendActivationView(FormView):
                 return redirect("accounts:resend_activation")
             messages.success(self.request, "Wysłaliśmy nowy link aktywacyjny.")
         elif user and user.is_active:
-            messages.info(self.request, "To konto jest już aktywne. Możesz się zalogować.")
+            messages.info(
+                self.request, "To konto jest już aktywne. Możesz się zalogować."
+            )
         else:
             messages.info(
                 self.request,
@@ -197,4 +199,3 @@ class EditFavoriteGenresView(LoginRequiredMixin, UpdateView):
         )
         messages.success(self.request, "Ulubione gatunki zostały zaktualizowane.")
         return super().form_valid(form)
-

@@ -5,7 +5,7 @@ from django.db import models
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
-    def _create_user(self, email: str, password: str, **extra_fields):
+    def _create_user(self, email: str, password: str | None, **extra_fields):
         if not email:
             raise ValueError("Adres e-mail jest wymagany.")
         email = self.normalize_email(email)
@@ -19,9 +19,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", False)
         return self._create_user(email, password, **extra_fields)
 
-    def create_superuser(
-        self, email: str, password: str | None = None, **extra_fields
-    ):
+    def create_superuser(self, email: str, password: str | None = None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
@@ -38,7 +36,9 @@ class UserManager(BaseUserManager):
 class User(AbstractUser):
     username = None
     email = models.EmailField("Adres e-mail", unique=True)
-    display_name = models.CharField("Nick lub imię i nazwisko", max_length=120, blank=True)
+    display_name = models.CharField(
+        "Nick lub imię i nazwisko", max_length=120, blank=True
+    )
     favorite_genres = models.ManyToManyField(
         "movies.Genre",
         related_name="users",
