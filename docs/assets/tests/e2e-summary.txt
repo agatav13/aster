@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.12, pytest-9.0.3, pluggy-1.6.0 -- /Users/agataomasta/uni/programowanie-aplikacji-web/.venv/bin/python3
+cachedir: .pytest_cache
+django: version: 5.2.13, settings: config.settings (from ini)
+rootdir: /Users/agataomasta/uni/programowanie-aplikacji-web
+configfile: pyproject.toml
+plugins: playwright-0.7.2, cov-7.1.0, locust-2.43.4, django-4.12.0, base-url-2.1.0, anyio-4.13.0
+collecting ... collected 3 items
+
+tests/e2e/test_browse_rate_comment.py::test_browse_rate_comment[chromium] PASSED [ 33%]
+tests/e2e/test_register_login.py::test_register_activate_login[chromium] PASSED [ 66%]
+tests/e2e/test_watchlist.py::test_watchlist_then_watched[chromium] PASSED [100%]
+
+============================== 3 passed in 6.56s ===============================
