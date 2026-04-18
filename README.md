@@ -86,7 +86,6 @@ uv run manage.py check --deploy
 uv run --group docs mkdocs serve
 ```
 
-
 ## Attribution
 
 This product uses the TMDB API but is not endorsed or certified by TMDB.
