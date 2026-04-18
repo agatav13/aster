@@ -29,6 +29,8 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
+DJANGO_ADMIN_URL = os.getenv("DJANGO_ADMIN_URL", "admin/")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

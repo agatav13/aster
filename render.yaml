@@ -24,7 +24,5 @@ services:
         sync: false
       - key: DEFAULT_FROM_EMAIL
         sync: false
-      - key: DJANGO_SUPERUSER_EMAIL
-        sync: false
-      - key: DJANGO_SUPERUSER_PASSWORD
+      - key: DJANGO_ADMIN_URL
         sync: false

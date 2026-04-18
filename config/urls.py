@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.db import connection
 from django.http import JsonResponse
@@ -12,7 +13,7 @@ def health(request):
 
 urlpatterns = [
     path("health/", health, name="health"),
-    path("admin/", admin.site.urls),
+    path(settings.DJANGO_ADMIN_URL, admin.site.urls),
     path("auth/", include("accounts.urls")),
     path("movies/", include("movies.urls")),
     path("", include("core.urls")),
