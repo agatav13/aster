@@ -1,4 +1,7 @@
-# Aster - Movie Recommendation App
+# Aster — Movie Recommendation App
+
+[![CI](https://github.com/agatav13/aster/actions/workflows/test.yml/badge.svg)](https://github.com/agatav13/aster/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A Django-based web application for discovering, rating, and managing movies with personalized recommendations.
 
@@ -26,33 +29,32 @@ A Django-based web application for discovering, rating, and managing movies with
 
 ## Getting Started
 
-1. Clone the repository and create `.env` from `.env.example`:
+1. Clone the repository and create a `.env` file at the project root with at minimum:
 
 ```bash
-cp .env.example .env
+DJANGO_SECRET_KEY=dev-secret-change-me
+TMDB_API_KEY=your-tmdb-v3-key
 ```
 
-2. Fill in the required environment variables (see [Configuration](#configuration)).
-
-3. Install dependencies:
+2. Install dependencies:
 
 ```bash
 uv sync --python 3.13
 ```
 
-4. Run database migrations:
+3. Run database migrations:
 
 ```bash
 uv run manage.py migrate
 ```
 
-5. Start the development server:
+4. Start the development server:
 
 ```bash
 uv run manage.py runserver
 ```
 
-6. Open http://127.0.0.1:8000/
+5. Open http://127.0.0.1:8000/
 
 ## Configuration
 
@@ -63,6 +65,7 @@ Key environment variables:
 | `DJANGO_SECRET_KEY` | Django secret key |
 | `DJANGO_DEBUG` | `True` for development, `False` for production |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hosts |
+| `DJANGO_ADMIN_URL` | Admin URL path (defaults to `admin/`) |
 | `DATABASE_URL` | PostgreSQL connection string (defaults to SQLite if unset) |
 | `EMAIL_HOST_USER` | SMTP email address |
 | `EMAIL_HOST_PASSWORD` | SMTP password / app password |
@@ -77,7 +80,7 @@ Key environment variables:
 
 ```bash
 # Run tests
-uv run manage.py test
+uv run pytest
 
 # Create superuser
 uv run manage.py createsuperuser
@@ -101,6 +104,7 @@ uv run manage.py sync_tmdb_popular --pages 3
 config/          # Django settings, root URL config, WSGI/ASGI
 accounts/        # Authentication app (models, views, forms, utils)
 core/            # Home page and dashboard
+movies/          # Movie catalog, ratings, comments, TMDB integration
 templates/       # HTML templates (base, auth, email, partials)
 static/          # CSS and static assets
 docs/            # Project documentation and mockups
@@ -110,4 +114,12 @@ render.yaml      # Render.com deployment config
 
 ## Deployment
 
-The project deploys to Render.com. The `build.sh` script handles dependency installation, static file collection, and database migrations. A cron job pings the health endpoint (`/health/`) every 14 minutes to prevent free-tier sleep.
+The project deploys to Render.com. The `build.sh` script handles dependency installation, static file collection, and database migrations.
+
+## Attribution
+
+This product uses the TMDB API but is not endorsed or certified by TMDB. Movie metadata and artwork are provided by [The Movie Database (TMDB)](https://www.themoviedb.org/).
+
+## License
+
+[MIT](LICENSE) © Agata Omasta
