@@ -9,6 +9,7 @@
 A Django-based web application for browsing, rating, and tracking movies, with data sourced from TMDB.
 
 🌐 **Live app:** <https://aster-1lf7.onrender.com/>
+
 📖 **Documentation:** <https://agatav13.github.io/aster/>
 
 ## Tech Stack
