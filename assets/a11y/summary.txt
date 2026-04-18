@@ -1,0 +1,33 @@
+Pa11y accessibility audit — Aster ver_1
+========================================
+
+Standard: WCAG2AA (default for pa11y 9.x)
+Tool: pa11y 9.1.1
+Engine: HTML_CodeSniffer
+Date: 2026-04-18
+Target: https://aster-1lf7.onrender.com/ (production)
+
+Pages audited
+-------------
+1. /auth/login/         — No issues found
+2. /auth/register/      — No issues found
+3. /movies/             — No issues found
+4. /movies/687163/      — No issues found
+
+Reproducing
+-----------
+    npx --yes pa11y https://aster-1lf7.onrender.com/auth/login/
+    npx --yes pa11y https://aster-1lf7.onrender.com/auth/register/
+    npx --yes pa11y https://aster-1lf7.onrender.com/movies/
+    npx --yes pa11y https://aster-1lf7.onrender.com/movies/687163/
+
+HTML reports for each page are saved in this directory.
+
+Notes
+-----
+- Pa11y catches only static issues detectable from HTML+CSS without auth
+  (alt text, form labels, contrast, ARIA misuse, headings).
+- Authenticated pages (dashboard, profile, rating modal interactions)
+  are not covered by this audit. Manual testing recommended.
+- Color contrast on dark theme passes WCAG2AA based on automated checks
+  but should be re-verified manually for any future palette changes.

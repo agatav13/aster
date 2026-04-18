@@ -1,0 +1,159 @@
+/*
+ * Aster theme — Material for MkDocs override.
+ * Mirrors the palette of static/css/app.css ("Ethereal Curator" dark
+ * and "Digital Atelier" light specs): warm charcoal vs. parchment
+ * surfaces, dusty rose accents, no pure black or pure white neutrals.
+ */
+
+:root {
+  --md-text-font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --md-code-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+/* ── Light scheme — "Digital Atelier" parchment ───────── */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:        #a26465;
+  --md-primary-fg-color--light: #b97e7f;
+  --md-primary-fg-color--dark:  #8a5253;
+  --md-primary-bg-color:        #faf9f6;
+  --md-primary-bg-color--light: #f3eee9;
+
+  --md-accent-fg-color:             #8a5253;
+  --md-accent-fg-color--transparent: rgba(162, 100, 101, 0.10);
+  --md-accent-bg-color:             #ffffff;
+
+  --md-default-fg-color:          #2b2222;
+  --md-default-fg-color--light:   #5a4a4a;
+  --md-default-fg-color--lighter: #7b6e6e;
+  --md-default-fg-color--lightest: rgba(43, 34, 34, 0.07);
+  --md-default-bg-color:          #faf9f6;
+  --md-default-bg-color--light:   #f3eee9;
+  --md-default-bg-color--lighter: #ffffff;
+
+  --md-code-fg-color: #2b2222;
+  --md-code-bg-color: #f3eee9;
+
+  --md-typeset-a-color: #a26465;
+  --md-typeset-mark-color: rgba(162, 100, 101, 0.20);
+
+  --md-footer-bg-color:      #2b2222;
+  --md-footer-bg-color--dark: #1f1818;
+  --md-footer-fg-color:      #ebe4e3;
+  --md-footer-fg-color--light: #a89c9b;
+  --md-footer-fg-color--lighter: rgba(235, 228, 227, 0.45);
+}
+
+/* ── Dark scheme — "Ethereal Curator" warm charcoal ───── */
+[data-md-color-scheme="slate"] {
+  --md-hue: 8;
+
+  --md-primary-fg-color:        #ecbbba;
+  --md-primary-fg-color--light: #f3cccb;
+  --md-primary-fg-color--dark:  #c89a99;
+  --md-primary-bg-color:        #0f0e0e;
+  --md-primary-bg-color--light: #161313;
+
+  --md-accent-fg-color:             #f3cccb;
+  --md-accent-fg-color--transparent: rgba(236, 187, 186, 0.12);
+  --md-accent-bg-color:             #0f0e0e;
+
+  --md-default-fg-color:          #ebe4e3;
+  --md-default-fg-color--light:   #c4b9b8;
+  --md-default-fg-color--lighter: #a89c9b;
+  --md-default-fg-color--lightest: rgba(235, 228, 227, 0.07);
+  --md-default-bg-color:          #0f0e0e;
+  --md-default-bg-color--light:   #161313;
+  --md-default-bg-color--lighter: #1c1818;
+
+  --md-code-fg-color: #ebe4e3;
+  --md-code-bg-color: #1c1818;
+
+  --md-typeset-a-color: #ecbbba;
+  --md-typeset-mark-color: rgba(236, 187, 186, 0.22);
+
+  --md-footer-bg-color:      #161313;
+  --md-footer-bg-color--dark: #0f0e0e;
+  --md-footer-fg-color:      #ebe4e3;
+  --md-footer-fg-color--light: #a89c9b;
+  --md-footer-fg-color--lighter: rgba(235, 228, 227, 0.45);
+}
+
+/* Match Aster's rounded card aesthetic. */
+.md-typeset code,
+.md-typeset pre > code,
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 10px;
+}
+
+.md-typeset table:not([class]) {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Subtle accent-tinted left border on admonitions, like Aster's cards. */
+.md-typeset .admonition,
+.md-typeset details {
+  border-left-width: 4px;
+}
+
+/* Header gets a subtle bottom border instead of the solid colored bar. */
+.md-header {
+  background: var(--md-default-bg-color--light);
+  color: var(--md-default-fg-color);
+  box-shadow: 0 1px 0 var(--md-default-fg-color--lightest);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background: var(--md-default-bg-color--light);
+}
+
+/* Tabs (top-level navigation) — match header surface. */
+.md-tabs {
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+  color: var(--md-accent-fg-color);
+  opacity: 1;
+}
+
+/* Search input — readable placeholder, visible border, contrasted icon.
+   !important is needed because Material's defaults bind to its own
+   primary-color tokens which we deliberately don't use. */
+.md-search__form {
+  background-color: var(--md-default-bg-color) !important;
+  border: 1px solid var(--md-default-fg-color--lighter) !important;
+  border-radius: 10px;
+}
+
+.md-search__form:hover {
+  background-color: var(--md-default-bg-color--lighter) !important;
+  border-color: var(--md-accent-fg-color) !important;
+}
+
+.md-search__input {
+  color: var(--md-default-fg-color) !important;
+}
+
+.md-search__input::placeholder {
+  color: var(--md-default-fg-color--light) !important;
+  opacity: 1 !important;
+}
+
+.md-search__input + .md-search__icon,
+.md-search__icon[for="__search"],
+.md-search__icon svg {
+  color: var(--md-default-fg-color--light) !important;
+  fill: var(--md-default-fg-color--light) !important;
+  opacity: 1 !important;
+}
+
+.md-search__form:hover .md-search__icon,
+.md-search__form:hover .md-search__icon svg {
+  color: var(--md-accent-fg-color) !important;
+  fill: var(--md-accent-fg-color) !important;
+}
