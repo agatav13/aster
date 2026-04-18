@@ -15,7 +15,7 @@ jobs:
       DJANGO_DEBUG: "True"
       TMDB_API_KEY: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
