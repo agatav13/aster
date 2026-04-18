@@ -1,11 +1,11 @@
 [project]
-name = "movie-app"
+name = "aster"
 version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-  "Django>=5.2,<6.1",
+  "Django>=5.2.13,<5.3",
   "python-dotenv>=1.2,<1.3",
   "gunicorn>=23.0",
   "psycopg[binary]>=3.2",
@@ -24,8 +24,22 @@ dev = [
     "pre-commit>=4.2",
     "pytest>=9.0.3",
     "pytest-django>=4.12.0",
+    "pytest-cov>=6.0",
+    "pytest-playwright>=0.6",
+    "locust>=2.32",
+    "bandit>=1.8",
+    "pip-audit>=2.7",
     "ruff>=0.11",
     "ty>=0.0.1a7",
+]
+docs = [
+    # Pinned to <2.0 — MkDocs 2.0 is announced as a breaking rewrite that
+    # will drop the entire plugin system and theme overrides, with no
+    # migration path. Material for MkDocs has stated it will not migrate.
+    # Track: https://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/
+    "mkdocs>=1.6,<2.0",
+    "mkdocs-material>=9.5,<10",
+    "pymdown-extensions>=10.14",
 ]
 
 [tool.pytest.ini_options]
@@ -36,6 +50,32 @@ python_functions = ["test_*"]
 filterwarnings = [
     "ignore::UserWarning:django.core.handlers.base",
 ]
+markers = [
+    "e2e: end-to-end tests requiring a running server (slow)",
+]
+addopts = "-m 'not e2e'"
+
+[tool.coverage.run]
+source = ["accounts", "core", "movies", "config"]
+omit = [
+    "*/migrations/*",
+    "*/tests.py",
+    "*/test_*.py",
+    "manage.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+show_missing = true
+skip_covered = false
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "staticfiles", "docs"]
+skips = ["B101"]
 
 [tool.ty.rules]
 # Django's metaclass magic (Model.objects, descriptors, HttpRequest.user)

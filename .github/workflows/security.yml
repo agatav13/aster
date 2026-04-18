@@ -1,0 +1,50 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  bandit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --all-extras --dev
+      - name: Bandit (medium+ severity)
+        run: uv run bandit -r accounts core movies config -ll
+
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --all-extras --dev
+      - name: pip-audit
+        run: uv run pip-audit
+
+  django-deploy-check:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: aster-1lf7.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --all-extras --dev
+      - name: Generate ephemeral SECRET_KEY
+        run: |
+          echo "DJANGO_SECRET_KEY=$(python -c 'import secrets;print(secrets.token_urlsafe(64))')" >> "$GITHUB_ENV"
+      - name: Django check --deploy
+        run: uv run manage.py check --deploy --fail-level WARNING

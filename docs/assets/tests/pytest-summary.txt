@@ -1,0 +1,25 @@
+config/settings.py                                   76     15    80%   16, 84, 110, 120-129, 139-140
+config/urls.py                                       10      3    70%   9-11
+config/wsgi.py                                        4      4     0%   1-7
+core/__init__.py                                      0      0   100%
+core/apps.py                                          4      0   100%
+core/urls.py                                          3      0   100%
+core/views.py                                        18      0   100%
+movies/__init__.py                                    0      0   100%
+movies/admin.py                                      35      0   100%
+movies/apps.py                                        5      0   100%
+movies/management/__init__.py                         0      0   100%
+movies/management/commands/__init__.py                0      0   100%
+movies/management/commands/backfill_credits.py       39     39     0%   1-65
+movies/management/commands/normalize_genres.py        7      7     0%   1-15
+movies/management/commands/sync_tmdb_genres.py       15     15     0%   1-21
+movies/management/commands/sync_tmdb_popular.py      33     33     0%   1-56
+movies/models.py                                    118      7    94%   63, 108, 164, 180, 224, 289-290
+movies/services.py                                  341     17    95%   236-238, 264-271, 424, 436, 448-450, 505, 585, 648, 657
+movies/tmdb.py                                      113     16    86%   155-157, 173-174, 189-194, 207-215, 223-227
+movies/urls.py                                        4      0   100%
+movies/views.py                                     157     11    93%   93-94, 168-170, 211-216, 243-244
+-------------------------------------------------------------------------------
+TOTAL                                              1270    218    83%
+Coverage HTML written to dir docs/assets/tests/coverage
+====================== 135 passed, 3 deselected in 9.30s =======================

@@ -1,0 +1,85 @@
+site_name: Aster — Dokumentacja
+site_description: Dokumentacja aplikacji Aster do oceniania i polecania filmów.
+site_url: https://agatav13.github.io/aster/
+repo_url: https://github.com/agatav13/aster
+repo_name: agatav13/aster
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: pl
+  font: false
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Tryb ciemny
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Tryb jasny
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+nav:
+  - Start: index.md
+  - Wymagania:
+      - Funkcjonalne: requirements/functional.md
+      - Niefunkcjonalne: requirements/non-functional.md
+  - UX/UI:
+      - Mapa serwisu: ux/sitemap.md
+      - Ścieżki użytkownika: ux/user-journeys.md
+  - Architektura:
+      - System: architecture/system.md
+      - Baza danych: architecture/database.md
+      - API i integracje: architecture/apis.md
+      - Stack technologiczny: architecture/tech-stack.md
+  - Implementacja:
+      - Moduły i wzorce: implementation/modules.md
+      - Wdrożenie: implementation/deployment.md
+  - Testy:
+      - Strategia: testing/strategy.md
+      - Raporty: testing/reports.md
+  - Utrzymanie:
+      - Podręcznik administratora: maintenance/admin-guide.md
+      - Instrukcja użytkownika: maintenance/user-guide.md
+      - Historia wersji: maintenance/changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/agatav13/aster
