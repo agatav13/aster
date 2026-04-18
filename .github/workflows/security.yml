@@ -10,7 +10,7 @@ jobs:
   bandit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
@@ -22,7 +22,7 @@ jobs:
   pip-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
@@ -37,7 +37,7 @@ jobs:
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: aster-1lf7.onrender.com
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
