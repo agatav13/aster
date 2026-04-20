@@ -56,7 +56,7 @@ markers = [
 addopts = "-m 'not e2e'"
 
 [tool.coverage.run]
-source = ["accounts", "core", "movies", "config"]
+source = ["accounts", "core", "movies", "config", "feedback"]
 omit = [
     "*/migrations/*",
     "*/tests.py",

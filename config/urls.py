@@ -16,5 +16,6 @@ urlpatterns = [
     path(settings.DJANGO_ADMIN_URL, admin.site.urls),
     path("auth/", include("accounts.urls")),
     path("movies/", include("movies.urls")),
+    path("feedback/", include("feedback.urls")),
     path("", include("core.urls")),
 ]

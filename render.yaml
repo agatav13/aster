@@ -26,3 +26,7 @@ services:
         sync: false
       - key: DJANGO_ADMIN_URL
         sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        sync: false
