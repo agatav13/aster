@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "accounts",
     "core",
     "movies",
+    "feedback",
 ]
 
 MIDDLEWARE = [
@@ -150,6 +151,9 @@ else:
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "")  # "owner/repo"
+
 TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
 TMDB_API_BASE_URL = os.getenv("TMDB_API_BASE_URL", "https://api.themoviedb.org/3")
 TMDB_IMAGE_BASE_URL = os.getenv(
@@ -191,6 +195,11 @@ LOGGING = {
         },
         "movies": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
         "core": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
+        "feedback": {
+            "handlers": ["console"],
+            "level": APP_LOG_LEVEL,
+            "propagate": False,
+        },
         "django.request": {
             "handlers": ["console"],
             "level": "CRITICAL" if _IS_TEST_RUN else "WARNING",

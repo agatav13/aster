@@ -1,0 +1,106 @@
+{% if request.user.is_authenticated %}
+<button type="button"
+        class="bug-report-fab"
+        data-bs-toggle="modal"
+        data-bs-target="#bugReportModal"
+        aria-label="Zgłoś błąd">
+  <span class="bug-report-fab-label">Zgłoś błąd</span>
+  <span class="bug-report-fab-icon"><i class="bi bi-megaphone-fill"></i></span>
+</button>
+
+<div class="modal fade" id="bugReportModal" tabindex="-1" aria-labelledby="bugReportModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bugReportModalLabel">
+          <i class="bi bi-megaphone-fill"></i> Zgłoś błąd
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+      </div>
+      <form id="bugReportForm" method="post" action="{% url 'feedback:submit' %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div id="bugReportAlert" class="d-none"></div>
+          <div class="mb-3">
+            <label for="bugReportTitle" class="form-label">Tytuł</label>
+            <input type="text" name="title" id="bugReportTitle" maxlength="255" required class="form-control" placeholder="Krótki opis problemu">
+          </div>
+          <div class="mb-3">
+            <label for="bugReportDescription" class="form-label">Opis</label>
+            <textarea name="description" id="bugReportDescription" rows="5" required class="form-control" placeholder="Co się stało? Jakie kroki prowadzą do błędu?"></textarea>
+          </div>
+          <input type="hidden" name="page_url" id="bugReportPageUrl">
+          <input type="text" name="website" class="honeypot" autocomplete="off" tabindex="-1" aria-hidden="true">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Anuluj</button>
+          <button type="submit" class="btn btn-accent" id="bugReportSubmit">
+            <i class="bi bi-send"></i> Wyślij
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var modal = document.getElementById('bugReportModal');
+    var form = document.getElementById('bugReportForm');
+    var alertBox = document.getElementById('bugReportAlert');
+    var submitBtn = document.getElementById('bugReportSubmit');
+    var pageUrlInput = document.getElementById('bugReportPageUrl');
+    if (!modal || !form) return;
+
+    function showAlert(kind, html) {
+      alertBox.className = 'alert alert-' + kind;
+      alertBox.innerHTML = html;
+    }
+
+    modal.addEventListener('show.bs.modal', function () {
+      pageUrlInput.value = window.location.href;
+      alertBox.className = 'd-none';
+      alertBox.innerHTML = '';
+      form.querySelectorAll('input[name="title"], textarea[name="description"]').forEach(function (el) {
+        el.disabled = false;
+      });
+    });
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      submitBtn.disabled = true;
+      var token = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+      var formData = new FormData(form);
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin'
+      })
+        .then(function (response) {
+          return response.json().then(function (data) { return { status: response.status, data: data }; });
+        })
+        .then(function (result) {
+          submitBtn.disabled = false;
+          if (result.status >= 200 && result.status < 300 && result.data.ok) {
+            var link = result.data.github_url
+              ? ' Zgłoszenie zostało opublikowane na <a href="' + result.data.github_url + '" target="_blank" rel="noopener">GitHubie</a>.'
+              : ' Zapisaliśmy Twoje zgłoszenie.';
+            showAlert('success', '<i class="bi bi-check-circle"></i> Dziękujemy!' + link);
+            form.reset();
+          } else {
+            var msg = 'Nie udało się wysłać zgłoszenia.';
+            if (result.data && result.data.errors) {
+              msg += ' ' + Object.values(result.data.errors).flat().join(' ');
+            }
+            showAlert('danger', msg);
+          }
+        })
+        .catch(function () {
+          submitBtn.disabled = false;
+          showAlert('danger', 'Błąd sieci. Spróbuj ponownie później.');
+        });
+    });
+  })();
+</script>
+{% endif %}

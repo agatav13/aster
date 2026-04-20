@@ -2025,3 +2025,70 @@ a:hover {
     flex-basis: 145px;
   }
 }
+
+/* ── Bug report floating button ─────────────────────────── */
+.bug-report-fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  height: 3.25rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border-accent);
+  background: var(--accent);
+  color: var(--bg-primary);
+  font-size: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+  box-shadow: var(--shadow-card), var(--shadow-glow);
+  cursor: pointer;
+  z-index: 1050;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.bug-report-fab-icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bug-report-fab-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding-left: 0;
+  transition: max-width 0.25s ease, opacity 0.2s ease, padding-left 0.25s ease;
+}
+
+.bug-report-fab:hover,
+.bug-report-fab:focus-visible {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.bug-report-fab:hover .bug-report-fab-label,
+.bug-report-fab:focus-visible .bug-report-fab-label {
+  max-width: 12rem;
+  opacity: 1;
+  padding-left: 1rem;
+}
+
+.honeypot {
+  position: absolute !important;
+  left: -10000px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
