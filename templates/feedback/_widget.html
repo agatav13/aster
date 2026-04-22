@@ -2,20 +2,21 @@
 <button type="button"
         class="bug-report-fab"
         data-bs-toggle="modal"
-        data-bs-target="#bugReportModal"
-        aria-label="Zgłoś błąd">
-  <span class="bug-report-fab-label">Zgłoś błąd</span>
-  <span class="bug-report-fab-icon"><i class="bi bi-megaphone-fill"></i></span>
+        data-bs-target="#bugReportModal">
+  <i class="bi bi-bug" aria-hidden="true"></i>
+  <span>Zgłoś błąd</span>
 </button>
 
-<div class="modal fade" id="bugReportModal" tabindex="-1" aria-labelledby="bugReportModalLabel" aria-hidden="true">
+<div class="modal fade bug-report-modal" id="bugReportModal" tabindex="-1" aria-labelledby="bugReportModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="bugReportModalLabel">
-          <i class="bi bi-megaphone-fill"></i> Zgłoś błąd
+          <i class="bi bi-bug"></i> Zgłoś błąd
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+        <button type="button" class="btn-close-custom" data-bs-dismiss="modal" aria-label="Zamknij">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
       <form id="bugReportForm" method="post" action="{% url 'feedback:submit' %}">
         {% csrf_token %}
@@ -25,7 +26,7 @@
             <label for="bugReportTitle" class="form-label">Tytuł</label>
             <input type="text" name="title" id="bugReportTitle" maxlength="255" required class="form-control" placeholder="Krótki opis problemu">
           </div>
-          <div class="mb-3">
+          <div class="mb-0">
             <label for="bugReportDescription" class="form-label">Opis</label>
             <textarea name="description" id="bugReportDescription" rows="5" required class="form-control" placeholder="Co się stało? Jakie kroki prowadzą do błędu?"></textarea>
           </div>

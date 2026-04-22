@@ -8,7 +8,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Iterator
 
-from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+from django.contrib.auth.models import AbstractBaseUser
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Avg, Count, Q, QuerySet
@@ -454,8 +454,6 @@ def browse_local_movies(
     *,
     query: str = "",
     genre_id_raw: str | None = None,
-    favorites_active: bool = False,
-    user: AbstractBaseUser | AnonymousUser | None = None,
     page: int = 1,
     per_page: int = DEFAULT_PAGE_SIZE,
 ) -> MovieListPage:
@@ -473,11 +471,6 @@ def browse_local_movies(
     genre_id = _coerce_genre_id(genre_id_raw)
     if genre_id is not None:
         queryset = queryset.filter(genres__id=genre_id)
-
-    if favorites_active and user is not None and user.is_authenticated:
-        favorite_ids = list(user.favorite_genres.values_list("id", flat=True))
-        if favorite_ids:
-            queryset = queryset.filter(genres__id__in=favorite_ids)
 
     queryset = queryset.distinct()
 
@@ -506,43 +499,9 @@ def _resolve_tmdb_genre_id(genre_id_raw: str | None) -> int | None:
     return local_genre.tmdb_id
 
 
-def _build_with_genres_filter(
-    *,
-    genre_id_raw: str | None,
-    favorites_active: bool,
-    user: AbstractBaseUser | AnonymousUser | None,
-) -> str | None:
-    """Translate the local UI filters into a TMDB `with_genres` value.
-
-    Precedence: an explicit genre pick from the dropdown overrides the
-    favorites toggle, since picking a single genre is the more specific
-    intent. Otherwise, when favorites is on, OR-join all of the user's
-    favorite genres so a movie matching any one of them is included.
-
-    Returns None when no filter applies (or the favorites set has no rows
-    linked to a TMDB id, which would otherwise produce an empty `|`).
-    """
-    selected_tmdb_id = _resolve_tmdb_genre_id(genre_id_raw)
-    if selected_tmdb_id is not None:
-        return str(selected_tmdb_id)
-
-    if favorites_active and user is not None and user.is_authenticated:
-        favorite_tmdb_ids = list(
-            user.favorite_genres.filter(tmdb_id__isnull=False).values_list(
-                "tmdb_id", flat=True
-            )
-        )
-        if favorite_tmdb_ids:
-            return "|".join(str(t) for t in favorite_tmdb_ids)
-
-    return None
-
-
 def discover_tmdb_movies(
     *,
     genre_id_raw: str | None = None,
-    favorites_active: bool = False,
-    user: AbstractBaseUser | AnonymousUser | None = None,
     page: int = 1,
     client: TmdbClient | None = None,
     pages_per_ui: int = TMDB_SEARCH_PAGES_PER_REQUEST,
@@ -555,12 +514,10 @@ def discover_tmdb_movies(
     * Unfiltered browse hits `/trending/movie/week`, so the base rail
       reshuffles weekly instead of showing the same popularity-ranked top-40
       on every visit.
-    * As soon as any genre filter applies — either an explicit genre pick or
-      a `favorites_active` toggle that resolves to at least one TMDB-linked
-      favorite genre — we switch to `/discover/movie` with `with_genres` so
-      the filtering happens server-side. TMDB's trending endpoint does not
-      accept `with_genres`, so this split keeps filtering exact without
-      resorting to client-side post-filtering.
+    * When a genre filter is picked, we switch to `/discover/movie` with
+      `with_genres` so the filtering happens server-side. TMDB's trending
+      endpoint does not accept `with_genres`, so this split keeps filtering
+      exact without resorting to client-side post-filtering.
 
     Same pagination scheme as search: stitch `pages_per_ui` underlying TMDB
     pages together so the user sees ~40 results per UI page.
@@ -569,11 +526,8 @@ def discover_tmdb_movies(
 
     safe_ui_page = max(1, min(page, MAX_UI_PAGES))
 
-    with_genres = _build_with_genres_filter(
-        genre_id_raw=genre_id_raw,
-        favorites_active=favorites_active,
-        user=user,
-    )
+    selected_tmdb_id = _resolve_tmdb_genre_id(genre_id_raw)
+    with_genres = str(selected_tmdb_id) if selected_tmdb_id is not None else None
     use_trending = with_genres is None
 
     items: list[MovieListItem] = []

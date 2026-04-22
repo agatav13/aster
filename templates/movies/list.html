@@ -9,9 +9,9 @@
     <h1 class="page-title">Przeglądaj filmy</h1>
     <p class="page-lede">
       Wpisz tytuł, aby przeszukać całą bazę TMDB, albo przeglądaj najpopularniejsze
-      filmy. Filtry gatunku i ulubionych zawężą wyniki.
+      filmy. Filtr gatunku zawęzi wyniki.
     </p>
-    <form method="get" class="movies-filters">
+    <form method="get" class="movies-filters" id="moviesFilters">
       <input
         type="search"
         name="q"
@@ -20,7 +20,7 @@
         class="movies-search"
         aria-label="Szukaj filmu"
       >
-      <select name="genre" class="movies-genre-select" aria-label="Gatunek">
+      <select name="genre" class="movies-genre-select" aria-label="Gatunek" data-auto-submit="true">
         <option value="">Wszystkie gatunki</option>
         {% for genre in genres %}
           <option value="{{ genre.id }}" {% if selected_genre == genre.id|stringformat:"s" %}selected{% endif %}>
@@ -38,19 +38,19 @@
     </div>
   {% endif %}
 
-  {% if search_mode %}
-    <p class="search-source">
-      {% if search_source == "tmdb" %}
-        <i class="bi bi-cloud-arrow-down"></i>
-        Wyniki na żywo z TMDB dla zapytania <strong>„{{ query }}”</strong>.
-      {% else %}
-        <i class="bi bi-database"></i>
-        Wyniki z lokalnej bazy dla zapytania <strong>„{{ query }}”</strong>.
-      {% endif %}
-    </p>
-  {% endif %}
-
   {% if movies %}
+    {% if search_mode %}
+      <p class="search-source">
+        {% if search_source == "tmdb" %}
+          <i class="bi bi-cloud-arrow-down"></i>
+          Wyniki z TMDB dla zapytania <strong>„{{ query }}”</strong>
+        {% else %}
+          <i class="bi bi-database"></i>
+          Wyniki z lokalnej bazy dla zapytania <strong>„{{ query }}”</strong>
+        {% endif %}
+      </p>
+    {% endif %}
+
     <div class="movie-grid">
       {% for movie in movies %}
         <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
@@ -104,18 +104,28 @@
           {% endif %}
         </p>
         <a href="{% url 'movies:list' %}" class="btn btn-ghost">Wyczyść filtry</a>
-      {% elif selected_genre or favorites_active %}
-        <p>Spróbuj zmienić filtry lub wyczyścić wyszukiwanie.</p>
+      {% elif selected_genre %}
+        <p>Spróbuj zmienić filtr gatunku lub wyczyścić wyszukiwanie.</p>
         <a href="{% url 'movies:list' %}" class="btn btn-ghost">Wyczyść filtry</a>
       {% else %}
         <p>
-          Nie udało się pobrać filmów z TMDB ani z lokalnej bazy. Wpisz tytuł
-          w wyszukiwarkę albo poproś administratora o uruchomienie
-          <code>uv run manage.py sync_tmdb_genres</code> i
-          <code>uv run manage.py sync_tmdb_popular --pages 3</code>.
+          Katalog jest chwilowo niedostępny. Spróbuj ponownie za chwilę
+          lub <a href="{% url 'home' %}">wróć do pulpitu</a>.
         </p>
       {% endif %}
     </div>
   {% endif %}
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var form = document.getElementById('moviesFilters');
+    if (!form) return;
+    form.querySelectorAll('[data-auto-submit]').forEach(function (el) {
+      el.addEventListener('change', function () { form.submit(); });
+    });
+  })();
+</script>
 {% endblock %}

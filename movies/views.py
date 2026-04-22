@@ -41,18 +41,11 @@ class MovieListView(TemplateView):
 
         query = request.GET.get("q", "").strip()
         genre_id_raw = request.GET.get("genre", "").strip()
-        has_favorite_genres = (
-            request.user.is_authenticated and request.user.favorite_genres.exists()
-        )
-        favorites_active = self._resolve_favorites_active(
-            request.GET.get("favorites"), has_favorite_genres
-        )
         page = self._parse_page(request.GET.get("page"))
 
         page_obj, source, search_error = self._build_listing(
             query=query,
             genre_id_raw=genre_id_raw,
-            favorites_active=favorites_active,
             page=page,
         )
 
@@ -63,7 +56,6 @@ class MovieListView(TemplateView):
                 "is_paginated": page_obj.num_pages > 1,
                 "query": query,
                 "selected_genre": genre_id_raw,
-                "favorites_active": favorites_active,
                 "genres": Genre.objects.order_by("name"),
                 "search_mode": bool(query),
                 "search_source": source,
@@ -71,20 +63,6 @@ class MovieListView(TemplateView):
             }
         )
         return context
-
-    @staticmethod
-    def _resolve_favorites_active(
-        raw_favorites: str | None, has_favorite_genres: bool
-    ) -> bool:
-        """Decide whether the favorites filter should be on for this request.
-
-        The default listing always shows trending / all movies so that the
-        catalog feels fresh. Favourite-genre filtering only activates when
-        the user explicitly opts in via ``?favorites=1``.
-        """
-        if not has_favorite_genres:
-            return False
-        return raw_favorites == "1"
 
     @staticmethod
     def _parse_page(raw: str | None) -> int:
@@ -99,7 +77,6 @@ class MovieListView(TemplateView):
         *,
         query: str,
         genre_id_raw: str,
-        favorites_active: bool,
         page: int,
     ) -> tuple[MovieListPage, str, str | None]:
         """Pick the right data source for the current request.
@@ -116,8 +93,6 @@ class MovieListView(TemplateView):
         fallback_kwargs: dict[str, Any] = {
             "query": query,
             "genre_id_raw": genre_id_raw,
-            "favorites_active": favorites_active,
-            "user": self.request.user,
             "page": page,
         }
 
@@ -129,8 +104,6 @@ class MovieListView(TemplateView):
         else:
             tmdb_call = lambda: discover_tmdb_movies(  # noqa: E731
                 genre_id_raw=genre_id_raw,
-                favorites_active=favorites_active,
-                user=self.request.user,
                 page=page,
             )
             log_label = "browse"

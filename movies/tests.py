@@ -324,82 +324,6 @@ class NormalizeGenresTests(TestCase):
             self.assertEqual(row.name, polish_name)
 
 
-@override_settings(TMDB_API_KEY="")
-class FavoritesFilterTests(TestCase):
-    """Local-only favorites filtering. TMDB key is forced empty so the
-    list view falls back to the local DB browse path, which is what these
-    assertions exercise."""
-
-    @classmethod
-    def setUpTestData(cls) -> None:
-        cls.action = Genre.objects.get(name="Akcja")
-        cls.drama = Genre.objects.get(name="Dramat")
-        cls.horror = Genre.objects.get(name="Horror")
-        cls.action_movie = make_movie(
-            tmdb_id=101, title="Action Hero", popularity=300, genres=[cls.action]
-        )
-        cls.drama_movie = make_movie(
-            tmdb_id=102, title="Dramatic Tale", popularity=290, genres=[cls.drama]
-        )
-        cls.horror_movie = make_movie(
-            tmdb_id=103, title="Spooky Night", popularity=280, genres=[cls.horror]
-        )
-
-    def _login_user_with_favorites(self, *favorites: Genre):
-        user = get_user_model().objects.create_user(
-            email="fav-test@example.com",
-            password="StrongPass123!",
-            is_active=True,
-            is_email_verified=True,
-        )
-        if favorites:
-            user.favorite_genres.set(favorites)
-        self.client.force_login(user)
-        return user
-
-    def test_favorites_filter_returns_only_matching_movies(self) -> None:
-        self._login_user_with_favorites(self.action, self.drama)
-
-        response = self.client.get(reverse("movies:list"), {"favorites": "1"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Action Hero")
-        self.assertContains(response, "Dramatic Tale")
-        self.assertNotContains(response, "Spooky Night")
-
-    def test_favorites_filter_ignored_when_anonymous(self) -> None:
-        response = self.client.get(reverse("movies:list"), {"favorites": "1"})
-        self.assertEqual(response.status_code, 200)
-        # Anonymous users see all movies.
-        self.assertContains(response, "Action Hero")
-        self.assertContains(response, "Spooky Night")
-
-    def test_favorites_filter_with_no_favorites_shows_all(self) -> None:
-        self._login_user_with_favorites()  # no favorites
-        response = self.client.get(reverse("movies:list"), {"favorites": "1"})
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Action Hero")
-        self.assertContains(response, "Spooky Night")
-
-    def test_logged_in_user_with_favorites_sees_all_by_default(
-        self,
-    ) -> None:
-        """The default catalog always shows trending / all movies.
-        Favourite-genre filtering only activates on explicit ?favorites=1."""
-        self._login_user_with_favorites(self.action)
-        response = self.client.get(reverse("movies:list"))
-        self.assertFalse(response.context["favorites_active"])
-        self.assertContains(response, "Action Hero")
-        self.assertContains(response, "Spooky Night")
-
-    def test_logged_in_user_without_favorites_sees_everything(self) -> None:
-        self._login_user_with_favorites()  # no favorites
-        response = self.client.get(reverse("movies:list"))
-        self.assertFalse(response.context["favorites_active"])
-        self.assertContains(response, "Action Hero")
-        self.assertContains(response, "Spooky Night")
-
-
 class TmdbLiveSearchTests(TestCase):
     """The list view should hit TMDB /search/movie when ?q= is set."""
 
@@ -443,7 +367,7 @@ class TmdbLiveSearchTests(TestCase):
         self.assertContains(response, "Galactic Empire")
         # The local row whose title doesn't match must NOT leak in.
         self.assertNotContains(response, "Local Only")
-        self.assertContains(response, "Wyniki na żywo z TMDB")
+        self.assertContains(response, "Wyniki z TMDB")
         mock_client.search_movies.assert_called_once_with(query="galactic", page=1)
 
     @override_settings(TMDB_API_KEY="fake-key")
@@ -471,7 +395,7 @@ class TmdbLiveSearchTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Local Galactic Captain")
-        self.assertNotContains(response, "Wyniki na żywo z TMDB")
+        self.assertNotContains(response, "Wyniki z TMDB")
         self.assertContains(response, "Wyniki z lokalnej bazy")
 
     @override_settings(TMDB_API_KEY="fake-key")
@@ -625,7 +549,7 @@ class TmdbDiscoverBrowseTests(TestCase):
         # The local row whose title doesn't match must NOT leak in.
         self.assertNotContains(response, "Local Cached")
         mock_client.list_trending.assert_called_once_with(time_window="week", page=1)
-        # /discover is only used when a genre or favorites filter applies.
+        # /discover is only used when a genre filter applies.
         mock_client.discover_popular.assert_not_called()
 
     @override_settings(TMDB_API_KEY="fake-key")
@@ -662,98 +586,6 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Action Pick")
         mock_client.discover_popular.assert_called_once_with(page=1, with_genres="28")
-
-    @override_settings(TMDB_API_KEY="fake-key")
-    @patch("movies.services.TmdbClient")
-    def test_browse_passes_favorites_as_or_filter_to_tmdb(
-        self, mock_client_class
-    ) -> None:
-        drama = Genre.objects.get(name="Dramat")
-        drama.tmdb_id = 18
-        drama.save(update_fields=["tmdb_id"])
-
-        user = get_user_model().objects.create_user(
-            email="discover-fav@example.com",
-            password="StrongPass123!",
-            is_active=True,
-            is_email_verified=True,
-        )
-        user.favorite_genres.set([self.action, drama])
-        self.client.force_login(user)
-
-        mock_client = mock_client_class.return_value
-        mock_client.discover_popular.return_value = self._build_response("Mixed Pick")
-        mock_client.image_url.side_effect = lambda path: ""
-
-        response = self.client.get(reverse("movies:list"), {"favorites": "1"})
-
-        self.assertEqual(response.status_code, 200)
-        mock_client.discover_popular.assert_called_once()
-        call_kwargs = mock_client.discover_popular.call_args.kwargs
-        self.assertEqual(call_kwargs["page"], 1)
-        # Order of favorites isn't guaranteed by the ORM — accept either OR.
-        self.assertIn(call_kwargs["with_genres"], {"28|18", "18|28"})
-        mock_client.list_trending.assert_not_called()
-
-    @override_settings(TMDB_API_KEY="fake-key")
-    @patch("movies.services.TmdbClient")
-    def test_browse_shows_trending_by_default_even_with_favorites(
-        self, mock_client_class
-    ) -> None:
-        """Logged-in users with favorite genres should still see trending
-        movies by default. Favourites only filter when explicitly requested
-        via ?favorites=1."""
-        drama = Genre.objects.get(name="Dramat")
-        drama.tmdb_id = 18
-        drama.save(update_fields=["tmdb_id"])
-
-        user = get_user_model().objects.create_user(
-            email="auto-fav@example.com",
-            password="StrongPass123!",
-            is_active=True,
-            is_email_verified=True,
-        )
-        user.favorite_genres.set([self.action, drama])
-        self.client.force_login(user)
-
-        mock_client = mock_client_class.return_value
-        mock_client.list_trending.return_value = self._build_response("Trending Pick")
-        mock_client.image_url.side_effect = lambda path: ""
-
-        response = self.client.get(reverse("movies:list"))  # no ?favorites=
-
-        self.assertEqual(response.status_code, 200)
-        # Default browse hits trending, not discover_popular with genres.
-        mock_client.list_trending.assert_called_once()
-        mock_client.discover_popular.assert_not_called()
-        self.assertFalse(response.context["favorites_active"])
-
-    @override_settings(TMDB_API_KEY="fake-key")
-    @patch("movies.services.TmdbClient")
-    def test_browse_auto_personalization_is_bypassed_by_explicit_favorites_zero(
-        self, mock_client_class
-    ) -> None:
-        """?favorites=0 is the escape hatch users click via the toggle when
-        they want to see the full trending rail despite having favorites."""
-        user = get_user_model().objects.create_user(
-            email="opt-out@example.com",
-            password="StrongPass123!",
-            is_active=True,
-            is_email_verified=True,
-        )
-        user.favorite_genres.set([self.action])
-        self.client.force_login(user)
-
-        mock_client = mock_client_class.return_value
-        mock_client.list_trending.return_value = self._build_response("Global Hit")
-        mock_client.image_url.side_effect = lambda path: ""
-
-        response = self.client.get(reverse("movies:list"), {"favorites": "0"})
-
-        self.assertEqual(response.status_code, 200)
-        mock_client.list_trending.assert_called_once_with(time_window="week", page=1)
-        mock_client.discover_popular.assert_not_called()
-        self.assertFalse(response.context["favorites_active"])
 
     def test_default_page_size_is_a_multiple_of_six(self) -> None:
         """A 6-column movie grid should never end with a partial last row."""

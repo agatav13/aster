@@ -25,22 +25,46 @@
       </div>
     </div>
 
-    <div class="profile-tabs" role="tablist">
-      <button type="button" class="profile-tab is-active" data-activity-tab="watched" role="tab" aria-selected="true">
+    <div class="profile-tabs" role="tablist" aria-label="Moja aktywność">
+      <button type="button"
+              id="activity-tab-watched"
+              class="profile-tab is-active"
+              data-activity-tab="watched"
+              role="tab"
+              aria-selected="true"
+              aria-controls="activity-panel-watched">
         <i class="bi bi-eye"></i> Obejrzane
         <span class="profile-tab-count">{{ watched_count }}</span>
       </button>
-      <button type="button" class="profile-tab" data-activity-tab="rated" role="tab" aria-selected="false">
+      <button type="button"
+              id="activity-tab-rated"
+              class="profile-tab"
+              data-activity-tab="rated"
+              role="tab"
+              aria-selected="false"
+              aria-controls="activity-panel-rated"
+              tabindex="-1">
         <i class="bi bi-star"></i> Ocenione
         <span class="profile-tab-count">{{ rated_count }}</span>
       </button>
-      <button type="button" class="profile-tab" data-activity-tab="watchlist" role="tab" aria-selected="false">
+      <button type="button"
+              id="activity-tab-watchlist"
+              class="profile-tab"
+              data-activity-tab="watchlist"
+              role="tab"
+              aria-selected="false"
+              aria-controls="activity-panel-watchlist"
+              tabindex="-1">
         <i class="bi bi-bookmark"></i> Do obejrzenia
         <span class="profile-tab-count">{{ watchlist_count }}</span>
       </button>
     </div>
 
-    <div class="profile-tab-panel" data-activity-panel="watched">
+    <div class="profile-tab-panel"
+         id="activity-panel-watched"
+         role="tabpanel"
+         aria-labelledby="activity-tab-watched"
+         data-activity-panel="watched">
       {% if watched_movies %}
         <div class="movie-grid">
           {% for movie in watched_movies %}
@@ -72,7 +96,12 @@
       {% endif %}
     </div>
 
-    <div class="profile-tab-panel" data-activity-panel="rated" hidden>
+    <div class="profile-tab-panel"
+         id="activity-panel-rated"
+         role="tabpanel"
+         aria-labelledby="activity-tab-rated"
+         data-activity-panel="rated"
+         hidden>
       {% if rated_movies %}
         <div class="movie-grid">
           {% for entry in rated_movies %}
@@ -107,7 +136,12 @@
       {% endif %}
     </div>
 
-    <div class="profile-tab-panel" data-activity-panel="watchlist" hidden>
+    <div class="profile-tab-panel"
+         id="activity-panel-watchlist"
+         role="tabpanel"
+         aria-labelledby="activity-tab-watchlist"
+         data-activity-panel="watchlist"
+         hidden>
       {% if watchlist_movies %}
         <div class="movie-grid">
           {% for movie in watchlist_movies %}
@@ -202,20 +236,38 @@
 {% block extra_js %}
 <script>
   (function () {
-    var tabs = document.querySelectorAll('[data-activity-tab]');
+    var tabs = Array.prototype.slice.call(
+      document.querySelectorAll('[data-activity-tab]')
+    );
     if (!tabs.length) return;
     var panels = document.querySelectorAll('[data-activity-panel]');
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        var target = tab.getAttribute('data-activity-tab');
-        tabs.forEach(function (t) {
-          var active = t === tab;
-          t.classList.toggle('is-active', active);
-          t.setAttribute('aria-selected', active ? 'true' : 'false');
-        });
-        panels.forEach(function (p) {
-          p.hidden = p.getAttribute('data-activity-panel') !== target;
-        });
+
+    function activate(tab) {
+      var target = tab.getAttribute('data-activity-tab');
+      tabs.forEach(function (t) {
+        var active = t === tab;
+        t.classList.toggle('is-active', active);
+        t.setAttribute('aria-selected', active ? 'true' : 'false');
+        t.setAttribute('tabindex', active ? '0' : '-1');
+      });
+      panels.forEach(function (p) {
+        p.hidden = p.getAttribute('data-activity-panel') !== target;
+      });
+    }
+
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener('click', function () { activate(tab); });
+      tab.addEventListener('keydown', function (event) {
+        var next = null;
+        if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+        else if (event.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
+        else if (event.key === 'Home') next = tabs[0];
+        else if (event.key === 'End') next = tabs[tabs.length - 1];
+        if (next) {
+          event.preventDefault();
+          activate(next);
+          next.focus();
+        }
       });
     });
   })();
