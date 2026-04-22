@@ -18,35 +18,88 @@
     <link href="{% static 'css/app.css' %}" rel="stylesheet">
   </head>
   <body class="app-shell">
-    <nav class="app-navbar">
+    {% with view_name=request.resolver_match.view_name %}
+    <nav class="app-navbar" aria-label="Główna nawigacja">
       <div class="app-container nav-inner">
-        <a href="{% url 'home' %}" class="app-brand">
-          <i class="bi bi-film brand-icon"></i>
-          Aster
-        </a>
-        <div class="nav-actions">
-          <a href="{% url 'movies:list' %}" class="nav-link-pill">
-            <i class="bi bi-collection-play"></i>
-            <span class="nav-link-pill-label">Filmy</span>
+        <div class="nav-lead">
+          <a href="{% url 'home' %}" class="app-brand">
+            <i class="bi bi-film brand-icon"></i>
+            Aster
           </a>
-          <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Przełącz motyw">
+
+          {% if request.user.is_authenticated %}
+            <div class="nav-center" role="menubar">
+              <a href="{% url 'home' %}"
+                 class="nav-tab{% if view_name == 'home' %} is-active{% endif %}"
+                 role="menuitem"
+                 {% if view_name == 'home' %}aria-current="page"{% endif %}>
+                <i class="bi bi-house"></i>
+                <span class="nav-tab-label">Start</span>
+              </a>
+              <a href="{% url 'movies:list' %}"
+                 class="nav-tab{% if view_name == 'movies:list' or view_name == 'movies:detail' %} is-active{% endif %}"
+                 role="menuitem"
+                 {% if view_name == 'movies:list' or view_name == 'movies:detail' %}aria-current="page"{% endif %}>
+                <i class="bi bi-collection-play"></i>
+                <span class="nav-tab-label">Filmy</span>
+              </a>
+              <span class="nav-tab nav-tab--disabled"
+                    role="menuitem"
+                    aria-disabled="true"
+                    title="Funkcja w przygotowaniu">
+                <i class="bi bi-people"></i>
+                <span class="nav-tab-label">Społeczność</span>
+                <span class="soon-badge">Soon</span>
+              </span>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="nav-actions">
+          <button type="button"
+                  id="theme-toggle"
+                  class="icon-button"
+                  aria-label="Przełącz motyw"
+                  aria-pressed="false">
             <i class="bi bi-moon-stars"></i>
           </button>
+
           {% if request.user.is_authenticated %}
-            <a href="{% url 'accounts:profile' %}" class="profile-button" aria-label="Otwórz profil">
-              <span class="profile-avatar">
-                <i class="bi bi-person"></i>
-              </span>
-              <span class="profile-button-label">
-                {{ request.user.display_name|default:request.user.email }}
-              </span>
-            </a>
-            <form method="post" action="{% url 'accounts:logout' %}" class="nav-logout-form">
-              {% csrf_token %}
-              <button type="submit" class="logout-button" aria-label="Wyloguj się" title="Wyloguj się">
-                <i class="bi bi-box-arrow-right"></i>
+            <div class="dropdown nav-account">
+              <button type="button"
+                      class="profile-button"
+                      id="accountMenu"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false"
+                      aria-label="Menu konta">
+                <span class="profile-avatar">
+                  <i class="bi bi-person"></i>
+                </span>
+                <span class="profile-button-label">
+                  {{ request.user.display_name|default:request.user.email }}
+                </span>
+                <i class="bi bi-chevron-down profile-button-chevron" aria-hidden="true"></i>
               </button>
-            </form>
+              <ul class="dropdown-menu dropdown-menu-end account-menu" aria-labelledby="accountMenu">
+                <li class="account-menu-header">
+                  <span class="account-menu-name">
+                    {{ request.user.display_name|default:request.user.email }}
+                  </span>
+                  {% if request.user.display_name %}
+                    <span class="account-menu-email">{{ request.user.email }}</span>
+                  {% endif %}
+                </li>
+                <li>
+                  <a class="dropdown-item" href="{% url 'accounts:profile' %}">Profil</a>
+                </li>
+                <li>
+                  <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="dropdown-item dropdown-item-danger">Wyloguj się</button>
+                  </form>
+                </li>
+              </ul>
+            </div>
           {% else %}
             <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-ghost-sm">Logowanie</a>
             <a href="{% url 'accounts:register' %}" class="btn btn-accent btn-sm">Rejestracja</a>
@@ -54,6 +107,7 @@
         </div>
       </div>
     </nav>
+    {% endwith %}
 
     <main class="app-container app-main">
       {% if messages %}
@@ -69,8 +123,27 @@
     </main>
 
     <footer class="app-footer">
-      <div class="app-container">
-        <span><i class="bi bi-film"></i> Aster &copy; 2026</span>
+      <div class="app-container app-footer-stack">
+        <nav class="app-footer-meta" aria-label="Stopka">
+          <span class="app-footer-mark">
+            <i class="bi bi-film"></i> Aster
+          </span>
+          <span class="app-footer-dot" aria-hidden="true">·</span>
+          <span>&copy; 2026</span>
+          <span class="app-footer-dot" aria-hidden="true">·</span>
+          <a href="https://github.com/agatav13/programowanie-aplikacji-web"
+             target="_blank"
+             rel="noopener">Kod źródłowy</a>
+          <span class="app-footer-dot" aria-hidden="true">·</span>
+          <a href="https://github.com/agatav13/programowanie-aplikacji-web/issues/new"
+             target="_blank"
+             rel="noopener">Zgłoś problem</a>
+          <span class="app-footer-dot" aria-hidden="true">·</span>
+          <a href="https://www.themoviedb.org/"
+             target="_blank"
+             rel="noopener"
+             class="app-footer-tmdb">Powered by TMDB</a>
+        </nav>
       </div>
     </footer>
 
@@ -80,16 +153,17 @@
         var toggle = document.getElementById('theme-toggle');
         if (!toggle) return;
         var icon = toggle.querySelector('i');
-        var setIcon = function (theme) {
+        var apply = function (theme) {
           icon.className = theme === 'light' ? 'bi bi-moon-stars' : 'bi bi-sun';
+          toggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
         };
-        setIcon(document.documentElement.getAttribute('data-theme'));
+        apply(document.documentElement.getAttribute('data-theme'));
         toggle.addEventListener('click', function () {
           var current = document.documentElement.getAttribute('data-theme');
           var next = current === 'light' ? 'dark' : 'light';
           document.documentElement.setAttribute('data-theme', next);
           localStorage.setItem('theme', next);
-          setIcon(next);
+          apply(next);
         });
       })();
     </script>
