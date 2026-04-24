@@ -1348,9 +1348,9 @@ class CuratedShelvesTests(TestCase):
     def test_community_top_rated_respects_min_ratings(self) -> None:
         """One-user-one-rating films are excluded; a film with 2+ ratings
         ranks by average, not by popularity."""
-        popular_but_unrated = make_movie(
-            tmdb_id=7001, title="Popular Unrated", popularity=900
-        )
+        # Popular-but-unrated row is created so we can assert popularity
+        # alone isn't enough to surface it; the return value is unused.
+        make_movie(tmdb_id=7001, title="Popular Unrated", popularity=900)
         single_rating = make_movie(tmdb_id=7002, title="Single Rating", popularity=50)
         community_fav = make_movie(tmdb_id=7003, title="Community Fav", popularity=10)
 
