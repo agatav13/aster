@@ -47,9 +47,22 @@ Usuwa komentarz. Tylko autor (sprawdzane w `services.delete_own_comment`).
 ## Integracja z TMDB
 
 Klient w [`movies/tmdb.py`](https://github.com/agatav13/aster/blob/main/movies/tmdb.py)
-opakowuje `httpx.Client` i wystawia metody domeny: `discover`,
-`search_movies`, `movie_details`, `movie_credits`, `genre_list`,
-`trending_week`.
+opakowuje `httpx.Client` i wystawia metody domeny:
+
+- **Katalog i wyszukiwanie:** `discover_popular(...)`, `search_movies`,
+  `genre_list`, `list_trending(time_window)`, `list_top_rated`,
+  `list_now_playing`, `list_upcoming`.
+- **Szczegóły filmu:** `movie_details`, `movie_credits`,
+  `get_movie_recommendations(tmdb_id)` (rekomendacje TMDB dla pojedynczego
+  filmu — używane przez rail „Bo oceniłeś wysoko").
+- **Filmografia osoby:** `get_person_movie_credits(person_id)` —
+  agreguje cast + crew, normalizuje do `TmdbMovieSummary`, deduplikuje po
+  `id`. Zasila rail „Kontynuuj odkrywanie".
+
+Metoda `discover_popular` przyjmuje opcjonalne filtry kluczowe
+(`with_genres`, `with_original_language`, `vote_count_gte`, `sort_by`),
+dzięki czemu jeden punkt wejścia obsługuje zarówno listy gatunkowe, jak
+i editorial-rail „Polskie kino".
 
 - **Base URL:** `https://api.themoviedb.org/3` (zmienna `TMDB_API_BASE_URL`)
 - **Authoryzacja:** klucz v3 jako parametr `api_key=` (zmienna `TMDB_API_KEY`)

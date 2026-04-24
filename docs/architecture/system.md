@@ -82,3 +82,4 @@ graph TD
 - **ORM Django** mapuje modele (`accounts.User`, `movies.Movie`, `movies.Rating`, `movies.Comment`, `movies.UserMovieStatus`, `movies.Person`, `movies.MovieCredit`, `movies.Genre`) na tabele PostgreSQL/SQLite.
 - **Migracje** w `accounts/migrations/`, `movies/migrations/` — w tym data migration `0003_seed_all_tmdb_genres.py` zapełniający słownik gatunków.
 - **Kompletny opis schematu** w [Architektura → Baza danych](database.md).
+- Aplikacja `community/` jest preview — wpisana w `INSTALLED_APPS`, ale bez `models.py`/migracji. Widoki feedu, znajomych i list zasila deterministycznie `community/mock.py`, miksując fikcyjnych userów z prawdziwymi filmami z cache. Modele społecznościowe (follow, listy) trafią do bazy w kolejnej iteracji.

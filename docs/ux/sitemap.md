@@ -19,6 +19,7 @@ graph TD
       activation_sent["/auth/activation-sent/"]
       resend["/auth/resend-activation/"]
       profile["/auth/profile/"]
+      settings["/auth/settings/"]
       display_name["/auth/display-name/"]
       genres["/auth/genres/"]
       pwreset["/auth/password-reset/"]
@@ -36,8 +37,15 @@ graph TD
       comment_del["/movies/&lt;id&gt;/comments/&lt;cid&gt;/delete/<br/><i>POST</i>"]
     end
 
+    subgraph Community["/community/<br/><i>preview, dane mockowane</i>"]
+      feed["/community/<br/><i>feed znajomych</i>"]
+      people["/community/people/"]
+      lists["/community/lists/"]
+    end
+
     root --> Movies
     root --> Auth
+    root --> Community
     detail --> status_act
     detail --> rating_act
     detail --> comment_create
@@ -57,4 +65,11 @@ graph TD
 | `/` | [`core/urls.py`](https://github.com/agatav13/aster/blob/main/core/urls.py) |
 | `/auth/...` | [`accounts/urls.py`](https://github.com/agatav13/aster/blob/main/accounts/urls.py) |
 | `/movies/...` | [`movies/urls.py`](https://github.com/agatav13/aster/blob/main/movies/urls.py) |
+| `/community/...` | [`community/urls.py`](https://github.com/agatav13/aster/blob/main/community/urls.py) |
 | `/admin/`, `/health/`, root include | [`config/urls.py`](https://github.com/agatav13/aster/blob/main/config/urls.py) |
+
+> **Uwaga:** sekcja `/community/` to obecnie podgląd UI — widoki są
+> zalogowane (`LoginRequiredMixin`), ale dane (feed, sugestie znajomych,
+> kuratorowane listy) generuje deterministycznie [`community/mock.py`](https://github.com/agatav13/aster/blob/main/community/mock.py)
+> z prawdziwych filmów w cache. Modele społecznościowe i akcje POST
+> (follow, polubienia, dodanie do listy) pojawią się w kolejnej iteracji.

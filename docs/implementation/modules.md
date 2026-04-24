@@ -8,13 +8,23 @@ repozytorium — tu pokazujemy wzorce i decyzje.
 
 ```
 config/          — settings.py, urls.py, wsgi.py
-accounts/        — User, formularze auth, e-maile aktywacyjne
-core/            — strona główna i dashboard
-movies/          — katalog, oceny, komentarze, statusy, integracja TMDB
-templates/       — wszystkie szablony DTL (auth, movies, partials, e-maile)
+accounts/        — User, formularze auth, e-maile aktywacyjne, profil + ustawienia
+core/            — editorial landing (recommendations + watchlist rail)
+movies/          — katalog, oceny, komentarze, statusy, integracja TMDB, shelves
+community/       — preview UI (feed, znajomi, listy) — dane z mock.py, bez modeli
+feedback/        — widget zgłoszeń przekierowujący do GitHub Issues
+templates/       — wszystkie szablony DTL (auth, movies, community, partials, e-maile)
 static/          — CSS, JS, ikony
 tests/           — e2e/ (Playwright), perf/ (locust)
 ```
+
+> **Uwaga o `community/`:** aplikacja jest zarejestrowana w
+> `INSTALLED_APPS`, ale nie ma `models.py` ani migracji. Trzy widoki
+> (`FeedView`, `PeopleView`, `ListsView`) generują kontekst przez
+> `community/mock.py`, który deterministycznie sieje dane (RNG seedowane
+> per-user) i miksuje je z prawdziwymi filmami z cache. Modele
+> społecznościowe (follow, polubienia, kuratorowane listy) dojdą w
+> kolejnej iteracji — wtedy zniknie `mock.py`.
 
 ## 1. Rejestracja z weryfikacją e-mail — `accounts/views.py:RegisterView`
 
@@ -110,6 +120,20 @@ def _refresh_movie_aggregates(movie: Movie) -> None:
 def visible_comments_for(movie: Movie) -> QuerySet[Comment]:
     return movie.comments.filter(status=Comment.VISIBLE).select_related("user").order_by("-created_at")
 ```
+
+- **Shelves (rails na stronie `/movies/`)** — `fetch_trending_shelf`,
+  `fetch_top_rated_shelf`, `fetch_genre_shelf`,
+  `fetch_community_top_rated_shelf`,
+  `fetch_seeded_recommendations_shelf`,
+  `fetch_continue_exploring_shelf`, `fetch_polish_cinema_shelf`. Każda
+  funkcja zwraca `list[MovieListItem]` (cap = `SHELF_LIMIT`) i
+  **łyka błędy** (`TmdbApiError`, `TmdbConfigError`) — zwraca pustą
+  listę i loguje `warning`/`debug`. Widok (`MovieListView._build_shelves`)
+  filtruje puste rails na końcu, dzięki czemu nigdy nie renderuje
+  zatytułowanej półki bez kafelków. Personalne rails
+  („Bo oceniłeś wysoko", „Kontynuuj odkrywanie") są źródłowane z
+  ratingów użytkownika i credits z `MovieCredit`; już oglądane / ocenione
+  filmy są wykluczane przez `_interacted_tmdb_ids`.
 
 ## 5. Klient TMDB — `movies/tmdb.py`
 
