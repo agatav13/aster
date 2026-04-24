@@ -61,11 +61,17 @@ Cudzych komentarzy nie da się usuwać.
 
 ## Jak zmienić dane konta?
 
-Po zalogowaniu — w prawym górnym rogu **Profil**:
+Po zalogowaniu otwórz **Profil** (prawy górny róg) i kliknij
+**Ustawienia**. Z ekranu *Ustawienia* (`/auth/settings/`) edytujesz:
 
-- **Wyświetlana nazwa** — *Profil → Edytuj nazwę wyświetlaną*
-- **Ulubione gatunki** — *Profil → Edytuj ulubione gatunki*
-- **Hasło** — wyloguj się, kliknij **Nie pamiętam hasła**, ustaw nowe przez link e-mail (na ver_2 planowana zmiana hasła z poziomu profilu bez wylogowywania)
+- **Wyświetlaną nazwę** — *Ustawienia → Edytuj nazwę wyświetlaną*
+- **Ulubione gatunki** — *Ustawienia → Edytuj ulubione gatunki*
+- **Hasło** — wyloguj się, kliknij **Nie pamiętam hasła**, ustaw nowe przez link e-mail (na ver_2 planowana zmiana hasła z poziomu ustawień bez wylogowywania)
+
+Sam **Profil** (`/auth/profile/`) to ekran tylko do podglądu — pokazuje
+Twoją bibliotekę (oceny + obejrzane) oraz listę „do obejrzenia" w
+zakładkach, z licznikami i statystykami (średnia ocena, ulubione
+gatunki, najczęstsza dekada).
 
 ## Jak wylogować się?
 
