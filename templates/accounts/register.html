@@ -1,38 +1,40 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Rejestracja{% endblock %}
+{% block title %}Załóż konto · Aster{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-xl-10 col-lg-11">
-    <section class="form-card form-card--split shadow-sm">
-      <header class="form-card-header">
-        <h1 class="h2 mb-2">Załóż konto</h1>
-        <p class="text-secondary mb-0">
-          Po rejestracji wyślemy link aktywacyjny na Twój adres e-mail.
-        </p>
-      </header>
-      <form method="post" novalidate class="form-card-body">
-        {% csrf_token %}
-        <div class="row g-4">
-          <div class="col-lg-6 form-card-col">
-            {% include "partials/form_fields.html" with form=form exclude_field="favorite_genres" %}
-          </div>
-          <div class="col-lg-6 form-card-col">
-            {% include "partials/genre_field.html" with field=form.favorite_genres visible_count=10 %}
-          </div>
+<section class="auth-page">
+  <div class="auth-card auth-card--wide">
+    <p class="auth-eyebrow">Aster · Rejestracja</p>
+    <h1 class="auth-title">Załóż konto</h1>
+    <p class="auth-lede">
+      Po rejestracji wyślemy link aktywacyjny na Twój adres e-mail.
+    </p>
+
+    <form method="post" novalidate class="auth-form">
+      {% csrf_token %}
+      <div class="auth-split">
+        <div class="auth-split-col">
+          <h2 class="auth-split-col-label">Twoje dane</h2>
+          <p class="auth-split-col-help">Adres e-mail posłuży jako login.</p>
+          {% include "partials/form_fields.html" with form=form exclude_field="favorite_genres" %}
         </div>
-        <div class="form-card-footer">
-          <button type="submit" class="btn btn-dark w-100">Utwórz konto</button>
-          <p class="mt-3 mb-0 small text-secondary text-center">
-            Masz już konto? <a href="{% url 'accounts:login' %}">Zaloguj się</a>.
-          </p>
+        <div class="auth-split-col">
+          <h2 class="auth-split-col-label">Ulubione gatunki</h2>
+          <p class="auth-split-col-help">Zasilają Twoje rekomendacje — możesz je zmienić później.</p>
+          {% include "partials/genre_field.html" with field=form.favorite_genres visible_count=10 %}
         </div>
-      </form>
-    </section>
+      </div>
+      <button type="submit" class="btn btn-accent auth-submit">Utwórz konto</button>
+    </form>
+
+    <p class="auth-aux-inline">
+      <span>Masz już konto?</span>
+      <a href="{% url 'accounts:login' %}">Zaloguj się</a>
+    </p>
   </div>
-</div>
+</section>
 {% endblock %}
 
 {% block extra_js %}

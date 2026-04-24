@@ -1,0 +1,24 @@
+{# Sub-tab bar shared by all Społeczność pages. `active_tab` is set by the view. #}
+<div class="sub-tabs" role="tablist" aria-label="Społeczność">
+  <a href="{% url 'community:feed' %}"
+     class="sub-tab{% if active_tab == 'feed' %} is-active{% endif %}"
+     role="tab"
+     {% if active_tab == 'feed' %}aria-selected="true" aria-current="page"{% else %}aria-selected="false"{% endif %}>
+    <i class="bi bi-activity"></i>
+    <span>Aktywność</span>
+  </a>
+  <a href="{% url 'community:people' %}"
+     class="sub-tab{% if active_tab == 'people' %} is-active{% endif %}"
+     role="tab"
+     {% if active_tab == 'people' %}aria-selected="true" aria-current="page"{% else %}aria-selected="false"{% endif %}>
+    <i class="bi bi-people"></i>
+    <span>Ludzie</span>
+  </a>
+  <a href="{% url 'community:lists' %}"
+     class="sub-tab{% if active_tab == 'lists' %} is-active{% endif %}"
+     role="tab"
+     {% if active_tab == 'lists' %}aria-selected="true" aria-current="page"{% else %}aria-selected="false"{% endif %}>
+    <i class="bi bi-bookmark-heart"></i>
+    <span>Listy</span>
+  </a>
+</div>

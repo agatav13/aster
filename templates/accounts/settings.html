@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Ustawienia · Aster{% endblock %}
+
+{% block content %}
+<section class="settings-page profile-page--ledger">
+
+  <header class="profile-hero settings-hero">
+    <a href="{% url 'accounts:profile' %}"
+       class="profile-hero-settings settings-back"
+       aria-label="Wróć do profilu">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <span class="profile-hero-settings-label">Wróć do profilu</span>
+    </a>
+
+    <div class="profile-hero-body">
+      <h1 class="profile-hero-name">Ustawienia</h1>
+      <p class="profile-hero-meta">
+        <span>Zarządzaj swoim kontem, ulubionymi gatunkami i bezpieczeństwem.</span>
+      </p>
+    </div>
+  </header>
+
+  <div class="settings-sheet">
+
+    <section class="settings-section">
+      <header class="settings-section-head">
+        <div class="settings-section-heading">
+          <p class="eyebrow">Konto</p>
+          <h2 class="settings-section-title">Dane konta</h2>
+          <p class="settings-section-help">Sposób, w jaki inni widzą Cię w aplikacji.</p>
+        </div>
+        <a href="{% url 'accounts:edit_display_name' %}" class="settings-section-action">
+          <i class="bi bi-pencil" aria-hidden="true"></i>
+          <span>Edytuj nazwę</span>
+        </a>
+      </header>
+      <dl class="settings-dl">
+        <div class="settings-dl-row">
+          <dt>Wyświetlana nazwa</dt>
+          <dd>{{ request.user.display_name|default:"—" }}</dd>
+        </div>
+        <div class="settings-dl-row">
+          <dt>Adres e-mail</dt>
+          <dd>{{ request.user.email }}</dd>
+        </div>
+        <div class="settings-dl-row">
+          <dt>Status konta</dt>
+          <dd>
+            {% if request.user.is_email_verified %}
+              <span class="status-pill status-pill--ok"><i class="bi bi-patch-check"></i> Zweryfikowane</span>
+            {% else %}
+              <span class="status-pill status-pill--warn"><i class="bi bi-hourglass-split"></i> Oczekuje na weryfikację</span>
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="settings-section">
+      <header class="settings-section-head">
+        <div class="settings-section-heading">
+          <p class="eyebrow">Gusta</p>
+          <h2 class="settings-section-title">Ulubione gatunki</h2>
+          <p class="settings-section-help">Aster wykorzystuje je w rekomendacjach.</p>
+        </div>
+        <a href="{% url 'accounts:edit_favorite_genres' %}" class="settings-section-action">
+          <i class="bi bi-pencil" aria-hidden="true"></i>
+          <span>Edytuj</span>
+        </a>
+      </header>
+      <div class="settings-genres">
+        {% for genre in request.user.favorite_genres.all %}
+          <span class="genre-pill">{{ genre.name }}</span>
+        {% empty %}
+          <p class="settings-muted">Nie wybrałaś jeszcze ulubionych gatunków.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="settings-section settings-section--compact">
+      <header class="settings-section-head">
+        <div class="settings-section-heading">
+          <p class="eyebrow">Bezpieczeństwo</p>
+          <h2 class="settings-section-title">Hasło</h2>
+          <p class="settings-section-help">Zmień, jeśli podejrzewasz, że ktoś poznał Twoje dane logowania.</p>
+        </div>
+        <a href="{% url 'accounts:password_reset' %}" class="settings-section-action">
+          <i class="bi bi-key" aria-hidden="true"></i>
+          <span>Zmień hasło</span>
+        </a>
+      </header>
+    </section>
+
+    <section class="settings-section settings-section--compact">
+      <header class="settings-section-head">
+        <div class="settings-section-heading">
+          <p class="eyebrow">Sesja</p>
+          <h2 class="settings-section-title">Wylogowanie</h2>
+          <p class="settings-section-help">Zakończ sesję na tym urządzeniu — przydatne na wspólnym sprzęcie.</p>
+        </div>
+        <form method="post" action="{% url 'accounts:logout' %}" class="m-0 settings-section-form">
+          {% csrf_token %}
+          <button type="submit" class="settings-section-action settings-section-action--danger">
+            <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+            <span>Wyloguj się</span>
+          </button>
+        </form>
+      </header>
+    </section>
+
+  </div>
+</section>
+{% endblock %}

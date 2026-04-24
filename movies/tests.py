@@ -13,6 +13,10 @@ from .services import (
     create_comment,
     delete_own_comment,
     fetch_and_cache_movie,
+    fetch_community_top_rated_shelf,
+    fetch_continue_exploring_shelf,
+    fetch_polish_cinema_shelf,
+    fetch_seeded_recommendations_shelf,
     normalize_all_genres,
     remove_movie_status,
     remove_rating,
@@ -529,10 +533,10 @@ class TmdbDiscoverBrowseTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_browse_uses_trending_when_unfiltered(self, mock_client_class) -> None:
-        """Anonymous, unfiltered browse should hit /trending/movie/week so the
-        base rail reshuffles weekly instead of showing the same
-        popularity-sorted top-40 forever."""
+    def test_browse_shelves_populated_from_tmdb(self, mock_client_class) -> None:
+        """Unfiltered browse renders the shelves page using live TMDB rails
+        (trending, top-rated, now-playing, upcoming). Local cache rows that
+        don't match any shelf must not leak in."""
         mock_client = mock_client_class.return_value
         mock_client.list_trending.return_value = self._build_response(
             "Trending One", "Trending Two"
@@ -544,30 +548,44 @@ class TmdbDiscoverBrowseTests(TestCase):
         response = self.client.get(reverse("movies:list"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["shelves_mode"])
         self.assertContains(response, "Trending One")
-        self.assertContains(response, "Trending Two")
-        # The local row whose title doesn't match must NOT leak in.
         self.assertNotContains(response, "Local Cached")
-        mock_client.list_trending.assert_called_once_with(time_window="week", page=1)
-        # /discover is only used when a genre filter applies.
+        mock_client.list_trending.assert_called_with(time_window="week")
+        # Catalogue page intentionally doesn't pull any of these any more:
+        # TMDB top-rated / Polish cinema / now-playing / upcoming were all
+        # retired from /movies/. Trending and community top-rated (local DB)
+        # are the only remaining unauthenticated rails.
+        mock_client.list_top_rated.assert_not_called()
+        mock_client.list_now_playing.assert_not_called()
+        mock_client.list_upcoming.assert_not_called()
         mock_client.discover_popular.assert_not_called()
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
     def test_browse_falls_back_to_local_on_tmdb_error(self, mock_client_class) -> None:
+        """When every shelf fetch errors out, the view falls back to a
+        plain local-cache grid instead of rendering an empty shelves page."""
         mock_client = mock_client_class.return_value
         mock_client.list_trending.side_effect = TmdbApiError("boom")
+        mock_client.list_top_rated.side_effect = TmdbApiError("boom")
+        mock_client.list_now_playing.side_effect = TmdbApiError("boom")
+        mock_client.list_upcoming.side_effect = TmdbApiError("boom")
 
         response = self.client.get(reverse("movies:list"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["shelves_mode"])
         self.assertContains(response, "Local Cached")
-        self.assertContains(response, "Wyszukiwarka TMDB jest chwilowo niedostępna")
 
     @override_settings(TMDB_API_KEY="")
     def test_browse_without_tmdb_key_falls_back_silently(self) -> None:
+        """Missing TMDB_API_KEY skips every shelf fetch and falls back to
+        the local grid without a warning banner — a missing key is a
+        configuration choice, not an outage."""
         response = self.client.get(reverse("movies:list"))
         self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["shelves_mode"])
         self.assertContains(response, "Local Cached")
         # No warning banner — missing key is not an outage.
         self.assertNotContains(response, "Wyszukiwarka TMDB jest chwilowo niedostępna")
@@ -593,11 +611,12 @@ class TmdbDiscoverBrowseTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_browse_trims_stitched_results_to_page_size(
-        self, mock_client_class
-    ) -> None:
+    def test_grid_trims_stitched_results_to_page_size(self, mock_client_class) -> None:
         """40 raw rows from two stitched TMDB pages should be trimmed down
-        to exactly DEFAULT_PAGE_SIZE so the grid has a clean last row."""
+        to exactly DEFAULT_PAGE_SIZE so the grid has a clean last row.
+
+        Exercised via a search query, which triggers grid mode regardless of
+        whether shelves would have been available."""
         mock_client = mock_client_class.return_value
         page1 = TmdbDiscoverResponse(
             page=1,
@@ -617,10 +636,10 @@ class TmdbDiscoverBrowseTests(TestCase):
                 for i in range(20)
             ],
         )
-        mock_client.list_trending.side_effect = [page1, page2]
+        mock_client.search_movies.side_effect = [page1, page2]
         mock_client.image_url.side_effect = lambda path: ""
 
-        response = self.client.get(reverse("movies:list"))
+        response = self.client.get(reverse("movies:list"), {"q": "anything"})
 
         self.assertEqual(response.status_code, 200)
         page_obj = response.context["page_obj"]
@@ -628,9 +647,7 @@ class TmdbDiscoverBrowseTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_browse_stitches_two_tmdb_pages_per_ui_page(
-        self, mock_client_class
-    ) -> None:
+    def test_grid_stitches_two_tmdb_pages_per_ui_page(self, mock_client_class) -> None:
         mock_client = mock_client_class.return_value
         page1 = TmdbDiscoverResponse(
             page=1,
@@ -650,15 +667,15 @@ class TmdbDiscoverBrowseTests(TestCase):
                 for i in range(20)
             ],
         )
-        mock_client.list_trending.side_effect = [page1, page2]
+        mock_client.search_movies.side_effect = [page1, page2]
         mock_client.image_url.side_effect = lambda path: ""
 
-        response = self.client.get(reverse("movies:list"))
+        response = self.client.get(reverse("movies:list"), {"q": "anything"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(mock_client.list_trending.call_count, 2)
-        mock_client.list_trending.assert_any_call(time_window="week", page=1)
-        mock_client.list_trending.assert_any_call(time_window="week", page=2)
+        self.assertEqual(mock_client.search_movies.call_count, 2)
+        mock_client.search_movies.assert_any_call(query="anything", page=1)
+        mock_client.search_movies.assert_any_call(query="anything", page=2)
         # 40 raw rows → trimmed to 36, so the last 4 of the second page are
         # dropped. D1-0 stays; D2-15 is the last surviving row from page 2.
         self.assertContains(response, "D1-0")
@@ -670,14 +687,14 @@ class TmdbDiscoverBrowseTests(TestCase):
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
-    def test_browse_caps_ui_pagination_to_max_ui_pages(self, mock_client_class) -> None:
+    def test_grid_caps_ui_pagination_to_max_ui_pages(self, mock_client_class) -> None:
         """Even when TMDB claims thousands of pages, the UI paginator must
         never offer more than MAX_UI_PAGES — we don't want the grid letting
         users click into noise-territory popularity rankings."""
         from movies.services import MAX_UI_PAGES, TMDB_SEARCH_PAGES_PER_REQUEST
 
         mock_client = mock_client_class.return_value
-        mock_client.list_trending.return_value = TmdbDiscoverResponse(
+        mock_client.search_movies.return_value = TmdbDiscoverResponse(
             page=1,
             total_pages=5000,  # TMDB claims a huge corpus
             total_results=100000,
@@ -688,7 +705,7 @@ class TmdbDiscoverBrowseTests(TestCase):
         )
         mock_client.image_url.side_effect = lambda path: ""
 
-        response = self.client.get(reverse("movies:list"))
+        response = self.client.get(reverse("movies:list"), {"q": "anything"})
 
         self.assertEqual(response.status_code, 200)
         page_obj = response.context["page_obj"]
@@ -1309,3 +1326,191 @@ class MovieDetailCreditsContextTests(TestCase):
         response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
         self.assertContains(response, "Test Actor")
         self.assertContains(response, "Main Role")
+
+
+class CuratedShelvesTests(TestCase):
+    """Unit coverage for the four identity-building shelves added on top of
+    the generic TMDB rails."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.viewer = cls.User.objects.create_user(
+            email="viewer@example.com", password="pw123456!"
+        )
+        cls.other = cls.User.objects.create_user(
+            email="other@example.com", password="pw123456!"
+        )
+
+    def _rate(self, user, movie: Movie, score: str) -> None:
+        Rating.objects.create(user=user, movie=movie, score=Decimal(score))
+
+    def test_community_top_rated_respects_min_ratings(self) -> None:
+        """One-user-one-rating films are excluded; a film with 2+ ratings
+        ranks by average, not by popularity."""
+        popular_but_unrated = make_movie(
+            tmdb_id=7001, title="Popular Unrated", popularity=900
+        )
+        single_rating = make_movie(tmdb_id=7002, title="Single Rating", popularity=50)
+        community_fav = make_movie(tmdb_id=7003, title="Community Fav", popularity=10)
+
+        # Single rating → excluded by min-ratings gate.
+        self._rate(self.viewer, single_rating, "5.0")
+        single_rating.average_rating = Decimal("5.00")
+        single_rating.ratings_count = 1
+        single_rating.save(update_fields=["average_rating", "ratings_count"])
+
+        # Two ratings averaging 4.5 → eligible.
+        self._rate(self.viewer, community_fav, "4.5")
+        self._rate(self.other, community_fav, "4.5")
+        community_fav.average_rating = Decimal("4.50")
+        community_fav.ratings_count = 2
+        community_fav.save(update_fields=["average_rating", "ratings_count"])
+
+        items = fetch_community_top_rated_shelf()
+
+        titles = [item.title for item in items]
+        self.assertIn("Community Fav", titles)
+        self.assertNotIn("Single Rating", titles)
+        self.assertNotIn("Popular Unrated", titles)
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_seeded_recommendations_uses_highest_rated_and_excludes_seen(
+        self, mock_client_class
+    ) -> None:
+        """Seed is the user's top rating; movies already on any of their
+        lists are filtered out of the results."""
+        seed = make_movie(tmdb_id=8101, title="Seed Movie", popularity=100)
+        also_seen = make_movie(tmdb_id=8102, title="Already Watched", popularity=50)
+        filler = make_movie(tmdb_id=8103, title="Filler Low", popularity=30)
+
+        self._rate(self.viewer, seed, "5.0")
+        self._rate(self.viewer, filler, "3.0")
+        UserMovieStatus.objects.create(
+            user=self.viewer, movie=also_seen, status=UserMovieStatus.WATCHED
+        )
+
+        mock_client = mock_client_class.return_value
+        mock_client.get_movie_recommendations.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=2,
+            results=[
+                # This one is already watched → must be filtered out.
+                TmdbMovieSummary(
+                    id=also_seen.tmdb_id,
+                    title="Already Watched",
+                    popularity=10.0,
+                ),
+                TmdbMovieSummary(
+                    id=9001,
+                    title="Fresh Recommendation",
+                    poster_path="/x.jpg",
+                    popularity=10.0,
+                ),
+            ],
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        seed_movie, items = fetch_seeded_recommendations_shelf(self.viewer)
+
+        self.assertEqual(seed_movie, seed)
+        mock_client.get_movie_recommendations.assert_called_once_with(seed.tmdb_id)
+        titles = [item.title for item in items]
+        self.assertIn("Fresh Recommendation", titles)
+        self.assertNotIn("Already Watched", titles)
+
+    def test_seeded_recommendations_returns_none_without_ratings(self) -> None:
+        """No ratings → nothing to seed from."""
+        seed_movie, items = fetch_seeded_recommendations_shelf(self.viewer)
+        self.assertIsNone(seed_movie)
+        self.assertEqual(items, [])
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_continue_exploring_prefers_director_from_liked_ratings(
+        self, mock_client_class
+    ) -> None:
+        """Director of a highly-rated movie wins even if an actor co-appears
+        on the same film."""
+        liked = make_movie(tmdb_id=8201, title="Liked Film", popularity=100)
+        self._rate(self.viewer, liked, "4.5")
+
+        director = Person.objects.create(tmdb_id=501, name="Chosen Director")
+        actor = Person.objects.create(tmdb_id=502, name="Co-star")
+        MovieCredit.objects.create(
+            movie=liked, person=director, credit_type=MovieCredit.DIRECTOR
+        )
+        MovieCredit.objects.create(
+            movie=liked, person=actor, credit_type=MovieCredit.CAST, order=0
+        )
+
+        mock_client = mock_client_class.return_value
+        mock_client.get_person_movie_credits.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=1,
+            results=[
+                TmdbMovieSummary(
+                    id=9201,
+                    title="Other Work",
+                    poster_path="/x.jpg",
+                    popularity=10.0,
+                ),
+            ],
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        person, items = fetch_continue_exploring_shelf(self.viewer)
+
+        self.assertIsNotNone(person)
+        assert person is not None  # for type checkers
+        self.assertEqual(person.pk, director.pk)
+        mock_client.get_person_movie_credits.assert_called_once_with(director.tmdb_id)
+        self.assertEqual([item.title for item in items], ["Other Work"])
+
+    def test_continue_exploring_returns_none_without_liked_ratings(self) -> None:
+        """No high ratings → no person to explore."""
+        low_rated = make_movie(tmdb_id=8301, title="Meh", popularity=10)
+        self._rate(self.viewer, low_rated, "2.0")
+
+        person, items = fetch_continue_exploring_shelf(self.viewer)
+        self.assertIsNone(person)
+        self.assertEqual(items, [])
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_polish_cinema_calls_discover_with_pl_params(
+        self, mock_client_class
+    ) -> None:
+        """The Polish cinema rail forwards language / vote-count / sort
+        params straight to TMDB so it surfaces acclaimed local films."""
+        mock_client = mock_client_class.return_value
+        mock_client.discover_popular.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=1,
+            results=[
+                TmdbMovieSummary(
+                    id=9301, title="Ida", poster_path="/ida.jpg", popularity=5.0
+                ),
+            ],
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        items = fetch_polish_cinema_shelf()
+
+        mock_client.discover_popular.assert_called_once_with(
+            page=1,
+            with_original_language="pl",
+            vote_count_gte=50,
+            sort_by="vote_average.desc",
+        )
+        self.assertEqual([item.title for item in items], ["Ida"])
+
+    @override_settings(TMDB_API_KEY="")
+    def test_polish_cinema_skips_silently_without_api_key(self) -> None:
+        """Missing TMDB_API_KEY must not break the shelf — it should just
+        return an empty list so the rail hides itself."""
+        self.assertEqual(fetch_polish_cinema_shelf(), [])

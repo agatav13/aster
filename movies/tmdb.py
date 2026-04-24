@@ -197,21 +197,97 @@ class TmdbClient:
         self,
         page: int = 1,
         with_genres: str | None = None,
+        *,
+        with_original_language: str | None = None,
+        vote_count_gte: int | None = None,
+        sort_by: str = "popularity.desc",
     ) -> TmdbDiscoverResponse:
         """Browse popular movies.
 
         `with_genres` is forwarded straight to TMDB's `/discover/movie`
         endpoint. Use a single id to filter by one genre, "id1,id2" for AND,
-        or "id1|id2" for OR — see TMDB's discover docs.
+        or "id1|id2" for OR — see TMDB's discover docs. The remaining
+        keyword-only filters (`with_original_language`, `vote_count_gte`,
+        `sort_by`) power editorial shelves like "Polish cinema" without
+        needing a separate method per use case.
         """
         params: dict[str, Any] = {
-            "sort_by": "popularity.desc",
+            "sort_by": sort_by,
             "page": page,
             "include_adult": "false",
         }
         if with_genres:
             params["with_genres"] = with_genres
+        if with_original_language:
+            params["with_original_language"] = with_original_language
+        if vote_count_gte is not None:
+            params["vote_count.gte"] = vote_count_gte
         payload = self._get("/discover/movie", params=params)
+        return TmdbDiscoverResponse.model_validate(payload)
+
+    def get_movie_recommendations(
+        self, tmdb_id: int, page: int = 1
+    ) -> TmdbDiscoverResponse:
+        """Movies TMDB recommends as similar to the given one."""
+        payload = self._get(
+            f"/movie/{tmdb_id}/recommendations",
+            params={"page": page},
+        )
+        return TmdbDiscoverResponse.model_validate(payload)
+
+    def get_person_movie_credits(self, person_id: int) -> TmdbDiscoverResponse:
+        """Filmography for a person (cast + crew), normalized to the shared
+        TmdbMovieSummary shape so it can feed a shelf directly.
+
+        TMDB returns cast and crew as separate arrays with a different per-row
+        shape than /discover/movie. We project both to TmdbMovieSummary,
+        de-duplicate by movie id (so a director-and-writer on the same film
+        only appears once), and hand back a synthetic single-page response.
+        """
+        payload = self._get(f"/person/{person_id}/movie_credits")
+        seen: dict[int, dict[str, Any]] = {}
+        for row in list(payload.get("cast") or []) + list(payload.get("crew") or []):
+            movie_id = row.get("id")
+            if movie_id is None or movie_id in seen:
+                continue
+            seen[movie_id] = {
+                "id": movie_id,
+                "title": row.get("title") or "",
+                "original_title": row.get("original_title") or "",
+                "overview": row.get("overview") or "",
+                "release_date": row.get("release_date") or None,
+                "poster_path": row.get("poster_path"),
+                "backdrop_path": row.get("backdrop_path"),
+                "original_language": row.get("original_language") or "",
+                "popularity": row.get("popularity"),
+                "genre_ids": row.get("genre_ids") or [],
+            }
+        results = [TmdbMovieSummary.model_validate(row) for row in seen.values()]
+        results.sort(key=lambda r: r.popularity or 0, reverse=True)
+        return TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=len(results),
+            results=results,
+        )
+
+    def list_top_rated(self, page: int = 1) -> TmdbDiscoverResponse:
+        """Top-rated movies across TMDB's all-time chart."""
+        payload = self._get("/movie/top_rated", params={"page": page})
+        return TmdbDiscoverResponse.model_validate(payload)
+
+    def list_now_playing(self, page: int = 1) -> TmdbDiscoverResponse:
+        """Movies currently playing in theatres.
+
+        TMDB's `/movie/now_playing` is region-sensitive; we leave `region`
+        unset so TMDB picks a sensible default from the configured language.
+        """
+        payload = self._get("/movie/now_playing", params={"page": page})
+        return TmdbDiscoverResponse.model_validate(payload)
+
+    def list_upcoming(self, page: int = 1) -> TmdbDiscoverResponse:
+        """Upcoming theatrical releases in the next few weeks."""
+        payload = self._get("/movie/upcoming", params={"page": page})
         return TmdbDiscoverResponse.model_validate(payload)
 
     def search_movies(self, query: str, page: int = 1) -> TmdbDiscoverResponse:

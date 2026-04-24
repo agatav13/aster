@@ -164,11 +164,157 @@ class LogoutView(View):
 class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = "accounts/profile.html"
 
+    def get_context_data(self, **kwargs):
+        # Imported locally to keep accounts → movies coupling out of the
+        # module import graph (movies already imports accounts indirectly
+        # via the user FK, and a top-level import here risks a cycle).
+        from collections import Counter
+        from decimal import Decimal
+
+        from movies.models import Movie, Rating, UserMovieStatus
+
+        ctx = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        watched_rows = (
+            UserMovieStatus.objects.filter(user=user, status=UserMovieStatus.WATCHED)
+            .select_related("movie")
+            .order_by("-updated_at")
+        )
+        watchlist_rows = (
+            UserMovieStatus.objects.filter(user=user, status=UserMovieStatus.WATCHLIST)
+            .select_related("movie")
+            .order_by("-updated_at")
+        )
+        rated_rows = (
+            Rating.objects.filter(user=user)
+            .select_related("movie")
+            .order_by("-updated_at")
+        )
+
+        watched_movies = [row.movie for row in watched_rows]
+        watchlist_movies = [row.movie for row in watchlist_rows]
+        rated_movies = [{"movie": row.movie, "score": row.score} for row in rated_rows]
+
+        # Unified "library" = union of watched ∪ rated, keyed by movie id so a
+        # film rated without an explicit "watched" mark (or vice versa) still
+        # shows up exactly once. Score is attached when known; updated_ts is
+        # the most recent touch across either table so the grid sorts by the
+        # user's real activity, not just one of the two timelines.
+        library_map: dict[int, dict] = {}
+        for row in watched_rows:
+            library_map[row.movie.pk] = {
+                "movie": row.movie,
+                "score": None,
+                "updated_ts": row.updated_at.timestamp(),
+            }
+        for row in rated_rows:
+            existing = library_map.get(row.movie.pk)
+            ts = row.updated_at.timestamp()
+            if existing:
+                existing["score"] = row.score
+                existing["updated_ts"] = max(existing["updated_ts"], ts)
+            else:
+                library_map[row.movie.pk] = {
+                    "movie": row.movie,
+                    "score": row.score,
+                    "updated_ts": ts,
+                }
+        library_entries = sorted(
+            library_map.values(), key=lambda e: e["updated_ts"], reverse=True
+        )
+        for entry in library_entries:
+            score = entry["score"]
+            entry["score_int"] = int(score) if score is not None else 0
+            entry["has_rating"] = score is not None
+        library_count = len(library_entries)
+        library_rated_count = sum(1 for e in library_entries if e["has_rating"])
+        library_unrated_count = library_count - library_rated_count
+
+        raw_tab = self.request.GET.get("tab")
+        # Old two-of-three tab values ("watched", "rated") now both resolve to
+        # the merged library view; keep the redirect implicit so saved links
+        # stay working.
+        tab_aliases = {
+            "watched": "library",
+            "rated": "library",
+            "library": "library",
+            "watchlist": "watchlist",
+        }
+        active_tab_legacy = (
+            raw_tab if raw_tab in {"watched", "rated", "watchlist"} else "watched"
+        )
+        active_library_tab = tab_aliases.get(raw_tab, "library")
+
+        display_name = user.display_name or ""
+        name_parts = display_name.split() if display_name else []
+        if len(name_parts) >= 2:
+            initials = (name_parts[0][:1] + name_parts[1][:1]).upper()
+        elif name_parts:
+            initials = name_parts[0][:2].upper()
+        else:
+            initials = user.email.split("@", 1)[0][:2].upper()
+
+        avg_rating: Decimal | None = None
+        if rated_rows.exists():
+            total = sum((row.score for row in rated_rows), Decimal("0"))
+            avg_rating = (total / len(rated_movies)).quantize(Decimal("0.01"))
+
+        top_genres: list[str] = []
+        top_decade: str | None = None
+        if watched_movies or rated_movies:
+            movie_ids = {m.pk for m in watched_movies} | {
+                row["movie"].pk for row in rated_movies
+            }
+            movies_qs = Movie.objects.filter(pk__in=movie_ids).prefetch_related(
+                "genres"
+            )
+            genre_counter: Counter[str] = Counter()
+            decade_counter: Counter[str] = Counter()
+            for m in movies_qs:
+                for g in m.genres.all():
+                    genre_counter[g.name] += 1
+                if m.release_date is not None:
+                    decade = (m.release_date.year // 10) * 10
+                    decade_counter[f"{decade}s"] += 1
+            top_genres = [name for name, _ in genre_counter.most_common(3)]
+            if decade_counter:
+                top_decade = decade_counter.most_common(1)[0][0]
+
+        ctx.update(
+            {
+                "watched_movies": watched_movies,
+                "watchlist_movies": watchlist_movies,
+                "rated_movies": rated_movies,
+                "watched_count": len(watched_movies),
+                "watchlist_count": len(watchlist_movies),
+                "rated_count": len(rated_movies),
+                "library_entries": library_entries,
+                "library_count": library_count,
+                "library_rated_count": library_rated_count,
+                "library_unrated_count": library_unrated_count,
+                "active_tab": active_tab_legacy,
+                "active_library_tab": active_library_tab,
+                "avg_rating": avg_rating,
+                "top_genres": top_genres,
+                "top_decade": top_decade,
+                "profile_initials": initials,
+                "profile_display_name": display_name or user.email,
+                "profile_email": user.email,
+                "profile_joined": user.date_joined,
+            }
+        )
+        return ctx
+
+
+class SettingsView(LoginRequiredMixin, TemplateView):
+    template_name = "accounts/settings.html"
+
 
 class EditDisplayNameView(LoginRequiredMixin, UpdateView):
     template_name = "accounts/edit_display_name.html"
     form_class = DisplayNameForm
-    success_url = reverse_lazy("accounts:profile")
+    success_url = reverse_lazy("accounts:settings")
 
     def get_object(self, queryset=None) -> User:
         return self.request.user
@@ -186,7 +332,7 @@ class EditDisplayNameView(LoginRequiredMixin, UpdateView):
 class EditFavoriteGenresView(LoginRequiredMixin, UpdateView):
     template_name = "accounts/edit_favorite_genres.html"
     form_class = FavoriteGenresForm
-    success_url = reverse_lazy("home")
+    success_url = reverse_lazy("accounts:settings")
 
     def get_object(self, queryset=None) -> User:
         return self.request.user

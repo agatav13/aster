@@ -29,17 +29,20 @@ class HomeViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         # Dashboard content is rendered in place at /, no redirect.
         self.assertContains(response, "Witaj, Ada")
-        self.assertContains(response, "Moja aktywność")
+        self.assertContains(response, "Rekomendacje dla Ciebie")
 
     def test_no_separate_dashboard_url(self):
         with self.assertRaises(Exception):
             reverse("dashboard")
 
 
-class DashboardActivityTests(TestCase):
-    """The dashboard surfaces each user's three activity lists derived from
-    UserMovieStatus (watched, watchlist) and Rating (rated). Empty state only
-    appears per-tab when that tab has no rows."""
+class ProfileActivityTests(TestCase):
+    """The profile page surfaces each user's three activity lists derived
+    from UserMovieStatus (watched, watchlist) and Rating (rated). Empty
+    state only appears per-tab when that tab has no rows.
+
+    (These assertions previously lived on the dashboard; the activity tabs
+    were moved to /auth/profile/ so Start can be a discovery surface.)"""
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -73,7 +76,7 @@ class DashboardActivityTests(TestCase):
         self.client.force_login(self.user)
 
     def test_empty_user_sees_empty_state_per_tab(self) -> None:
-        response = self.client.get(reverse("home"))
+        response = self.client.get(reverse("accounts:profile"))
         self.assertContains(response, "Brak obejrzanych filmów")
         self.assertContains(response, "Brak ocenionych filmów")
         self.assertContains(response, "Pusta lista do obejrzenia")
@@ -85,7 +88,7 @@ class DashboardActivityTests(TestCase):
             status=UserMovieStatus.WATCHED,
         )
 
-        response = self.client.get(reverse("home"))
+        response = self.client.get(reverse("accounts:profile"))
 
         self.assertContains(response, "Watched Flick")
         self.assertEqual(response.context["watched_count"], 1)
@@ -98,7 +101,7 @@ class DashboardActivityTests(TestCase):
             status=UserMovieStatus.WATCHLIST,
         )
 
-        response = self.client.get(reverse("home"))
+        response = self.client.get(reverse("accounts:profile"))
 
         self.assertContains(response, "Later Flick")
         self.assertEqual(response.context["watchlist_count"], 1)
@@ -107,7 +110,7 @@ class DashboardActivityTests(TestCase):
     def test_rated_tab_shows_rated_movies_with_score(self) -> None:
         Rating.objects.create(user=self.user, movie=self.rated_movie, score=4)
 
-        response = self.client.get(reverse("home"))
+        response = self.client.get(reverse("accounts:profile"))
 
         self.assertContains(response, "Scored Flick")
         self.assertContains(response, "4/5")
@@ -127,7 +130,7 @@ class DashboardActivityTests(TestCase):
             status=UserMovieStatus.WATCHED,
         )
 
-        response = self.client.get(reverse("home"))
+        response = self.client.get(reverse("accounts:profile"))
 
         self.assertEqual(response.context["watched_count"], 0)
         self.assertNotContains(response, "Watched Flick")
@@ -142,7 +145,7 @@ class DashboardActivityTests(TestCase):
             user=self.user, movie=movie, status=UserMovieStatus.WATCHLIST
         )
 
-        before = self.client.get(reverse("home"))
+        before = self.client.get(reverse("accounts:profile"))
         self.assertEqual(before.context["watchlist_count"], 1)
         self.assertEqual(before.context["watched_count"], 0)
 
@@ -151,7 +154,7 @@ class DashboardActivityTests(TestCase):
             {"action": "save", "score": "4"},
         )
 
-        after = self.client.get(reverse("home"))
+        after = self.client.get(reverse("accounts:profile"))
         self.assertEqual(after.context["watchlist_count"], 0)
         self.assertEqual(after.context["watched_count"], 1)
         self.assertEqual(after.context["rated_count"], 1)
@@ -171,7 +174,7 @@ class DashboardActivityTests(TestCase):
             {"action": UserMovieStatus.WATCHED},
         )
 
-        response = self.client.get(reverse("home"))
+        response = self.client.get(reverse("accounts:profile"))
         self.assertEqual(response.context["watchlist_count"], 0)
         self.assertEqual(response.context["watched_count"], 1)
         self.assertIn(movie, response.context["watched_movies"])

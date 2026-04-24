@@ -1,22 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}Aktywacja konta{% endblock %}
+{% block title %}Aktywacja konta · Aster{% endblock %}
 
 {% block content %}
-<section class="info-panel shadow-sm mx-auto">
-  {% if success %}
-    <h1 class="h2 mb-3">Konto zostało aktywowane</h1>
-    <p class="text-secondary mb-4">Możesz teraz zalogować się do aplikacji.</p>
-    <a href="{% url 'accounts:login' %}" class="btn btn-dark">Przejdź do logowania</a>
-  {% elif already_active %}
-    <h1 class="h2 mb-3">Konto jest już aktywne</h1>
-    <p class="text-secondary mb-4">Ten link został już wykorzystany lub konto było wcześniej aktywowane.</p>
-    <a href="{% url 'accounts:login' %}" class="btn btn-dark">Zaloguj się</a>
-  {% else %}
-    <h1 class="h2 mb-3">Nie udało się aktywować konta</h1>
-    <p class="text-secondary mb-4">Link jest niepoprawny albo wygasł. Wyślij nową wiadomość aktywacyjną.</p>
-    <a href="{% url 'accounts:resend_activation' %}" class="btn btn-dark">Wyślij nowy link</a>
-  {% endif %}
+<section class="auth-page">
+  <div class="auth-card auth-card--status">
+    {% if success %}
+      <span class="auth-status-icon auth-status-icon--ok" aria-hidden="true">
+        <i class="bi bi-check2-circle"></i>
+      </span>
+      <h1 class="auth-title">Konto zostało aktywowane</h1>
+      <p class="auth-lede">Możesz teraz zalogować się do aplikacji.</p>
+      <div class="auth-actions">
+        <a href="{% url 'accounts:login' %}" class="btn btn-accent">Przejdź do logowania</a>
+      </div>
+    {% elif already_active %}
+      <span class="auth-status-icon auth-status-icon--warn" aria-hidden="true">
+        <i class="bi bi-info-circle"></i>
+      </span>
+      <h1 class="auth-title">Konto jest już aktywne</h1>
+      <p class="auth-lede">Ten link został już wykorzystany lub konto było wcześniej aktywowane.</p>
+      <div class="auth-actions">
+        <a href="{% url 'accounts:login' %}" class="btn btn-accent">Zaloguj się</a>
+      </div>
+    {% else %}
+      <span class="auth-status-icon auth-status-icon--error" aria-hidden="true">
+        <i class="bi bi-exclamation-triangle"></i>
+      </span>
+      <h1 class="auth-title">Nie udało się aktywować konta</h1>
+      <p class="auth-lede">Link jest niepoprawny albo wygasł. Wyślij nową wiadomość aktywacyjną.</p>
+      <div class="auth-actions">
+        <a href="{% url 'accounts:resend_activation' %}" class="btn btn-accent">Wyślij nowy link</a>
+        <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-ghost-sm">Wróć do logowania</a>
+      </div>
+    {% endif %}
+  </div>
 </section>
 {% endblock %}
-
