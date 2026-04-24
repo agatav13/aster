@@ -1667,9 +1667,22 @@ przegląd kontraktu wybranych endpointów modyfikujących stan.</p>
 <p>Usuwa komentarz. Tylko autor (sprawdzane w <code>services.delete_own_comment</code>).</p>
 <h2 id="integracja-z-tmdb">Integracja z TMDB<a class="headerlink" href="#integracja-z-tmdb" title="Permanent link">&para;</a></h2>
 <p>Klient w <a href="https://github.com/agatav13/aster/blob/main/movies/tmdb.py"><code>movies/tmdb.py</code></a>
-opakowuje <code>httpx.Client</code> i wystawia metody domeny: <code>discover</code>,
-<code>search_movies</code>, <code>movie_details</code>, <code>movie_credits</code>, <code>genre_list</code>,
-<code>trending_week</code>.</p>
+opakowuje <code>httpx.Client</code> i wystawia metody domeny:</p>
+<ul>
+<li><strong>Katalog i wyszukiwanie:</strong> <code>discover_popular(...)</code>, <code>search_movies</code>,
+  <code>genre_list</code>, <code>list_trending(time_window)</code>, <code>list_top_rated</code>,
+  <code>list_now_playing</code>, <code>list_upcoming</code>.</li>
+<li><strong>Szczegóły filmu:</strong> <code>movie_details</code>, <code>movie_credits</code>,
+  <code>get_movie_recommendations(tmdb_id)</code> (rekomendacje TMDB dla pojedynczego
+  filmu — używane przez rail „Bo oceniłeś wysoko").</li>
+<li><strong>Filmografia osoby:</strong> <code>get_person_movie_credits(person_id)</code> —
+  agreguje cast + crew, normalizuje do <code>TmdbMovieSummary</code>, deduplikuje po
+  <code>id</code>. Zasila rail „Kontynuuj odkrywanie".</li>
+</ul>
+<p>Metoda <code>discover_popular</code> przyjmuje opcjonalne filtry kluczowe
+(<code>with_genres</code>, <code>with_original_language</code>, <code>vote_count_gte</code>, <code>sort_by</code>),
+dzięki czemu jeden punkt wejścia obsługuje zarówno listy gatunkowe, jak
+i editorial-rail „Polskie kino".</p>
 <ul>
 <li><strong>Base URL:</strong> <code>https://api.themoviedb.org/3</code> (zmienna <code>TMDB_API_BASE_URL</code>)</li>
 <li><strong>Authoryzacja:</strong> klucz v3 jako parametr <code>api_key=</code> (zmienna <code>TMDB_API_KEY</code>)</li>

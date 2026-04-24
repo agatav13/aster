@@ -1590,13 +1590,24 @@ najlepiej wyjaśniają architekturę aplikacji. Pełny kod żyje w
 repozytorium — tu pokazujemy wzorce i decyzje.</p>
 <h2 id="struktura-projektu">Struktura projektu<a class="headerlink" href="#struktura-projektu" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>config/          — settings.py, urls.py, wsgi.py
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>accounts/        — User, formularze auth, e-maile aktywacyjne
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>core/            — strona główna i dashboard
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>movies/          — katalog, oceny, komentarze, statusy, integracja TMDB
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>templates/       — wszystkie szablony DTL (auth, movies, partials, e-maile)
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>static/          — CSS, JS, ikony
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>tests/           — e2e/ (Playwright), perf/ (locust)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>accounts/        — User, formularze auth, e-maile aktywacyjne, profil + ustawienia
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>core/            — editorial landing (recommendations + watchlist rail)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>movies/          — katalog, oceny, komentarze, statusy, integracja TMDB, shelves
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>community/       — preview UI (feed, znajomi, listy) — dane z mock.py, bez modeli
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>feedback/        — widget zgłoszeń przekierowujący do GitHub Issues
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>templates/       — wszystkie szablony DTL (auth, movies, community, partials, e-maile)
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>static/          — CSS, JS, ikony
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>tests/           — e2e/ (Playwright), perf/ (locust)
 </code></pre></div>
+<blockquote>
+<p><strong>Uwaga o <code>community/</code>:</strong> aplikacja jest zarejestrowana w
+<code>INSTALLED_APPS</code>, ale nie ma <code>models.py</code> ani migracji. Trzy widoki
+(<code>FeedView</code>, <code>PeopleView</code>, <code>ListsView</code>) generują kontekst przez
+<code>community/mock.py</code>, który deterministycznie sieje dane (RNG seedowane
+per-user) i miksuje je z prawdziwymi filmami z cache. Modele
+społecznościowe (follow, polubienia, kuratorowane listy) dojdą w
+kolejnej iteracji — wtedy zniknie <code>mock.py</code>.</p>
+</blockquote>
 <h2 id="1-rejestracja-z-weryfikacja-e-mail-accountsviewspyregisterview">1. Rejestracja z weryfikacją e-mail — <code>accounts/views.py:RegisterView</code><a class="headerlink" href="#1-rejestracja-z-weryfikacja-e-mail-accountsviewspyregisterview" title="Permanent link">&para;</a></h2>
 <p>Wzorzec: <strong>Form + post-save side effect</strong> w <code>form_valid</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">RegisterView</span><span class="p">(</span><span class="n">FormView</span><span class="p">):</span>
@@ -1676,6 +1687,21 @@ po <code>PASSWORD_RESET_TIMEOUT</code> (24 h).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">visible_comments_for</span><span class="p">(</span><span class="n">movie</span><span class="p">:</span> <span class="n">Movie</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QuerySet</span><span class="p">[</span><span class="n">Comment</span><span class="p">]:</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="k">return</span> <span class="n">movie</span><span class="o">.</span><span class="n">comments</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="n">Comment</span><span class="o">.</span><span class="n">VISIBLE</span><span class="p">)</span><span class="o">.</span><span class="n">select_related</span><span class="p">(</span><span class="s2">&quot;user&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="s2">&quot;-created_at&quot;</span><span class="p">)</span>
 </code></pre></div>
+<ul>
+<li><strong>Shelves (rails na stronie <code>/movies/</code>)</strong> — <code>fetch_trending_shelf</code>,
+  <code>fetch_top_rated_shelf</code>, <code>fetch_genre_shelf</code>,
+  <code>fetch_community_top_rated_shelf</code>,
+  <code>fetch_seeded_recommendations_shelf</code>,
+  <code>fetch_continue_exploring_shelf</code>, <code>fetch_polish_cinema_shelf</code>. Każda
+  funkcja zwraca <code>list[MovieListItem]</code> (cap = <code>SHELF_LIMIT</code>) i
+  <strong>łyka błędy</strong> (<code>TmdbApiError</code>, <code>TmdbConfigError</code>) — zwraca pustą
+  listę i loguje <code>warning</code>/<code>debug</code>. Widok (<code>MovieListView._build_shelves</code>)
+  filtruje puste rails na końcu, dzięki czemu nigdy nie renderuje
+  zatytułowanej półki bez kafelków. Personalne rails
+  („Bo oceniłeś wysoko", „Kontynuuj odkrywanie") są źródłowane z
+  ratingów użytkownika i credits z <code>MovieCredit</code>; już oglądane / ocenione
+  filmy są wykluczane przez <code>_interacted_tmdb_ids</code>.</li>
+</ul>
 <h2 id="5-klient-tmdb-moviestmdbpy">5. Klient TMDB — <code>movies/tmdb.py</code><a class="headerlink" href="#5-klient-tmdb-moviestmdbpy" title="Permanent link">&para;</a></h2>
 <p>Wzorzec: <strong>Adapter</strong> + <strong>typed payloads</strong> (Pydantic-podobne <code>TypedDict</code>-y <code>TmdbMovieSummary</code>, <code>TmdbMovieDetail</code>, <code>TmdbCredits</code>).</p>
 <ul>

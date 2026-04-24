@@ -1581,6 +1581,7 @@ procesie WSGI.</p>
 <li><strong>ORM Django</strong> mapuje modele (<code>accounts.User</code>, <code>movies.Movie</code>, <code>movies.Rating</code>, <code>movies.Comment</code>, <code>movies.UserMovieStatus</code>, <code>movies.Person</code>, <code>movies.MovieCredit</code>, <code>movies.Genre</code>) na tabele PostgreSQL/SQLite.</li>
 <li><strong>Migracje</strong> w <code>accounts/migrations/</code>, <code>movies/migrations/</code> — w tym data migration <code>0003_seed_all_tmdb_genres.py</code> zapełniający słownik gatunków.</li>
 <li><strong>Kompletny opis schematu</strong> w <a href="../database/">Architektura → Baza danych</a>.</li>
+<li>Aplikacja <code>community/</code> jest preview — wpisana w <code>INSTALLED_APPS</code>, ale bez <code>models.py</code>/migracji. Widoki feedu, znajomych i list zasila deterministycznie <code>community/mock.py</code>, miksując fikcyjnych userów z prawdziwymi filmami z cache. Modele społecznościowe (follow, listy) trafią do bazy w kolejnej iteracji.</li>
 </ul>
 
 

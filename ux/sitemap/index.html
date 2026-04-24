@@ -1425,6 +1425,7 @@ poziom dostępu.</p>
       activation_sent["/auth/activation-sent/"]
       resend["/auth/resend-activation/"]
       profile["/auth/profile/"]
+      settings["/auth/settings/"]
       display_name["/auth/display-name/"]
       genres["/auth/genres/"]
       pwreset["/auth/password-reset/"]
@@ -1442,8 +1443,15 @@ poziom dostępu.</p>
       comment_del["/movies/&amp;lt;id&amp;gt;/comments/&amp;lt;cid&amp;gt;/delete/&lt;br/&gt;&lt;i&gt;POST&lt;/i&gt;"]
     end
 
+    subgraph Community["/community/&lt;br/&gt;&lt;i&gt;preview, dane mockowane&lt;/i&gt;"]
+      feed["/community/&lt;br/&gt;&lt;i&gt;feed znajomych&lt;/i&gt;"]
+      people["/community/people/"]
+      lists["/community/lists/"]
+    end
+
     root --&gt; Movies
     root --&gt; Auth
+    root --&gt; Community
     detail --&gt; status_act
     detail --&gt; rating_act
     detail --&gt; comment_create
@@ -1476,11 +1484,22 @@ poziom dostępu.</p>
 <td><a href="https://github.com/agatav13/aster/blob/main/movies/urls.py"><code>movies/urls.py</code></a></td>
 </tr>
 <tr>
+<td><code>/community/...</code></td>
+<td><a href="https://github.com/agatav13/aster/blob/main/community/urls.py"><code>community/urls.py</code></a></td>
+</tr>
+<tr>
 <td><code>/admin/</code>, <code>/health/</code>, root include</td>
 <td><a href="https://github.com/agatav13/aster/blob/main/config/urls.py"><code>config/urls.py</code></a></td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Uwaga:</strong> sekcja <code>/community/</code> to obecnie podgląd UI — widoki są
+zalogowane (<code>LoginRequiredMixin</code>), ale dane (feed, sugestie znajomych,
+kuratorowane listy) generuje deterministycznie <a href="https://github.com/agatav13/aster/blob/main/community/mock.py"><code>community/mock.py</code></a>
+z prawdziwych filmów w cache. Modele społecznościowe i akcje POST
+(follow, polubienia, dodanie do listy) pojawią się w kolejnej iteracji.</p>
+</blockquote>
 
 
 
