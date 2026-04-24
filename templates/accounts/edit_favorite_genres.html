@@ -1,33 +1,42 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Edytuj ulubione gatunki | Aster{% endblock %}
+{% block title %}Ulubione gatunki · Aster{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-xl-8 col-lg-9">
-    <section class="form-card form-card--wide shadow-sm">
-      <p class="eyebrow">Profil</p>
-      <h1 class="h2 mb-3">Edytuj ulubione gatunki</h1>
-      <p class="text-secondary">
-        Wybierz gatunki, które chcesz oglądać. Lista wpływa na filtr "Moje ulubione" w katalogu filmów.
+<section class="settings-page profile-page--ledger">
+
+  <header class="profile-hero settings-hero">
+    <a href="{% url 'accounts:settings' %}"
+       class="profile-hero-settings settings-back"
+       aria-label="Wróć do ustawień">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <span class="profile-hero-settings-label">Wróć do ustawień</span>
+    </a>
+
+    <div class="profile-hero-body">
+      <p class="eyebrow">Gusta</p>
+      <h1 class="profile-hero-name">Edytuj ulubione gatunki</h1>
+      <p class="profile-hero-meta">
+        <span>Wybierz gatunki, które chcesz oglądać — wpływają na filtr „Moje ulubione” w katalogu filmów oraz na Twoje rekomendacje.</span>
       </p>
-      <form method="post" novalidate>
-        {% csrf_token %}
-        {% if form.non_field_errors %}
-          <div class="alert alert-danger">
-            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
-          </div>
-        {% endif %}
-        {% include "partials/genre_field.html" with field=form.favorite_genres visible_count=12 %}
-        <div class="d-flex gap-2 mt-3">
-          <button type="submit" class="btn btn-dark flex-grow-1">Zapisz zmiany</button>
-          <a href="{% url 'home' %}" class="btn btn-ghost">Anuluj</a>
-        </div>
-      </form>
-    </section>
-  </div>
-</div>
+    </div>
+  </header>
+
+  <form method="post" class="settings-form" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    {% include "partials/genre_field.html" with field=form.favorite_genres visible_count=12 %}
+    <div class="settings-form-actions">
+      <button type="submit" class="btn btn-accent">Zapisz zmiany</button>
+      <a href="{% url 'accounts:settings' %}" class="btn btn-ghost btn-ghost-sm">Anuluj</a>
+    </div>
+  </form>
+</section>
 {% endblock %}
 
 {% block extra_js %}

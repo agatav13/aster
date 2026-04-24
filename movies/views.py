@@ -20,6 +20,11 @@ from .services import (
     delete_own_comment,
     discover_tmdb_movies,
     fetch_and_cache_movie,
+    fetch_community_top_rated_shelf,
+    fetch_continue_exploring_shelf,
+    fetch_genre_shelf,
+    fetch_seeded_recommendations_shelf,
+    fetch_trending_shelf,
     remove_movie_status,
     remove_rating,
     search_tmdb_movies,
@@ -35,6 +40,11 @@ logger = logging.getLogger(__name__)
 class MovieListView(TemplateView):
     template_name = "movies/list.html"
 
+    # Personal genre shelves are limited to this many so the page doesn't
+    # become an infinite scroll of per-genre rails when the user has many
+    # favourites.
+    PERSONAL_GENRE_SHELVES = 2
+
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         request = self.request
@@ -42,6 +52,32 @@ class MovieListView(TemplateView):
         query = request.GET.get("q", "").strip()
         genre_id_raw = request.GET.get("genre", "").strip()
         page = self._parse_page(request.GET.get("page"))
+
+        shelves_mode = not query and not genre_id_raw
+        context["query"] = query
+        context["selected_genre"] = genre_id_raw
+        context["genres"] = Genre.objects.order_by("name")
+
+        if shelves_mode:
+            shelves = self._build_shelves(request)
+            if shelves:
+                context["shelves_mode"] = True
+                context["shelves"] = shelves
+                # Grid defaults so the template doesn't need to branch for
+                # these when shelves are showing.
+                context["movies"] = []
+                context["page_obj"] = None
+                context["is_paginated"] = False
+                context["search_mode"] = False
+                context["search_source"] = None
+                context["search_error"] = None
+                return context
+            # No shelves available (TMDB unavailable, key missing, etc.).
+            # Fall through to the standard listing build so we still serve
+            # a useful grid of whatever is in the local cache.
+
+        context["shelves_mode"] = False
+        context["shelves"] = []
 
         page_obj, source, search_error = self._build_listing(
             query=query,
@@ -54,15 +90,89 @@ class MovieListView(TemplateView):
                 "movies": page_obj.object_list,
                 "page_obj": page_obj,
                 "is_paginated": page_obj.num_pages > 1,
-                "query": query,
-                "selected_genre": genre_id_raw,
-                "genres": Genre.objects.order_by("name"),
                 "search_mode": bool(query),
                 "search_source": source,
                 "search_error": search_error,
             }
         )
         return context
+
+    def _build_shelves(self, request: HttpRequest) -> list[dict[str, Any]]:
+        """Build the shelves shown in default browse mode.
+
+        Each shelf is a dict: {eyebrow, title, icon, items, filter_genre_id}.
+        `filter_genre_id` is set for genre shelves so the "Zobacz wszystkie"
+        link can deep-link into grid mode with the matching filter applied.
+
+        Ordering is intentional: the trending rail anchors the page, then
+        personal signals (seeded recommendations, continue exploring,
+        favourite genres) take over so an authenticated user sees themselves
+        in the feed before the generic editorial and TMDB rails.
+        """
+        shelves: list[dict[str, Any]] = [
+            {
+                "eyebrow": "W tym tygodniu",
+                "title": "Popularne",
+                "icon": "bi-fire",
+                "items": fetch_trending_shelf(),
+                "filter_genre_id": None,
+            },
+        ]
+
+        user = request.user
+        if user.is_authenticated:
+            seed_movie, seeded_items = fetch_seeded_recommendations_shelf(user)
+            if seeded_items:
+                shelves.append(
+                    {
+                        "eyebrow": "Bo oceniłeś wysoko",
+                        "title": f"Podobne do „{seed_movie.title}”",
+                        "icon": "bi-stars",
+                        "items": seeded_items,
+                        "filter_genre_id": None,
+                    }
+                )
+
+            explore_person, explore_items = fetch_continue_exploring_shelf(user)
+            if explore_items:
+                shelves.append(
+                    {
+                        "eyebrow": "Kontynuuj odkrywanie",
+                        "title": explore_person.name,
+                        "icon": "bi-person-video",
+                        "items": explore_items,
+                        "filter_genre_id": None,
+                    }
+                )
+
+        shelves.append(
+            {
+                "eyebrow": "Głosami widzów Aster",
+                "title": "Najwyżej oceniane w Aster",
+                "icon": "bi-heart",
+                "items": fetch_community_top_rated_shelf(),
+                "filter_genre_id": None,
+            }
+        )
+
+        if user.is_authenticated:
+            favs = list(user.favorite_genres.all()[: self.PERSONAL_GENRE_SHELVES])
+            for genre in favs:
+                if genre.tmdb_id is None:
+                    continue
+                shelves.append(
+                    {
+                        "eyebrow": "W Twoim guście",
+                        "title": genre.name,
+                        "icon": "bi-collection",
+                        "items": fetch_genre_shelf(tmdb_genre_id=genre.tmdb_id),
+                        "filter_genre_id": genre.pk,
+                    }
+                )
+
+        # Drop shelves that came back empty (TMDB unavailable, etc.) so we
+        # never render a titled shelf with zero cards.
+        return [s for s in shelves if s["items"]]
 
     @staticmethod
     def _parse_page(raw: str | None) -> int:
@@ -158,6 +268,13 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
     directors = [c for c in credits if c.credit_type == MovieCredit.DIRECTOR]
     cast = [c for c in credits if c.credit_type == MovieCredit.CAST]
 
+    # The cached TMDB URL points at the w500 size (configured globally for
+    # grid posters); for the full-bleed detail backdrop we need the wider
+    # w1280 asset so it doesn't pixelate on desktop.
+    backdrop_hires_url = ""
+    if movie.backdrop_url:
+        backdrop_hires_url = movie.backdrop_url.replace("/w500/", "/w1280/")
+
     return render(
         request,
         "movies/detail.html",
@@ -173,6 +290,7 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
             "comments": comments,
             "comments_count": len(comments),
             "comment_max_length": Comment.MAX_LENGTH,
+            "backdrop_hires_url": backdrop_hires_url,
         },
     )
 

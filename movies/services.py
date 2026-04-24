@@ -567,6 +567,267 @@ def discover_tmdb_movies(
     )
 
 
+# ── Shelves: curated rails for the home & browse surfaces ────────────────────
+# Each helper returns a flat list[MovieListItem] (capped at `limit`) so the
+# template can iterate without worrying about pagination. All three swallow
+# config / API errors and return an empty list — shelves are decorative and
+# must never break the page.
+
+
+SHELF_LIMIT = 18
+
+
+def _tmdb_shelf(
+    fetch,
+    *,
+    limit: int = SHELF_LIMIT,
+    label: str = "shelf",
+) -> list[MovieListItem]:
+    """Shared error-swallowing wrapper for a single TMDB shelf fetch."""
+    try:
+        client = TmdbClient()
+        response = fetch(client)
+    except TmdbConfigError:
+        logger.debug("TMDB shelf %s skipped: TMDB_API_KEY not configured", label)
+        return []
+    except TmdbApiError as exc:
+        logger.warning("TMDB shelf %s failed: %s", label, exc)
+        return []
+    return [MovieListItem.from_tmdb(s, client) for s in response.results[:limit]]
+
+
+def fetch_trending_shelf(*, limit: int = SHELF_LIMIT) -> list[MovieListItem]:
+    return _tmdb_shelf(
+        lambda c: c.list_trending(time_window="week"),
+        limit=limit,
+        label="trending",
+    )
+
+
+def fetch_top_rated_shelf(*, limit: int = SHELF_LIMIT) -> list[MovieListItem]:
+    return _tmdb_shelf(
+        lambda c: c.list_top_rated(),
+        limit=limit,
+        label="top_rated",
+    )
+
+
+def fetch_genre_shelf(
+    *, tmdb_genre_id: int, limit: int = SHELF_LIMIT
+) -> list[MovieListItem]:
+    return _tmdb_shelf(
+        lambda c: c.discover_popular(page=1, with_genres=str(tmdb_genre_id)),
+        limit=limit,
+        label=f"genre:{tmdb_genre_id}",
+    )
+
+
+# ── Curated "identity" shelves ───────────────────────────────────────────────
+# These rails pull from signals unique to Aster (community ratings, a user's
+# own history, an editorial pick) rather than generic TMDB feeds. Every helper
+# returns an empty list on any failure so the shelves section stays
+# decoration-only and can't break the page.
+
+
+# Minimum number of Aster users who must have rated a movie before it's
+# eligible for the "Najwyżej oceniane w Aster" shelf. Guards against a single
+# 5-star rating crowning an obscure title while the community is still small.
+COMMUNITY_MIN_RATINGS = 2
+
+
+def fetch_community_top_rated_shelf(
+    *, limit: int = SHELF_LIMIT, min_ratings: int = COMMUNITY_MIN_RATINGS
+) -> list[MovieListItem]:
+    """Local top-rated rail driven by Aster's own Rating rows.
+
+    Uses the cached `average_rating` / `ratings_count` aggregates on Movie —
+    no TMDB call. Eligibility requires at least `min_ratings` distinct
+    ratings so one enthusiastic user can't put a random film at the top.
+    """
+    movies = Movie.objects.filter(ratings_count__gte=min_ratings).order_by(
+        "-average_rating", "-ratings_count", "-popularity"
+    )[:limit]
+    return [MovieListItem.from_local(m) for m in movies]
+
+
+def _interacted_movie_ids(user: AbstractBaseUser) -> set[int]:
+    """Ids of every movie the user already rated, watchlisted, or watched.
+
+    Used to filter personalised shelves so TMDB never recommends something
+    the user has already engaged with. Shared by the "seeded
+    recommendations" and "continue exploring" shelves.
+    """
+    ids: set[int] = set()
+    ids.update(Rating.objects.filter(user=user).values_list("movie_id", flat=True))
+    ids.update(
+        UserMovieStatus.objects.filter(user=user).values_list("movie_id", flat=True)
+    )
+    return ids
+
+
+def _interacted_tmdb_ids(user: AbstractBaseUser) -> set[int]:
+    """Same as _interacted_movie_ids but keyed by tmdb_id instead of PK."""
+    local_ids = _interacted_movie_ids(user)
+    if not local_ids:
+        return set()
+    return set(Movie.objects.filter(id__in=local_ids).values_list("tmdb_id", flat=True))
+
+
+def _pick_recommendation_seed(user: AbstractBaseUser) -> Rating | None:
+    """Pick the rating that will seed "Bo oceniłeś wysoko" recommendations.
+
+    Prefers the user's highest score; among equal-scored ratings, the most
+    recently updated one wins so the shelf refreshes as the user rates more
+    films. Returns None when the user has no ratings at all.
+    """
+    return (
+        Rating.objects.filter(user=user)
+        .select_related("movie")
+        .order_by("-score", "-updated_at")
+        .first()
+    )
+
+
+def fetch_seeded_recommendations_shelf(
+    user: AbstractBaseUser, *, limit: int = SHELF_LIMIT
+) -> tuple[Movie | None, list[MovieListItem]]:
+    """TMDB recommendations seeded from the user's favourite rated movie.
+
+    Returns `(seed_movie, items)`. `seed_movie` is None when the user has no
+    ratings; `items` is empty when TMDB is unavailable or the seed has no
+    recommendations. The caller uses the seed to label the rail
+    ("Bo oceniłeś wysoko „Seven”").
+    """
+    seed_rating = _pick_recommendation_seed(user)
+    if seed_rating is None:
+        return None, []
+    seed_movie = seed_rating.movie
+    excluded = _interacted_tmdb_ids(user)
+
+    try:
+        client = TmdbClient()
+        response = client.get_movie_recommendations(seed_movie.tmdb_id)
+    except TmdbConfigError:
+        logger.debug(
+            "Seeded recommendations skipped: TMDB_API_KEY not configured",
+        )
+        return seed_movie, []
+    except TmdbApiError as exc:
+        logger.warning(
+            "TMDB recommendations failed for tmdb_id=%s: %s",
+            seed_movie.tmdb_id,
+            exc,
+        )
+        return seed_movie, []
+
+    items: list[MovieListItem] = []
+    for summary in response.results:
+        if summary.id in excluded:
+            continue
+        items.append(MovieListItem.from_tmdb(summary, client))
+        if len(items) >= limit:
+            break
+    return seed_movie, items
+
+
+def _pick_exploration_person(user: AbstractBaseUser) -> Person | None:
+    """Pick the director/actor most represented in the user's liked ratings.
+
+    Directors are preferred over actors for equal counts (strong auteur
+    signal). Returns None when there are no liked ratings or no credits
+    cached for them yet.
+    """
+    liked_movie_ids = list(
+        Rating.objects.filter(user=user, score__gte=LIKED_RATING_THRESHOLD).values_list(
+            "movie_id", flat=True
+        )
+    )
+    if not liked_movie_ids:
+        return None
+
+    counts = (
+        MovieCredit.objects.filter(movie_id__in=liked_movie_ids)
+        .values("person_id", "credit_type")
+        .annotate(count=Count("id"))
+    )
+    # Sort directors first, then by count desc — so a director tied with an
+    # actor on count still wins.
+    ranked = sorted(
+        counts,
+        key=lambda r: (
+            r["credit_type"] != MovieCredit.DIRECTOR,
+            -r["count"],
+        ),
+    )
+    for row in ranked:
+        person = Person.objects.filter(pk=row["person_id"]).first()
+        if person is not None and person.tmdb_id:
+            return person
+    return None
+
+
+def fetch_continue_exploring_shelf(
+    user: AbstractBaseUser, *, limit: int = SHELF_LIMIT
+) -> tuple[Person | None, list[MovieListItem]]:
+    """Filmography rail for the person the user has rated most often.
+
+    Returns `(person, items)`. When no signal is available or TMDB is
+    unreachable, returns `(None, [])` / `(person, [])` so the caller can
+    drop the shelf silently.
+    """
+    person = _pick_exploration_person(user)
+    if person is None or person.tmdb_id is None:
+        return None, []
+
+    excluded = _interacted_tmdb_ids(user)
+
+    try:
+        client = TmdbClient()
+        response = client.get_person_movie_credits(person.tmdb_id)
+    except TmdbConfigError:
+        logger.debug("Continue-exploring skipped: TMDB_API_KEY not configured")
+        return person, []
+    except TmdbApiError as exc:
+        logger.warning(
+            "TMDB person credits failed for tmdb_id=%s: %s", person.tmdb_id, exc
+        )
+        return person, []
+
+    items: list[MovieListItem] = []
+    for summary in response.results:
+        if summary.id in excluded:
+            continue
+        if not summary.poster_path:
+            # Skip filmography entries with no artwork — the shelf is visual.
+            continue
+        items.append(MovieListItem.from_tmdb(summary, client))
+        if len(items) >= limit:
+            break
+    return person, items
+
+
+# TMDB's ISO-639-1 code for Polish. Isolated as a constant so the intent is
+# obvious at the call site.
+POLISH_LANGUAGE_CODE = "pl"
+# Vote-count floor for the Polish cinema rail: excludes obscure shorts and
+# festival one-offs that have a handful of votes and inflated averages.
+POLISH_CINEMA_MIN_VOTES = 50
+
+
+def fetch_polish_cinema_shelf(*, limit: int = SHELF_LIMIT) -> list[MovieListItem]:
+    """Editorial rail: highest-rated Polish-language films on TMDB."""
+    return _tmdb_shelf(
+        lambda c: c.discover_popular(
+            page=1,
+            with_original_language=POLISH_LANGUAGE_CODE,
+            vote_count_gte=POLISH_CINEMA_MIN_VOTES,
+            sort_by="vote_average.desc",
+        ),
+        limit=limit,
+        label="polish_cinema",
+    )
+
+
 def search_tmdb_movies(
     *,
     query: str,

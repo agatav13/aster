@@ -2,177 +2,11 @@
 
 {% block content %}
 <section class="dashboard">
-  <header class="dashboard-hero">
-    <div>
-      <p class="eyebrow">Strefa użytkownika</p>
-      <h1 class="page-title">
-        Witaj{% if request.user.display_name %}, {{ request.user.display_name }}{% endif %}.
-      </h1>
-      <p class="page-lede">
-        Przeglądaj katalog, oceniaj filmy i buduj swoją filmową historię.
-      </p>
-    </div>
-    <a href="{% url 'movies:list' %}" class="btn btn-accent dashboard-cta">
-      <i class="bi bi-collection-play"></i> Przeglądaj filmy
-    </a>
+  <header class="dashboard-hero-head">
+    <h1 class="page-title">
+      Witaj{% if request.user.display_name %}, {{ request.user.display_name }}{% endif %}.
+    </h1>
   </header>
-
-  <section class="dashboard-section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow mb-1">Profil filmowy</p>
-        <h2 class="section-title">Moja aktywność</h2>
-      </div>
-    </div>
-
-    <div class="profile-tabs" role="tablist" aria-label="Moja aktywność">
-      <button type="button"
-              id="activity-tab-watched"
-              class="profile-tab is-active"
-              data-activity-tab="watched"
-              role="tab"
-              aria-selected="true"
-              aria-controls="activity-panel-watched">
-        <i class="bi bi-eye"></i> Obejrzane
-        <span class="profile-tab-count">{{ watched_count }}</span>
-      </button>
-      <button type="button"
-              id="activity-tab-rated"
-              class="profile-tab"
-              data-activity-tab="rated"
-              role="tab"
-              aria-selected="false"
-              aria-controls="activity-panel-rated"
-              tabindex="-1">
-        <i class="bi bi-star"></i> Ocenione
-        <span class="profile-tab-count">{{ rated_count }}</span>
-      </button>
-      <button type="button"
-              id="activity-tab-watchlist"
-              class="profile-tab"
-              data-activity-tab="watchlist"
-              role="tab"
-              aria-selected="false"
-              aria-controls="activity-panel-watchlist"
-              tabindex="-1">
-        <i class="bi bi-bookmark"></i> Do obejrzenia
-        <span class="profile-tab-count">{{ watchlist_count }}</span>
-      </button>
-    </div>
-
-    <div class="profile-tab-panel"
-         id="activity-panel-watched"
-         role="tabpanel"
-         aria-labelledby="activity-tab-watched"
-         data-activity-panel="watched">
-      {% if watched_movies %}
-        <div class="movie-grid">
-          {% for movie in watched_movies %}
-            <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
-              <div class="movie-poster">
-                {% if movie.poster_url %}
-                  <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
-                {% else %}
-                  <div class="movie-poster-placeholder">
-                    <i class="bi bi-film"></i>
-                  </div>
-                {% endif %}
-              </div>
-              <div class="movie-card-body">
-                <h3 class="movie-title">{{ movie.title }}</h3>
-                {% if movie.release_date %}
-                  <p class="movie-meta">{{ movie.release_date|date:"Y" }}</p>
-                {% endif %}
-              </div>
-            </a>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="activity-empty">
-          <i class="bi bi-camera-reels"></i>
-          <h3>Brak obejrzanych filmów</h3>
-          <p>Po obejrzeniu filmu zaznacz go na stronie szczegółów, aby pojawił się tutaj.</p>
-        </div>
-      {% endif %}
-    </div>
-
-    <div class="profile-tab-panel"
-         id="activity-panel-rated"
-         role="tabpanel"
-         aria-labelledby="activity-tab-rated"
-         data-activity-panel="rated"
-         hidden>
-      {% if rated_movies %}
-        <div class="movie-grid">
-          {% for entry in rated_movies %}
-            <a href="{% url 'movies:detail' entry.movie.tmdb_id %}" class="movie-card">
-              <div class="movie-poster">
-                {% if entry.movie.poster_url %}
-                  <img src="{{ entry.movie.poster_url }}" alt="Plakat: {{ entry.movie.title }}" loading="lazy">
-                {% else %}
-                  <div class="movie-poster-placeholder">
-                    <i class="bi bi-film"></i>
-                  </div>
-                {% endif %}
-                <span class="movie-card-score" aria-label="Twoja ocena: {{ entry.score|floatformat:"-1" }} z 5">
-                  <i class="bi bi-star-fill"></i> {{ entry.score|floatformat:"-1" }}/5
-                </span>
-              </div>
-              <div class="movie-card-body">
-                <h3 class="movie-title">{{ entry.movie.title }}</h3>
-                {% if entry.movie.release_date %}
-                  <p class="movie-meta">{{ entry.movie.release_date|date:"Y" }}</p>
-                {% endif %}
-              </div>
-            </a>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="activity-empty">
-          <i class="bi bi-star"></i>
-          <h3>Brak ocenionych filmów</h3>
-          <p>Wystaw pierwszą ocenę, a Twoja historia ocen pojawi się w tej zakładce.</p>
-        </div>
-      {% endif %}
-    </div>
-
-    <div class="profile-tab-panel"
-         id="activity-panel-watchlist"
-         role="tabpanel"
-         aria-labelledby="activity-tab-watchlist"
-         data-activity-panel="watchlist"
-         hidden>
-      {% if watchlist_movies %}
-        <div class="movie-grid">
-          {% for movie in watchlist_movies %}
-            <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
-              <div class="movie-poster">
-                {% if movie.poster_url %}
-                  <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
-                {% else %}
-                  <div class="movie-poster-placeholder">
-                    <i class="bi bi-film"></i>
-                  </div>
-                {% endif %}
-              </div>
-              <div class="movie-card-body">
-                <h3 class="movie-title">{{ movie.title }}</h3>
-                {% if movie.release_date %}
-                  <p class="movie-meta">{{ movie.release_date|date:"Y" }}</p>
-                {% endif %}
-              </div>
-            </a>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="activity-empty">
-          <i class="bi bi-bookmark"></i>
-          <h3>Pusta lista do obejrzenia</h3>
-          <p>Zapisuj filmy na później, aby wrócić do nich w wolnej chwili.</p>
-        </div>
-      {% endif %}
-    </div>
-  </section>
 
   <section class="dashboard-section">
     <div class="section-head">
@@ -186,7 +20,6 @@
       <p class="text-secondary mb-3">
         Na podstawie Twoich ulubionych gatunków i wysoko ocenionych filmów.
       </p>
-
       <div class="recommendation-grid">
         {% for movie in recommendations %}
           <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
@@ -194,9 +27,7 @@
               {% if movie.poster_url %}
                 <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
               {% else %}
-                <div class="movie-poster-placeholder">
-                  <i class="bi bi-film"></i>
-                </div>
+                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
               {% endif %}
             </div>
             <div class="movie-card-body">
@@ -213,13 +44,10 @@
         Po wystawieniu kilku ocen i zaznaczeniu obejrzanych filmów algorytm zacznie
         proponować tytuły dopasowane do Twoich preferencji.
       </p>
-
       <div class="recommendation-grid">
         {% for _ in "12345678" %}
           <div class="recommendation-card recommendation-card--placeholder" aria-hidden="true">
-            <div class="recommendation-poster">
-              <i class="bi bi-film"></i>
-            </div>
+            <div class="recommendation-poster"><i class="bi bi-film"></i></div>
             <div class="recommendation-body">
               <div class="placeholder-line placeholder-line--title"></div>
               <div class="placeholder-line placeholder-line--meta"></div>
@@ -230,46 +58,37 @@
       </div>
     {% endif %}
   </section>
+
+  {% if watchlist_rail %}
+    <section class="dashboard-section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow mb-1">Na później</p>
+          <h2 class="section-title"><i class="bi bi-bookmark"></i> Kontynuuj swoją listę</h2>
+        </div>
+        <a href="{% url 'accounts:profile' %}?tab=watchlist" class="section-link">
+          Zobacz wszystkie <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+      <div class="shelf" aria-label="Do obejrzenia">
+        {% for movie in watchlist_rail %}
+          <a href="{% url 'movies:detail' movie.tmdb_id %}" class="shelf-card">
+            <div class="shelf-poster">
+              {% if movie.poster_url %}
+                <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
+              {% else %}
+                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+              {% endif %}
+            </div>
+            <p class="shelf-title">{{ movie.title }}</p>
+            {% if movie.release_date %}
+              <p class="shelf-meta">{{ movie.release_date|date:"Y" }}</p>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
 </section>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-  (function () {
-    var tabs = Array.prototype.slice.call(
-      document.querySelectorAll('[data-activity-tab]')
-    );
-    if (!tabs.length) return;
-    var panels = document.querySelectorAll('[data-activity-panel]');
-
-    function activate(tab) {
-      var target = tab.getAttribute('data-activity-tab');
-      tabs.forEach(function (t) {
-        var active = t === tab;
-        t.classList.toggle('is-active', active);
-        t.setAttribute('aria-selected', active ? 'true' : 'false');
-        t.setAttribute('tabindex', active ? '0' : '-1');
-      });
-      panels.forEach(function (p) {
-        p.hidden = p.getAttribute('data-activity-panel') !== target;
-      });
-    }
-
-    tabs.forEach(function (tab, index) {
-      tab.addEventListener('click', function () { activate(tab); });
-      tab.addEventListener('keydown', function (event) {
-        var next = null;
-        if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
-        else if (event.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
-        else if (event.key === 'Home') next = tabs[0];
-        else if (event.key === 'End') next = tabs[tabs.length - 1];
-        if (next) {
-          event.preventDefault();
-          activate(next);
-          next.focus();
-        }
-      });
-    });
-  })();
-</script>
 {% endblock %}

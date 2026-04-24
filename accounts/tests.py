@@ -187,7 +187,7 @@ class AuthFlowTests(TestCase):
             {"favorite_genres": [self.drama.pk]},
         )
 
-        self.assertRedirects(response, reverse("home"))
+        self.assertRedirects(response, reverse("accounts:settings"))
         user.refresh_from_db()
         self.assertEqual(
             list(user.favorite_genres.values_list("pk", flat=True)),
@@ -248,7 +248,7 @@ class AuthFlowTests(TestCase):
             {"display_name": "Nowa Nazwa"},
         )
 
-        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertRedirects(response, reverse("accounts:settings"))
         user.refresh_from_db()
         self.assertEqual(user.display_name, "Nowa Nazwa")
 
@@ -284,20 +284,20 @@ class AuthFlowTests(TestCase):
             {"display_name": ""},
         )
 
-        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertRedirects(response, reverse("accounts:settings"))
         user.refresh_from_db()
         self.assertEqual(user.display_name, "")
 
-    def test_profile_page_links_to_display_name_edit(self):
+    def test_settings_page_links_to_display_name_edit(self):
         user = User.objects.create_user(
-            email="profile-edit-link@example.com",
+            email="settings-edit-link@example.com",
             password="StrongPass123!",
             is_active=True,
             is_email_verified=True,
         )
         self.client.force_login(user)
 
-        response = self.client.get(reverse("accounts:profile"))
+        response = self.client.get(reverse("accounts:settings"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse("accounts:edit_display_name"))

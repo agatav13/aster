@@ -1,17 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Sprawdź pocztę{% endblock %}
+{% block title %}Sprawdź pocztę · Aster{% endblock %}
 
 {% block content %}
-<section class="info-panel shadow-sm mx-auto">
-  <h1 class="h2 mb-3">Sprawdź skrzynkę e-mail</h1>
-  <p class="text-secondary mb-4">
-    Jeśli dane były poprawne, wiadomość aktywacyjna została wysłana. Po kliknięciu linku możesz się zalogować.
-  </p>
-  <div class="d-flex flex-wrap gap-3 justify-content-center">
-    <a href="{% url 'accounts:login' %}" class="btn btn-dark">Przejdź do logowania</a>
-    <a href="{% url 'accounts:resend_activation' %}" class="btn btn-outline-dark">Wyślij link ponownie</a>
+<section class="auth-page">
+  <div class="auth-card auth-card--status">
+    <span class="auth-status-icon auth-status-icon--warn" aria-hidden="true">
+      <i class="bi bi-envelope-paper"></i>
+    </span>
+    <h1 class="auth-title">Sprawdź skrzynkę e-mail</h1>
+    <p class="auth-lede">
+      Jeśli dane były poprawne, wiadomość aktywacyjna została wysłana. Po kliknięciu linku możesz się zalogować.
+    </p>
+    <div class="auth-actions">
+      <a href="{% url 'accounts:login' %}" class="btn btn-accent">Przejdź do logowania</a>
+      <a href="{% url 'accounts:resend_activation' %}" class="btn btn-ghost btn-ghost-sm">Wyślij link ponownie</a>
+    </div>
   </div>
 </section>
 {% endblock %}
-

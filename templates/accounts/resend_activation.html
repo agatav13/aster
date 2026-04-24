@@ -1,20 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Ponowna aktywacja{% endblock %}
+{% block title %}Ponowna aktywacja · Aster{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-5">
-    <section class="form-card shadow-sm">
-      <h1 class="h2 mb-3">Wyślij link aktywacyjny ponownie</h1>
-      <p class="text-secondary">Podaj adres e-mail użyty przy rejestracji.</p>
-      <form method="post" novalidate>
-        {% csrf_token %}
-        {% include "partials/form_fields.html" with form=form %}
-        <button type="submit" class="btn btn-dark w-100 mt-3">Wyślij ponownie</button>
-      </form>
-    </section>
-  </div>
-</div>
-{% endblock %}
+<section class="auth-page">
+  <div class="auth-card">
+    <p class="auth-eyebrow">Aktywacja konta</p>
+    <h1 class="auth-title">Wyślij link ponownie</h1>
+    <p class="auth-lede">Podaj adres e-mail użyty przy rejestracji, a wyślemy nowy link aktywacyjny.</p>
 
+    <form method="post" novalidate class="auth-form">
+      {% csrf_token %}
+      {% include "partials/form_fields.html" with form=form %}
+      <button type="submit" class="btn btn-accent auth-submit">Wyślij ponownie</button>
+    </form>
+
+    <nav class="auth-aux" aria-label="Pomoc z kontem">
+      <a href="{% url 'accounts:login' %}">Wróć do logowania</a>
+    </nav>
+  </div>
+</section>
+{% endblock %}

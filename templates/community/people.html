@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Ludzie | Społeczność | Aster{% endblock %}
+
+{% block content %}
+<section class="community-section">
+  <header class="page-header">
+    <p class="eyebrow">Społeczność</p>
+    <h1 class="page-title">Ludzie</h1>
+    <p class="page-lede">
+      Zobacz, kogo obserwujesz i komu warto zacząć się przyglądać.
+    </p>
+    <p class="preview-note">
+      <i class="bi bi-eye"></i>
+      Podgląd interfejsu — lista znajomych jest w przygotowaniu.
+    </p>
+  </header>
+
+  {% include "community/_tabs.html" %}
+
+  <div class="people-search">
+    <label for="peopleSearch" class="visually-hidden">Szukaj osoby</label>
+    <div class="input-with-icon">
+      <i class="bi bi-search"></i>
+      <input id="peopleSearch" type="search" class="form-control"
+             placeholder="Szukaj po nazwie lub e-mailu..." disabled>
+    </div>
+    <span class="preview-chip">Dostępne wkrótce</span>
+  </div>
+
+  <section class="people-group">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow mb-1">Obserwowani</p>
+        <h2 class="section-title">Znajomi ({{ friends|length }})</h2>
+      </div>
+    </div>
+
+    <div class="person-grid">
+      {% for p in friends %}
+        <article class="person-card">
+          <header class="person-head">
+            <span class="avatar avatar--{{ p.tint }} avatar--lg" aria-hidden="true">{{ p.initials }}</span>
+            <div class="person-id">
+              <h3>{{ p.name }}</h3>
+              <p class="person-handle">{{ p.handle }}</p>
+            </div>
+          </header>
+          <p class="person-bio">{{ p.bio }}</p>
+          <p class="person-stats">
+            <span><i class="bi bi-collection-play"></i> {{ p.shared_movies }} wspólnych filmów</span>
+          </p>
+          <ul class="person-genres">
+            {% for g in p.shared_genres %}
+              <li>{{ g }}</li>
+            {% endfor %}
+          </ul>
+          <div class="person-actions">
+            <button type="button" class="btn btn-ghost btn-ghost-sm" disabled>
+              <i class="bi bi-check2"></i> Obserwujesz
+            </button>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="people-group">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow mb-1">Odkryj</p>
+        <h2 class="section-title">Osoby o podobnym guście</h2>
+      </div>
+    </div>
+
+    <div class="person-grid">
+      {% for p in suggestions %}
+        <article class="person-card">
+          <header class="person-head">
+            <span class="avatar avatar--{{ p.tint }} avatar--lg" aria-hidden="true">{{ p.initials }}</span>
+            <div class="person-id">
+              <h3>{{ p.name }}</h3>
+              <p class="person-handle">{{ p.handle }}</p>
+            </div>
+          </header>
+          <p class="person-bio">{{ p.bio }}</p>
+          <p class="person-stats">
+            <span><i class="bi bi-collection-play"></i> {{ p.shared_movies }} wspólnych filmów</span>
+          </p>
+          <ul class="person-genres">
+            {% for g in p.shared_genres %}
+              <li>{{ g }}</li>
+            {% endfor %}
+          </ul>
+          <div class="person-actions">
+            <button type="button" class="btn btn-accent btn-sm" disabled>
+              <i class="bi bi-person-plus"></i> Obserwuj
+            </button>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+{% endblock %}

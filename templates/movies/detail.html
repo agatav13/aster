@@ -1,15 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}{{ movie.title }} | Aster{% endblock %}
+{% block title %}{{ movie.title }} · Aster{% endblock %}
 
 {% block content %}
-<article class="movie-detail">
-  {% if movie.backdrop_url %}
-    <div class="movie-backdrop" style="background-image: linear-gradient(180deg, transparent 0%, var(--bg-primary) 90%), url('{{ movie.backdrop_url }}');"></div>
+<article class="movie-detail movie-detail--editorial">
+
+  <nav class="movie-detail-topbar" aria-label="Nawigacja">
+    <a href="{% url 'movies:list' %}" class="movie-detail-back-link">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <span>Katalog filmów</span>
+    </a>
+    <span class="movie-detail-breadcrumb-sep" aria-hidden="true">/</span>
+    <span class="movie-detail-breadcrumb-current">{{ movie.title }}</span>
+  </nav>
+
+  {% if backdrop_hires_url %}
+    <div class="movie-detail-backdrop"
+         style="background-image: linear-gradient(180deg, rgba(0,0,0,0.08) 0%, var(--bg-primary) 96%), url('{{ backdrop_hires_url }}');"
+         aria-hidden="true"></div>
   {% endif %}
 
   <div class="movie-detail-body">
-    <div class="movie-detail-poster">
+    <aside class="movie-detail-poster">
       {% if movie.poster_url %}
         <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}">
       {% else %}
@@ -17,31 +29,25 @@
           <i class="bi bi-film"></i>
         </div>
       {% endif %}
-    </div>
+    </aside>
 
     <div class="movie-detail-info">
-      <p class="eyebrow">
-        {% if movie.release_date %}{{ movie.release_date|date:"Y" }}{% endif %}
-        {% if movie.runtime_minutes %} · {{ movie.runtime_minutes }} min{% endif %}
-        {% if movie.original_language %} · {{ movie.original_language|upper }}{% endif %}
+      <p class="movie-detail-eyebrow">
+        {% if movie.release_date %}<span>{{ movie.release_date|date:"Y" }}</span>{% endif %}
+        {% if movie.runtime_minutes %}<span>{{ movie.runtime_minutes }} min</span>{% endif %}
+        {% if movie.original_language %}<span>{{ movie.original_language|upper }}</span>{% endif %}
+        {% for genre in genres %}<span>{{ genre.name }}</span>{% endfor %}
       </p>
+
       <h1 class="movie-detail-title">{{ movie.title }}</h1>
       {% if movie.original_title and movie.original_title != movie.title %}
-        <p class="movie-original-title">{{ movie.original_title }}</p>
+        <p class="movie-detail-original">{{ movie.original_title }}</p>
       {% endif %}
 
-      <div class="movie-detail-genres">
-        {% for genre in genres %}
-          <span class="genre-pill">{{ genre.name }}</span>
-        {% empty %}
-          <span class="text-secondary">Brak przypisanych gatunków.</span>
-        {% endfor %}
-      </div>
-
       {% if directors %}
-        <p class="movie-director">
-          <strong>Reżyseria:</strong>
-          {% for credit in directors %}{{ credit.person.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        <p class="movie-detail-director">
+          <span class="movie-detail-director-label">Reżyseria</span>
+          <span>{% for credit in directors %}{{ credit.person.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
         </p>
       {% endif %}
 
@@ -49,80 +55,41 @@
         <p class="movie-overview">{{ movie.overview }}</p>
       {% endif %}
 
-      {% if cast %}
-        <div class="movie-cast">
-          <h2 class="movie-cast-heading">Obsada</h2>
-          <div class="movie-cast-grid">
-            {% for credit in cast %}
-              <div class="cast-card">
-                {% if credit.person.profile_url %}
-                  <img src="{{ credit.person.profile_url }}" alt="{{ credit.person.name }}" class="cast-photo" loading="lazy">
-                {% else %}
-                  <div class="cast-photo-placeholder"><i class="bi bi-person"></i></div>
-                {% endif %}
-                <div class="cast-info">
-                  <span class="cast-name">{{ credit.person.name }}</span>
-                  {% if credit.character %}
-                    <span class="cast-character">{{ credit.character }}</span>
-                  {% endif %}
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-        </div>
-      {% endif %}
-
-      <div class="movie-detail-stats">
-        <div class="info-tile">
-          <h2><i class="bi bi-star"></i> Średnia ocena</h2>
-          <p class="mb-0">
+      <dl class="movie-detail-ledger">
+        <div class="movie-detail-ledger-entry">
+          <dt>Średnia ocena</dt>
+          <dd>
             {% if movie.ratings_count %}
-              {{ movie.average_rating }} ({{ movie.ratings_count }} ocen)
+              <span class="movie-detail-ledger-num">{{ movie.average_rating }}</span><span class="movie-detail-ledger-frac">/5</span>
+              <span class="movie-detail-ledger-sub">{{ movie.ratings_count }} ocen</span>
             {% else %}
-              Brak ocen
+              <span class="movie-detail-ledger-empty">—</span>
+              <span class="movie-detail-ledger-sub">Brak ocen</span>
             {% endif %}
-          </p>
+          </dd>
         </div>
-        <div class="info-tile">
-          <h2><i class="bi bi-person-check"></i> Twoja ocena</h2>
-          <p class="mb-0 user-rating-display">
+        <div class="movie-detail-ledger-entry">
+          <dt>Twoja ocena</dt>
+          <dd>
             {% if user_rating %}
-              <strong>{{ user_rating|floatformat:"-1" }}/5</strong>
+              <span class="movie-detail-ledger-num">{{ user_rating|floatformat:"-1" }}</span><span class="movie-detail-ledger-frac">/5</span>
             {% else %}
-              <span class="text-secondary">Brak oceny</span>
+              <span class="movie-detail-ledger-empty">—</span>
+              <span class="movie-detail-ledger-sub">Jeszcze nie oceniono</span>
             {% endif %}
-          </p>
+          </dd>
         </div>
-      </div>
+      </dl>
 
       {% if request.user.is_authenticated %}
-        <div class="movie-actions">
-          <form method="post" action="{% url 'movies:update_status' movie.tmdb_id %}" class="movie-action-form">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="{{ status_watched }}">
-            <button
-              type="submit"
-              class="movie-action-btn {% if user_status == status_watched %}movie-action-btn--active{% endif %}"
-              aria-pressed="{% if user_status == status_watched %}true{% else %}false{% endif %}"
-            >
-              <i class="bi {% if user_status == status_watched %}bi-eye-fill{% else %}bi-eye{% endif %}"></i>
-              <span>
-                {% if user_status == status_watched %}
-                  Obejrzane
-                {% else %}
-                  Dodaj do obejrzanych
-                {% endif %}
-              </span>
-            </button>
-          </form>
-
+        <div class="movie-actions" role="group" aria-label="Akcje na filmie">
           <button
             type="button"
-            class="movie-action-btn movie-action-btn--accent"
+            class="movie-action-btn movie-action-btn--primary"
             data-bs-toggle="modal"
             data-bs-target="#ratingModal"
           >
-            <i class="bi bi-star"></i>
+            <i class="bi bi-star-fill" aria-hidden="true"></i>
             <span>
               {% if user_rating %}
                 Zmień ocenę ({{ user_rating|floatformat:"-1" }}/5)
@@ -134,13 +101,32 @@
 
           <form method="post" action="{% url 'movies:update_status' movie.tmdb_id %}" class="movie-action-form">
             {% csrf_token %}
+            <input type="hidden" name="action" value="{{ status_watched }}">
+            <button
+              type="submit"
+              class="movie-action-btn movie-action-btn--toggle {% if user_status == status_watched %}is-active{% endif %}"
+              aria-pressed="{% if user_status == status_watched %}true{% else %}false{% endif %}"
+            >
+              <i class="bi {% if user_status == status_watched %}bi-eye-fill{% else %}bi-eye{% endif %}" aria-hidden="true"></i>
+              <span>
+                {% if user_status == status_watched %}
+                  Obejrzane
+                {% else %}
+                  Oznacz jako obejrzane
+                {% endif %}
+              </span>
+            </button>
+          </form>
+
+          <form method="post" action="{% url 'movies:update_status' movie.tmdb_id %}" class="movie-action-form">
+            {% csrf_token %}
             <input type="hidden" name="action" value="{{ status_watchlist }}">
             <button
               type="submit"
-              class="movie-action-btn {% if user_status == status_watchlist %}movie-action-btn--active{% endif %}"
+              class="movie-action-btn movie-action-btn--toggle {% if user_status == status_watchlist %}is-active{% endif %}"
               aria-pressed="{% if user_status == status_watchlist %}true{% else %}false{% endif %}"
             >
-              <i class="bi {% if user_status == status_watchlist %}bi-bookmark-check-fill{% else %}bi-bookmark-plus{% endif %}"></i>
+              <i class="bi {% if user_status == status_watchlist %}bi-bookmark-check-fill{% else %}bi-bookmark-plus{% endif %}" aria-hidden="true"></i>
               <span>
                 {% if user_status == status_watchlist %}
                   Na liście „do obejrzenia”
@@ -153,8 +139,8 @@
         </div>
       {% else %}
         <div class="movie-actions-guest">
-          <p class="text-secondary mb-2">
-            <i class="bi bi-info-circle"></i>
+          <p>
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
             Zaloguj się, aby oceniać filmy i zarządzać listą obejrzanych.
           </p>
           <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-accent">
@@ -162,12 +148,34 @@
           </a>
         </div>
       {% endif %}
-
-      <a href="{% url 'movies:list' %}" class="btn btn-ghost mt-3">
-        <i class="bi bi-arrow-left"></i> Wróć do katalogu
-      </a>
     </div>
   </div>
+
+  {% if cast %}
+    <section class="movie-detail-section" aria-labelledby="cast-heading">
+      <header class="movie-detail-section-head">
+        <p class="eyebrow">Twórcy</p>
+        <h2 class="movie-detail-section-title" id="cast-heading">Obsada</h2>
+      </header>
+      <ul class="movie-cast-grid">
+        {% for credit in cast %}
+          <li class="cast-card">
+            {% if credit.person.profile_url %}
+              <img src="{{ credit.person.profile_url }}" alt="{{ credit.person.name }}" class="cast-photo" loading="lazy">
+            {% else %}
+              <div class="cast-photo-placeholder"><i class="bi bi-person"></i></div>
+            {% endif %}
+            <div class="cast-info">
+              <span class="cast-name">{{ credit.person.name }}</span>
+              {% if credit.character %}
+                <span class="cast-character">{{ credit.character }}</span>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
 
   {% include "movies/_comments_section.html" %}
 </article>

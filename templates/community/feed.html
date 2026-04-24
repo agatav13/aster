@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Społeczność | Aster{% endblock %}
+
+{% block content %}
+<section class="community-section">
+  <header class="page-header">
+    <p class="eyebrow">Społeczność</p>
+    <h1 class="page-title">Co oglądają inni</h1>
+    <p class="page-lede">
+      Śledź, co znajomi oceniają, dodają do list i o czym piszą. Wszystkie
+      aktywności linkują do szczegółów filmu.
+    </p>
+    <p class="preview-note">
+      <i class="bi bi-eye"></i>
+      Podgląd interfejsu — funkcja społecznościowa jest w przygotowaniu.
+      Pokazane osoby i aktywności są przykładowe.
+    </p>
+  </header>
+
+  {% include "community/_tabs.html" %}
+
+  {% if feed_items %}
+    <ol class="feed-list">
+      {% for item in feed_items %}
+        <li class="feed-item">
+          <span class="avatar avatar--{{ item.user_tint }}" aria-hidden="true">
+            {{ item.user_initials }}
+          </span>
+          <div class="feed-body">
+            <p class="feed-line">
+              <strong class="feed-user">{{ item.user_name }}</strong>
+              <span class="feed-verb">{{ item.verb_label }}</span>
+              <a href="{% url 'movies:detail' item.movie.tmdb_id %}" class="feed-movie">
+                {{ item.movie.title }}
+              </a>
+              {% if item.score %}
+                <span class="feed-score">
+                  <i class="bi bi-star-fill"></i> {{ item.score|floatformat:"-1" }}/5
+                </span>
+              {% endif %}
+              <span class="feed-when">· {{ item.when_label }}</span>
+            </p>
+            {% if item.snippet %}
+              <blockquote class="feed-snippet">{{ item.snippet }}</blockquote>
+            {% endif %}
+          </div>
+          <a href="{% url 'movies:detail' item.movie.tmdb_id %}" class="feed-thumb" aria-label="Zobacz {{ item.movie.title }}">
+            {% if item.movie.poster_url %}
+              <img src="{{ item.movie.poster_url }}" alt="" loading="lazy">
+            {% else %}
+              <span class="feed-thumb-placeholder"><i class="bi bi-film"></i></span>
+            {% endif %}
+          </a>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <div class="activity-empty">
+      <i class="bi bi-people"></i>
+      <h3>Brak aktywności</h3>
+      <p>Dodaj znajomych, aby zobaczyć, co oglądają i oceniają.</p>
+      <a href="{% url 'community:people' %}" class="btn btn-ghost">Znajdź znajomych</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
