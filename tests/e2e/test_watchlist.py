@@ -31,7 +31,7 @@ def test_watchlist_then_watched(
     status = UserMovieStatus.objects.get(user=user, movie=movie)
     assert status.status == UserMovieStatus.WATCHLIST
 
-    page.get_by_role("button", name=re.compile(r"Dodaj do obejrzanych", re.I)).click()
+    page.get_by_role("button", name=re.compile(r"Oznacz jako obejrzane", re.I)).click()
     page.wait_for_url(re.compile(rf"/movies/{movie.tmdb_id}/"))
     watched_btn = page.get_by_role("button", name=re.compile(r"Obejrzane", re.I))
     expect(watched_btn.first).to_be_visible()
