@@ -751,6 +751,73 @@ def fetch_seeded_recommendations_shelf(
     return seed_movie, items
 
 
+def _pick_watched_seed(
+    user: AbstractBaseUser, *, exclude_movie_ids: set[int] | None = None
+) -> Movie | None:
+    """Most-recently watched movie for the user, optionally skipping any
+    already used as a seed elsewhere on the page (e.g. the rated shelf).
+
+    Returns None when the user has no watched entries — or when every one
+    is in `exclude_movie_ids`. Walks rows newest-first so caller can keep
+    asking for the next-best seed if needed.
+    """
+    qs = (
+        UserMovieStatus.objects.filter(user=user, status=UserMovieStatus.WATCHED)
+        .select_related("movie")
+        .order_by("-updated_at")
+    )
+    if exclude_movie_ids:
+        qs = qs.exclude(movie_id__in=exclude_movie_ids)
+    row = qs.first()
+    return row.movie if row else None
+
+
+def fetch_recently_watched_recommendations_shelf(
+    user: AbstractBaseUser,
+    *,
+    limit: int = SHELF_LIMIT,
+    exclude_seed_movie_ids: set[int] | None = None,
+) -> tuple[Movie | None, list[MovieListItem]]:
+    """TMDB recommendations seeded from the user's most recently watched movie.
+
+    Mirrors `fetch_seeded_recommendations_shelf` but draws its signal from
+    watch history, so the rail still works for users who mark films watched
+    without rating them. Returns `(seed_movie, items)`.
+
+    `exclude_seed_movie_ids` lets the caller skip seeds already used by
+    another rail (typically the rated-recommendations seed) so we don't
+    render two near-identical rails seeded from the same title.
+    """
+    seed_movie = _pick_watched_seed(user, exclude_movie_ids=exclude_seed_movie_ids)
+    if seed_movie is None:
+        return None, []
+
+    excluded = _interacted_tmdb_ids(user)
+
+    try:
+        client = TmdbClient()
+        response = client.get_movie_recommendations(seed_movie.tmdb_id)
+    except TmdbConfigError:
+        logger.debug("Watched recommendations skipped: TMDB_API_KEY not configured")
+        return seed_movie, []
+    except TmdbApiError as exc:
+        logger.warning(
+            "TMDB recommendations failed for tmdb_id=%s: %s",
+            seed_movie.tmdb_id,
+            exc,
+        )
+        return seed_movie, []
+
+    items: list[MovieListItem] = []
+    for summary in response.results:
+        if summary.id in excluded:
+            continue
+        items.append(MovieListItem.from_tmdb(summary, client))
+        if len(items) >= limit:
+            break
+    return seed_movie, items
+
+
 def _pick_exploration_person(user: AbstractBaseUser) -> Person | None:
     """Pick the director/actor most represented in the user's liked ratings.
 
