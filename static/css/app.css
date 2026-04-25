@@ -1177,12 +1177,17 @@ a:hover {
 }
 
 .movies-filters {
-  display: flex;
+  display: grid;
   gap: 0.75rem;
-  flex-wrap: wrap;
   align-items: center;
   margin-top: 1.5rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  grid-template-areas: "search select submit";
 }
+
+.movies-search       { grid-area: search; }
+.movies-genre-select { grid-area: select; }
+.movies-filters > .btn { grid-area: submit; }
 
 .movies-header .page-lede {
   margin-bottom: 0;
@@ -1196,8 +1201,13 @@ a:hover {
   color: var(--text-primary);
   padding: 0.65rem 0.9rem;
   font-size: 0.95rem;
-  min-width: 220px;
+  min-width: 0;
+  width: 100%;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.movies-filters > .btn {
+  white-space: nowrap;
 }
 
 .movies-search:focus,
@@ -1205,6 +1215,30 @@ a:hover {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* Tablet: search keeps the row, select + submit share the next */
+@media (max-width: 820px) {
+  .movies-filters {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "search search"
+      "select submit";
+  }
+}
+
+/* Phone: full-width stack */
+@media (max-width: 520px) {
+  .movies-filters {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "search"
+      "select"
+      "submit";
+  }
+  .movies-filters > .btn {
+    width: 100%;
+  }
 }
 
 .movie-grid {
@@ -4785,4 +4819,280 @@ a:hover {
   .settings-dl dt {
     padding-top: 0;
   }
+}
+
+/* ── Flash toasts (Django messages) ────────────────────────
+   Replaces Bootstrap .alert-* boxes with a quiet top-right
+   stack: hairline border, accent left rule, theme-tinted
+   surface, slide-in + auto-dismiss. Cohesive with the
+   editorial palette — no sky-blue, no leaf-green. */
+.flash-stack {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(360px, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.flash {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.7rem;
+  padding: 0.75rem 0.85rem 0.75rem 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  pointer-events: auto;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(12px);
+  animation: flash-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--flash-i, 0) * 60ms);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.flash.is-leaving {
+  opacity: 0;
+  transform: translateX(12px);
+  animation: none;
+}
+
+.flash-rule {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--text-tertiary);
+}
+
+.flash-icon {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.flash-text {
+  margin: 0;
+  color: var(--text-primary);
+  letter-spacing: 0.005em;
+}
+
+.flash-close {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.flash-close:hover {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.flash-close i {
+  font-size: 1rem;
+}
+
+/* Variants — accent stripe + icon tint per tag. */
+.flash--info .flash-rule       { background: var(--secondary); }
+.flash--info .flash-icon       { color: var(--secondary); }
+
+.flash--success .flash-rule    { background: var(--accent); }
+.flash--success .flash-icon    { color: var(--accent); }
+
+.flash--warning .flash-rule    { background: var(--tertiary); }
+.flash--warning .flash-icon    { color: var(--tertiary); }
+
+.flash--error .flash-rule,
+.flash--danger .flash-rule     { background: #d98a8a; }
+.flash--error .flash-icon,
+.flash--danger .flash-icon     { color: #d98a8a; }
+
+@keyframes flash-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .flash-stack {
+    top: 0.6rem;
+    right: 0.6rem;
+    left: 0.6rem;
+    width: auto;
+  }
+}
+
+/* ── Editorial form fields ─────────────────────────────────
+   Django renders default widgets as bare <input>/<textarea>
+   with no Bootstrap class, so .form-control rules never fire
+   — that's why auth/settings inputs were unstyled boxes with
+   inline labels. Style bare elements directly, AND override
+   .form-control/.form-select where Bootstrap classes are
+   explicit (e.g. the feedback widget) so everything matches.
+   Bespoke pickers (.movies-genre-select, .library-sort) are
+   intentionally left alone. */
+
+.app-shell .form-label {
+  display: block;
+  margin: 0 0 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+}
+
+.app-shell input[type="text"]:not([class]),
+.app-shell input[type="email"]:not([class]),
+.app-shell input[type="password"]:not([class]),
+.app-shell input[type="url"]:not([class]),
+.app-shell input[type="search"]:not([class]),
+.app-shell input[type="tel"]:not([class]),
+.app-shell input[type="number"]:not([class]),
+.app-shell input[type="date"]:not([class]),
+.app-shell input[type="datetime-local"]:not([class]),
+.app-shell textarea:not([class]),
+.app-shell .form-control,
+.app-shell .form-select {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: none;
+  appearance: none;
+}
+
+.app-shell textarea:not([class]),
+.app-shell textarea.form-control {
+  min-height: 6.5rem;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.app-shell input[type="text"]:not([class])::placeholder,
+.app-shell input[type="email"]:not([class])::placeholder,
+.app-shell input[type="password"]:not([class])::placeholder,
+.app-shell input[type="url"]:not([class])::placeholder,
+.app-shell input[type="search"]:not([class])::placeholder,
+.app-shell input[type="tel"]:not([class])::placeholder,
+.app-shell input[type="number"]:not([class])::placeholder,
+.app-shell textarea:not([class])::placeholder,
+.app-shell .form-control::placeholder {
+  color: var(--text-tertiary);
+  opacity: 0.85;
+}
+
+.app-shell input[type="text"]:not([class]):hover,
+.app-shell input[type="email"]:not([class]):hover,
+.app-shell input[type="password"]:not([class]):hover,
+.app-shell input[type="url"]:not([class]):hover,
+.app-shell input[type="search"]:not([class]):hover,
+.app-shell input[type="tel"]:not([class]):hover,
+.app-shell input[type="number"]:not([class]):hover,
+.app-shell input[type="date"]:not([class]):hover,
+.app-shell textarea:not([class]):hover,
+.app-shell .form-control:hover,
+.app-shell .form-select:hover {
+  border-color: var(--border-accent);
+}
+
+.app-shell input[type="text"]:not([class]):focus,
+.app-shell input[type="email"]:not([class]):focus,
+.app-shell input[type="password"]:not([class]):focus,
+.app-shell input[type="url"]:not([class]):focus,
+.app-shell input[type="search"]:not([class]):focus,
+.app-shell input[type="tel"]:not([class]):focus,
+.app-shell input[type="number"]:not([class]):focus,
+.app-shell input[type="date"]:not([class]):focus,
+.app-shell input[type="datetime-local"]:not([class]):focus,
+.app-shell textarea:not([class]):focus,
+.app-shell .form-control:focus,
+.app-shell .form-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-card);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.app-shell input:not([class]):disabled,
+.app-shell textarea:not([class]):disabled,
+.app-shell .form-control:disabled,
+.app-shell .form-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Invalid (server-rendered errors get .text-danger sibling;
+   also catch native :invalid for live validation) */
+.app-shell input:not([class]):user-invalid,
+.app-shell textarea:not([class]):user-invalid,
+.app-shell .form-control:user-invalid {
+  border-color: #d98a8a;
+}
+.app-shell input:not([class]):user-invalid:focus,
+.app-shell textarea:not([class]):user-invalid:focus,
+.app-shell .form-control:user-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(217, 138, 138, 0.18);
+}
+
+.app-shell .form-text {
+  margin-top: 0.4rem;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.app-shell .text-danger {
+  color: #d98a8a !important;
+}
+
+/* Autofill: Chrome/Safari paint a yellow rectangle by default —
+   neutralize and re-tint to the theme. */
+.app-shell input:-webkit-autofill,
+.app-shell textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-secondary) inset;
+  caret-color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.app-shell input:-webkit-autofill:focus,
+.app-shell textarea:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-card) inset, 0 0 0 3px var(--accent-dim);
+  border-color: var(--accent);
 }

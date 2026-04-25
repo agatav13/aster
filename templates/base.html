@@ -15,7 +15,7 @@
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{% static 'css/app.css' %}?v=profile-ledger-13" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=movies-filters-mobile-1" rel="stylesheet">
   </head>
   <body class="app-shell">
     {% with view_name=request.resolver_match.view_name %}
@@ -113,16 +113,28 @@
     </nav>
     {% endwith %}
 
-    <main class="app-container app-main">
-      {% if messages %}
-        <div class="mb-4">
-          {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
-              {{ message }}
+    {% if messages %}
+      <div class="flash-stack" role="region" aria-label="Powiadomienia" data-flash-stack>
+        {% for message in messages %}
+          {% with tag=message.tags|default:'info' %}
+            <div class="flash flash--{{ tag }}" role="status" data-flash>
+              <span class="flash-rule" aria-hidden="true"></span>
+              <i class="bi flash-icon
+                {% if tag == 'success' %}bi-check2
+                {% elif tag == 'warning' %}bi-exclamation
+                {% elif tag == 'error' or tag == 'danger' %}bi-x-octagon
+                {% else %}bi-asterisk{% endif %}" aria-hidden="true"></i>
+              <p class="flash-text">{{ message }}</p>
+              <button type="button" class="flash-close" aria-label="Zamknij powiadomienie" data-flash-close>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
             </div>
-          {% endfor %}
-        </div>
-      {% endif %}
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <main class="app-container app-main">
       {% block content %}{% endblock %}
     </main>
 
@@ -139,10 +151,12 @@
              target="_blank"
              rel="noopener">Kod źródłowy</a>
           <span class="app-footer-dot" aria-hidden="true">·</span>
+          {% if request.user.is_authenticated %}
           <a href="https://github.com/agatav13/programowanie-aplikacji-web/issues/new"
              target="_blank"
              rel="noopener">Zgłoś problem</a>
           <span class="app-footer-dot" aria-hidden="true">·</span>
+          {% endif %}
           <a href="https://www.themoviedb.org/"
              target="_blank"
              rel="noopener"
@@ -168,6 +182,37 @@
           document.documentElement.setAttribute('data-theme', next);
           localStorage.setItem('theme', next);
           apply(next);
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        var stack = document.querySelector('[data-flash-stack]');
+        if (!stack) return;
+        var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var AUTODISMISS_MS = 4500;
+
+        function dismiss(el) {
+          if (!el || el.dataset.dismissing) return;
+          el.dataset.dismissing = '1';
+          el.classList.add('is-leaving');
+          var done = function () {
+            el.parentNode && el.parentNode.removeChild(el);
+            if (stack && !stack.querySelector('[data-flash]')) {
+              stack.parentNode && stack.parentNode.removeChild(stack);
+            }
+          };
+          if (reduceMotion) { done(); return; }
+          el.addEventListener('transitionend', done, { once: true });
+          setTimeout(done, 600);
+        }
+
+        Array.prototype.forEach.call(stack.querySelectorAll('[data-flash]'), function (flash, i) {
+          flash.style.setProperty('--flash-i', i);
+          var btn = flash.querySelector('[data-flash-close]');
+          if (btn) btn.addEventListener('click', function () { dismiss(flash); });
+          var timer = setTimeout(function () { dismiss(flash); }, AUTODISMISS_MS + i * 250);
+          flash.addEventListener('mouseenter', function () { clearTimeout(timer); });
         });
       })();
     </script>
