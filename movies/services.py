@@ -440,6 +440,27 @@ class MovieListPage:
         return self.number + 1
 
 
+def watched_tmdb_ids(user: AbstractBaseUser) -> set[int]:
+    """tmdb_ids the user has marked as watched. Empty set for anon users."""
+    if not getattr(user, "is_authenticated", False):
+        return set()
+    return set(
+        UserMovieStatus.objects.filter(
+            user=user, status=UserMovieStatus.WATCHED
+        ).values_list("movie__tmdb_id", flat=True)
+    )
+
+
+def exclude_watched(
+    items: Iterator[MovieListItem] | list[MovieListItem],
+    watched_ids: set[int],
+) -> list[MovieListItem]:
+    """Drop items the user has already watched. Pass-through when set is empty."""
+    if not watched_ids:
+        return list(items)
+    return [it for it in items if it.tmdb_id not in watched_ids]
+
+
 def _coerce_genre_id(raw: str | None) -> int | None:
     if not raw:
         return None

@@ -96,6 +96,42 @@ class MovieListViewTests(TestCase):
         response = self.client.get(reverse("movies:list"), {"q": "nonexistent"})
         self.assertContains(response, "Brak filmów")
 
+    def test_watched_movies_hidden_for_logged_in_user(self) -> None:
+        """Authenticated users should not see titles they marked as watched
+        in the grid. Anonymous users still see everything."""
+        user = get_user_model().objects.create_user(
+            email="viewer@example.com", password="hunter2!!"
+        )
+        watched = Movie.objects.get(tmdb_id=1)
+        UserMovieStatus.objects.create(
+            user=user, movie=watched, status=UserMovieStatus.WATCHED
+        )
+
+        # Anonymous user: still sees the watched title.
+        response = self.client.get(reverse("movies:list"))
+        self.assertContains(response, "Inception")
+
+        # Logged-in user: watched title is hidden, others remain.
+        self.client.force_login(user)
+        response = self.client.get(reverse("movies:list"))
+        self.assertNotContains(response, "Inception")
+        self.assertContains(response, "The Godfather")
+        self.assertContains(response, "Mad Max")
+
+    def test_watchlist_status_does_not_hide_movie(self) -> None:
+        """Only WATCHED hides — WATCHLIST entries should still appear."""
+        user = get_user_model().objects.create_user(
+            email="planner@example.com", password="hunter2!!"
+        )
+        movie = Movie.objects.get(tmdb_id=2)
+        UserMovieStatus.objects.create(
+            user=user, movie=movie, status=UserMovieStatus.WATCHLIST
+        )
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("movies:list"))
+        self.assertContains(response, "The Godfather")
+
 
 class MovieDetailViewTests(TestCase):
     @classmethod
