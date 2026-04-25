@@ -19,6 +19,7 @@ from .services import (
     create_comment,
     delete_own_comment,
     discover_tmdb_movies,
+    exclude_watched,
     fetch_and_cache_movie,
     fetch_community_top_rated_shelf,
     fetch_continue_exploring_shelf,
@@ -31,6 +32,7 @@ from .services import (
     set_movie_status,
     upsert_rating,
     visible_comments_for,
+    watched_tmdb_ids,
 )
 from .tmdb import TmdbApiError, TmdbConfigError
 
@@ -58,8 +60,12 @@ class MovieListView(TemplateView):
         context["selected_genre"] = genre_id_raw
         context["genres"] = Genre.objects.order_by("name")
 
+        # Hide titles the user has already marked as watched. Computed once
+        # per request and applied to both the grid and the shelves below.
+        watched_ids = watched_tmdb_ids(request.user)
+
         if shelves_mode:
-            shelves = self._build_shelves(request)
+            shelves = self._build_shelves(request, watched_ids=watched_ids)
             if shelves:
                 context["shelves_mode"] = True
                 context["shelves"] = shelves
@@ -85,6 +91,8 @@ class MovieListView(TemplateView):
             page=page,
         )
 
+        page_obj.object_list = exclude_watched(page_obj.object_list, watched_ids)
+
         context.update(
             {
                 "movies": page_obj.object_list,
@@ -97,7 +105,9 @@ class MovieListView(TemplateView):
         )
         return context
 
-    def _build_shelves(self, request: HttpRequest) -> list[dict[str, Any]]:
+    def _build_shelves(
+        self, request: HttpRequest, *, watched_ids: set[int]
+    ) -> list[dict[str, Any]]:
         """Build the shelves shown in default browse mode.
 
         Each shelf is a dict: {eyebrow, title, icon, items, filter_genre_id}.
@@ -108,6 +118,10 @@ class MovieListView(TemplateView):
         personal signals (seeded recommendations, continue exploring,
         favourite genres) take over so an authenticated user sees themselves
         in the feed before the generic editorial and TMDB rails.
+
+        Each shelf's items are filtered against `watched_ids` so titles the
+        user has already seen never appear in the rails. Empty shelves drop
+        out at the bottom of this method.
         """
         shelves: list[dict[str, Any]] = [
             {
@@ -170,8 +184,11 @@ class MovieListView(TemplateView):
                     }
                 )
 
-        # Drop shelves that came back empty (TMDB unavailable, etc.) so we
-        # never render a titled shelf with zero cards.
+        for shelf in shelves:
+            shelf["items"] = exclude_watched(shelf["items"], watched_ids)
+
+        # Drop shelves that came back empty — either because TMDB was
+        # unavailable or because every item got filtered out as watched.
         return [s for s in shelves if s["items"]]
 
     @staticmethod
