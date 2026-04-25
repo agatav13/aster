@@ -16,6 +16,7 @@ from .services import (
     fetch_community_top_rated_shelf,
     fetch_continue_exploring_shelf,
     fetch_polish_cinema_shelf,
+    fetch_recently_watched_recommendations_shelf,
     fetch_seeded_recommendations_shelf,
     normalize_all_genres,
     remove_movie_status,
@@ -1460,6 +1461,103 @@ class CuratedShelvesTests(TestCase):
     def test_seeded_recommendations_returns_none_without_ratings(self) -> None:
         """No ratings → nothing to seed from."""
         seed_movie, items = fetch_seeded_recommendations_shelf(self.viewer)
+        self.assertIsNone(seed_movie)
+        self.assertEqual(items, [])
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_watched_recommendations_seeds_from_most_recent_watch(
+        self, mock_client_class
+    ) -> None:
+        """Most-recently watched movie is the seed; interacted titles are
+        filtered out of the response."""
+        older = make_movie(tmdb_id=8201, title="Older Watch", popularity=20)
+        newer = make_movie(tmdb_id=8202, title="Newer Watch", popularity=30)
+        already_seen = make_movie(tmdb_id=8203, title="Also Seen", popularity=10)
+
+        UserMovieStatus.objects.create(
+            user=self.viewer, movie=older, status=UserMovieStatus.WATCHED
+        )
+        UserMovieStatus.objects.create(
+            user=self.viewer, movie=already_seen, status=UserMovieStatus.WATCHED
+        )
+        # Created last → updated_at is the most recent, so this is the seed.
+        UserMovieStatus.objects.create(
+            user=self.viewer, movie=newer, status=UserMovieStatus.WATCHED
+        )
+
+        mock_client = mock_client_class.return_value
+        mock_client.get_movie_recommendations.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=2,
+            results=[
+                TmdbMovieSummary(
+                    id=already_seen.tmdb_id,
+                    title="Also Seen",
+                    popularity=5.0,
+                ),
+                TmdbMovieSummary(
+                    id=9201,
+                    title="Fresh From Watch",
+                    poster_path="/x.jpg",
+                    popularity=5.0,
+                ),
+            ],
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        seed_movie, items = fetch_recently_watched_recommendations_shelf(self.viewer)
+
+        self.assertEqual(seed_movie, newer)
+        mock_client.get_movie_recommendations.assert_called_once_with(newer.tmdb_id)
+        titles = [item.title for item in items]
+        self.assertIn("Fresh From Watch", titles)
+        self.assertNotIn("Also Seen", titles)
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_watched_recommendations_skips_excluded_seed(
+        self, mock_client_class
+    ) -> None:
+        """When the most-recent watch is already used as a seed elsewhere,
+        the rail falls back to the next-most-recent watch."""
+        primary = make_movie(tmdb_id=8301, title="Already Seeded", popularity=40)
+        fallback = make_movie(tmdb_id=8302, title="Fallback Seed", popularity=30)
+
+        UserMovieStatus.objects.create(
+            user=self.viewer, movie=fallback, status=UserMovieStatus.WATCHED
+        )
+        UserMovieStatus.objects.create(
+            user=self.viewer, movie=primary, status=UserMovieStatus.WATCHED
+        )
+
+        mock_client = mock_client_class.return_value
+        mock_client.get_movie_recommendations.return_value = TmdbDiscoverResponse(
+            page=1, total_pages=1, total_results=0, results=[]
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        seed_movie, _ = fetch_recently_watched_recommendations_shelf(
+            self.viewer, exclude_seed_movie_ids={primary.id}
+        )
+
+        self.assertEqual(seed_movie, fallback)
+        mock_client.get_movie_recommendations.assert_called_once_with(fallback.tmdb_id)
+
+    def test_watched_recommendations_returns_none_without_watched(self) -> None:
+        """No watched entries → nothing to seed from."""
+        seed_movie, items = fetch_recently_watched_recommendations_shelf(self.viewer)
+        self.assertIsNone(seed_movie)
+        self.assertEqual(items, [])
+
+    def test_watchlist_only_does_not_seed_watched_recommendations(self) -> None:
+        """A WATCHLIST entry must not be treated as watched."""
+        movie = make_movie(tmdb_id=8401, title="Plan To Watch", popularity=10)
+        UserMovieStatus.objects.create(
+            user=self.viewer, movie=movie, status=UserMovieStatus.WATCHLIST
+        )
+        seed_movie, items = fetch_recently_watched_recommendations_shelf(self.viewer)
         self.assertIsNone(seed_movie)
         self.assertEqual(items, [])
 

@@ -24,6 +24,7 @@ from .services import (
     fetch_community_top_rated_shelf,
     fetch_continue_exploring_shelf,
     fetch_genre_shelf,
+    fetch_recently_watched_recommendations_shelf,
     fetch_seeded_recommendations_shelf,
     fetch_trending_shelf,
     remove_movie_status,
@@ -143,6 +144,24 @@ class MovieListView(TemplateView):
                         "title": f"Podobne do „{seed_movie.title}”",
                         "icon": "bi-stars",
                         "items": seeded_items,
+                        "filter_genre_id": None,
+                    }
+                )
+
+            # Skip the rated-shelf seed so the watched rail picks a
+            # different title (avoids two near-identical "Podobne do X"
+            # rails when the user rated their most recent watch).
+            rated_seed_ids = {seed_movie.id} if seed_movie is not None else set()
+            watched_seed, watched_items = fetch_recently_watched_recommendations_shelf(
+                user, exclude_seed_movie_ids=rated_seed_ids
+            )
+            if watched_items:
+                shelves.append(
+                    {
+                        "eyebrow": "Bo obejrzałeś",
+                        "title": f"Podobne do „{watched_seed.title}”",
+                        "icon": "bi-eye",
+                        "items": watched_items,
                         "filter_genre_id": None,
                     }
                 )
