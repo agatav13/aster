@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **"Bo obejrzałeś" recommendations rail** on `/movies/` (shelves mode), seeded from the user's most recently watched movie via TMDB recommendations. Walks back to the next-most-recent watch when the seed is already used by the rated-recommendations rail, so the page never renders two near-identical "Podobne do «X»" rails from the same title.
+- **Hide watched titles** from the `/movies/` listing and every shelf for authenticated users. New helpers `watched_tmdb_ids` and `exclude_watched` in `movies/services.py`; computed once per request and applied to both the grid and rails. WATCHLIST entries are not affected — only WATCHED hides.
+
+### Changed
+
+- **Editorial flash toasts** replace the wide Bootstrap `.alert-*` strip for Django messages. Top-right corner stack, theme-tinted accent rule per tag (info / success / warning / error), auto-dismisses after ~4.5 s, manually dismissable, respects `prefers-reduced-motion`.
+- **Editorial form fields** applied globally — bare Django widget inputs (and `.form-control` / `.form-select`) now share a hairline-border + accent-focus style, with autofill neutralized to the parchment palette. Bespoke pickers (`.movies-genre-select`, `.library-sort`) intentionally untouched.
+- **`/movies/` filter row** reworked to a CSS grid with explicit tablet (≤ 820 px) and phone (≤ 520 px) breakpoints — submit no longer drops to a stranded second row, and fields stack full-width on phones.
+- **Footer "Zgłoś problem"** GitHub-issue link is hidden for anonymous users so it only appears for members who can act on it.
+
 ### Planned
 
 - Personalized recommendations based on `favorite_genres`, ratings, and watch history.
