@@ -42,7 +42,8 @@ def test_browse_rate_comment(page: Page, live_server, login_user, movie: Movie) 
         "button", name=re.compile(r"Zapisz", re.I)
     ).click()
 
-    page.wait_for_url(re.compile(rf"/movies/{movie.tmdb_id}/"))
+    page.locator("#ratingModal").wait_for(state="hidden")
+    page.locator(".modal-backdrop").wait_for(state="detached")
 
     rating = Rating.objects.get(user=user, movie=movie)
     assert rating.score == Decimal("4.0")
@@ -55,7 +56,6 @@ def test_browse_rate_comment(page: Page, live_server, login_user, movie: Movie) 
     page.locator("#commentBody").fill(comment_text)
     page.get_by_role("button", name=re.compile(r"Wyślij", re.I)).click()
 
-    page.wait_for_url(re.compile(rf"/movies/{movie.tmdb_id}/"))
     expect(page.get_by_text(comment_text)).to_be_visible()
 
     assert Comment.objects.filter(user=user, movie=movie, content=comment_text).exists()
