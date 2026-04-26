@@ -1332,6 +1332,43 @@ class CreditSyncTests(TestCase):
         self.assertEqual(remaining.count(), 1)
         self.assertEqual(remaining.first().person.name, "New Actor")
 
+    @patch("movies.services.TmdbClient")
+    def test_sync_deduplicates_repeated_tmdb_credit_rows(
+        self, mock_client_class
+    ) -> None:
+        mock_client = mock_client_class.return_value
+        mock_client.image_url.return_value = ""
+
+        credits = TmdbCredits(
+            cast=[
+                TmdbCastMember(id=100, name="Actor One", character="Hero", order=0),
+                TmdbCastMember(id=100, name="Actor One", character="Hero", order=1),
+            ],
+            crew=[
+                TmdbCrewMember(id=200, name="Dir One", job="Director"),
+                TmdbCrewMember(id=200, name="Dir One", job="Director"),
+            ],
+        )
+
+        sync_movie_credits(self.movie, credits, mock_client)
+
+        self.assertEqual(
+            MovieCredit.objects.filter(
+                movie=self.movie,
+                person__tmdb_id=200,
+                credit_type=MovieCredit.DIRECTOR,
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            MovieCredit.objects.filter(
+                movie=self.movie,
+                person__tmdb_id=100,
+                credit_type=MovieCredit.CAST,
+            ).count(),
+            1,
+        )
+
 
 class MovieDetailCreditsContextTests(TestCase):
     """Tests that the movie detail view passes credits to the template."""
@@ -1463,6 +1500,42 @@ class CuratedShelvesTests(TestCase):
         seed_movie, items = fetch_seeded_recommendations_shelf(self.viewer)
         self.assertIsNone(seed_movie)
         self.assertEqual(items, [])
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_seeded_recommendations_filters_out_future_releases(
+        self, mock_client_class
+    ) -> None:
+        seed = make_movie(tmdb_id=8104, title="Seed Movie", popularity=100)
+        self._rate(self.viewer, seed, "5.0")
+
+        mock_client = mock_client_class.return_value
+        mock_client.get_movie_recommendations.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=2,
+            results=[
+                TmdbMovieSummary(
+                    id=9008,
+                    title="Future Recommendation",
+                    poster_path="/x.jpg",
+                    release_date=date(2027, 1, 1),
+                    popularity=10.0,
+                ),
+                TmdbMovieSummary(
+                    id=9009,
+                    title="Released Recommendation",
+                    poster_path="/x.jpg",
+                    release_date=date(2026, 1, 1),
+                    popularity=9.0,
+                ),
+            ],
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        _, items = fetch_seeded_recommendations_shelf(self.viewer)
+
+        self.assertEqual([item.title for item in items], ["Released Recommendation"])
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
@@ -1612,6 +1685,40 @@ class CuratedShelvesTests(TestCase):
         person, items = fetch_continue_exploring_shelf(self.viewer)
         self.assertIsNone(person)
         self.assertEqual(items, [])
+
+    def test_continue_exploring_ignores_deep_cast_members(self) -> None:
+        liked = make_movie(tmdb_id=8304, title="Crowded Cast", popularity=20)
+        self._rate(self.viewer, liked, "4.5")
+
+        buried_actor = Person.objects.create(tmdb_id=503, name="Buried Actor")
+        MovieCredit.objects.create(
+            movie=liked,
+            person=buried_actor,
+            credit_type=MovieCredit.CAST,
+            order=8,
+        )
+
+        person, items = fetch_continue_exploring_shelf(self.viewer)
+        self.assertIsNone(person)
+        self.assertEqual(items, [])
+
+    def test_community_top_rated_filters_future_releases(self) -> None:
+        future = make_movie(tmdb_id=7004, title="Future Favorite", popularity=15)
+        future.release_date = date(2027, 1, 1)
+        future.average_rating = Decimal("5.00")
+        future.ratings_count = 2
+        future.save(update_fields=["release_date", "average_rating", "ratings_count"])
+
+        released = make_movie(tmdb_id=7005, title="Released Favorite", popularity=14)
+        released.average_rating = Decimal("4.50")
+        released.ratings_count = 2
+        released.save(update_fields=["average_rating", "ratings_count"])
+
+        items = fetch_community_top_rated_shelf()
+
+        titles = [item.title for item in items]
+        self.assertIn("Released Favorite", titles)
+        self.assertNotIn("Future Favorite", titles)
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
