@@ -378,15 +378,17 @@ def _htmx_response(*fragments: str) -> HttpResponse:
 
 
 def _htmx_actions_response(request: HttpRequest, movie) -> HttpResponse:
-    """Swap the actions block + OOB-update the user-rating cell and rating modal."""
+    """Swap the actions block + OOB-update the user-rating cell.
+
+    The rating modal is intentionally left in place: replacing its DOM node
+    mid-hide-animation orphans Bootstrap's backdrop. The modal preserves the
+    user's last-selected radio state on its own.
+    """
     ctx = _detail_partial_context(request, movie)
     return _htmx_response(
         render_to_string("movies/_actions.html", ctx, request=request),
         render_to_string(
             "movies/_user_rating_cell.html", {**ctx, "oob": True}, request=request
-        ),
-        render_to_string(
-            "movies/_rating_modal.html", {**ctx, "oob": True}, request=request
         ),
     )
 
