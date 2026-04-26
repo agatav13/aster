@@ -1,12 +1,21 @@
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from movies.models import Genre, Movie, MovieCredit, Person, Rating, UserMovieStatus
-from movies.services import get_recommendations_for_user
+from movies.services import get_recommendations_for_user, upsert_rating
+from movies.tmdb import (
+    TmdbCredits,
+    TmdbCrewMember,
+    TmdbDiscoverResponse,
+    TmdbGenre,
+    TmdbMovieDetail,
+    TmdbMovieSummary,
+)
 
 
 class HomeViewTests(TestCase):
@@ -326,6 +335,69 @@ class RecommendationTests(TestCase):
 
         Rating.objects.filter(user=self.user).delete()
 
+    def test_watched_history_produces_recommendations_without_ratings(self) -> None:
+        UserMovieStatus.objects.create(
+            user=self.user,
+            movie=self.liked_movie,
+            status=UserMovieStatus.WATCHED,
+        )
+
+        result = get_recommendations_for_user(self.user)
+
+        tmdb_ids = [m.tmdb_id for m in result]
+        self.assertNotIn(9001, tmdb_ids)
+        self.assertIn(9002, tmdb_ids)
+        self.assertIn(9003, tmdb_ids)
+        self.assertIn(9004, tmdb_ids)
+
+        UserMovieStatus.objects.filter(user=self.user).delete()
+
+    def test_low_rating_via_service_does_not_become_positive_watch_signal(self) -> None:
+        upsert_rating(user=self.user, movie=self.liked_movie, score=2)
+
+        result = get_recommendations_for_user(self.user)
+        self.assertEqual(result, [])
+
+        Rating.objects.filter(user=self.user).delete()
+        UserMovieStatus.objects.filter(user=self.user).delete()
+
+    def test_disliked_signals_remove_otherwise_matching_candidate(self) -> None:
+        director_b = Person.objects.create(tmdb_id=7003, name="Director B")
+        disliked = Movie.objects.create(
+            tmdb_id=9010,
+            title="Disliked Horror",
+            popularity=Decimal("20.00"),
+        )
+        disliked.genres.set([self.genre_horror])
+        MovieCredit.objects.create(
+            movie=disliked,
+            person=director_b,
+            credit_type=MovieCredit.DIRECTOR,
+        )
+
+        penalized = Movie.objects.create(
+            tmdb_id=9011,
+            title="Comedy With Bad Signal",
+            popularity=Decimal("95.00"),
+        )
+        penalized.genres.set([self.genre_comedy, self.genre_horror])
+        MovieCredit.objects.create(
+            movie=penalized,
+            person=director_b,
+            credit_type=MovieCredit.DIRECTOR,
+        )
+
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
+        upsert_rating(user=self.user, movie=disliked, score=2)
+
+        result = get_recommendations_for_user(self.user)
+        tmdb_ids = [m.tmdb_id for m in result]
+        self.assertIn(9003, tmdb_ids)
+        self.assertNotIn(9011, tmdb_ids)
+
+        Rating.objects.filter(user=self.user).delete()
+        UserMovieStatus.objects.filter(user=self.user).delete()
+
     def test_watched_and_watchlisted_movies_are_excluded(self) -> None:
         self.user.favorite_genres.set([self.genre_action])
         UserMovieStatus.objects.create(
@@ -381,16 +453,54 @@ class RecommendationTests(TestCase):
         Rating.objects.filter(user=self.user).delete()
 
     def test_director_match_outranks_single_genre_overlap(self) -> None:
-        """A director match (weight 3) should rank above a single genre match (weight 1)."""
+        """A director match should rank above a single explicit-genre match."""
         Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
 
         result = get_recommendations_for_user(self.user)
         tmdb_ids = [m.tmdb_id for m in result]
-        # same-director film (score 3 for director) vs single-genre candidate (score 1)
+        # same-director film vs single-genre candidate
         director_idx = tmdb_ids.index(9006)
-        # candidate_action has 1 genre overlap → score 1
+        # candidate_action has one explicit genre overlap
         action_idx = tmdb_ids.index(9002)
         self.assertLess(director_idx, action_idx)
+
+        Rating.objects.filter(user=self.user).delete()
+
+    def test_only_top_billed_actors_contribute_actor_signal(self) -> None:
+        actor_b = Person.objects.create(tmdb_id=7004, name="Buried Cast Member")
+        mystery, _ = Genre.objects.get_or_create(name="Tajemnica")
+
+        liked = Movie.objects.create(
+            tmdb_id=9012,
+            title="High Rated Ensemble",
+            popularity=Decimal("30.00"),
+        )
+        liked.genres.set([self.genre_horror])
+        MovieCredit.objects.create(
+            movie=liked,
+            person=actor_b,
+            credit_type=MovieCredit.CAST,
+            order=7,
+        )
+
+        candidate = Movie.objects.create(
+            tmdb_id=9013,
+            title="Only Same Deep Cast",
+            popularity=Decimal("99.00"),
+        )
+        candidate.genres.set([mystery])
+        MovieCredit.objects.create(
+            movie=candidate,
+            person=actor_b,
+            credit_type=MovieCredit.CAST,
+            order=0,
+        )
+
+        Rating.objects.create(user=self.user, movie=liked, score=5)
+
+        result = get_recommendations_for_user(self.user)
+        tmdb_ids = [m.tmdb_id for m in result]
+        self.assertNotIn(9013, tmdb_ids)
 
         Rating.objects.filter(user=self.user).delete()
 
@@ -413,6 +523,95 @@ class RecommendationTests(TestCase):
         # The liked movie itself must not appear
         rec_ids = [m.tmdb_id for m in recommendations]
         self.assertNotIn(9001, rec_ids)
+
+        Rating.objects.filter(user=self.user).delete()
+
+    def test_unreleased_local_movie_is_not_recommended(self) -> None:
+        self.user.favorite_genres.set([self.genre_action])
+        future_movie = Movie.objects.create(
+            tmdb_id=9014,
+            title="Future Action",
+            release_date=date(2027, 1, 1),
+            popularity=Decimal("999.00"),
+        )
+        future_movie.genres.set([self.genre_action])
+
+        result = get_recommendations_for_user(self.user)
+        self.assertNotIn(9014, [m.tmdb_id for m in result])
+
+        self.user.favorite_genres.clear()
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_tmdb_candidates_are_cached_and_reranked(self, mock_client_class) -> None:
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
+
+        mock_client = mock_client_class.return_value
+        mock_client.get_movie_recommendations.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=1,
+            results=[
+                TmdbMovieSummary(
+                    id=9901,
+                    title="Remote Match",
+                    poster_path="/x.jpg",
+                    release_date=date(2026, 1, 1),
+                    popularity=70.0,
+                )
+            ],
+        )
+        mock_client.get_movie.return_value = TmdbMovieDetail(
+            id=9901,
+            title="Remote Match",
+            poster_path="/x.jpg",
+            release_date=date(2026, 1, 1),
+            popularity=70.0,
+            genres=[TmdbGenre(id=28, name="Akcja")],
+            credits=TmdbCredits(
+                crew=[
+                    TmdbCrewMember(
+                        id=self.director_a.tmdb_id, name="Director A", job="Director"
+                    )
+                ]
+            ),
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        result = get_recommendations_for_user(self.user)
+
+        tmdb_ids = [m.tmdb_id for m in result]
+        self.assertIn(9901, tmdb_ids)
+        self.assertTrue(Movie.objects.filter(tmdb_id=9901).exists())
+
+        Rating.objects.filter(user=self.user).delete()
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.services.TmdbClient")
+    def test_tmdb_future_movie_is_not_recommended(self, mock_client_class) -> None:
+        Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
+
+        mock_client = mock_client_class.return_value
+        mock_client.get_movie_recommendations.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=1,
+            results=[
+                TmdbMovieSummary(
+                    id=9902,
+                    title="Future Remote Match",
+                    poster_path="/x.jpg",
+                    release_date=date(2027, 1, 1),
+                    popularity=70.0,
+                )
+            ],
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        result = get_recommendations_for_user(self.user)
+
+        self.assertNotIn(9902, [m.tmdb_id for m in result])
+        mock_client.get_movie.assert_not_called()
 
         Rating.objects.filter(user=self.user).delete()
 
