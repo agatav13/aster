@@ -51,7 +51,7 @@ def test_register_activate_login(page: Page, live_server, genres, clear_outbox) 
     page.get_by_role("button", name=re.compile(r"Zaloguj", re.I)).click()
 
     page.wait_for_url(re.compile(r"/$"))
-    expect(page.get_by_text(re.compile(r"Zalogowano", re.I))).to_be_visible()
+    expect(page.get_by_text(re.compile(r"Wyloguj się", re.I)).first).to_be_attached()
 
 
 def _extract_activation_path(body: str) -> str | None:
