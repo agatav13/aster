@@ -4,10 +4,10 @@ import logging
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
@@ -347,6 +347,75 @@ def _detail_redirect(tmdb_id: int) -> HttpResponse:
     return redirect(reverse("movies:detail", args=[tmdb_id]))
 
 
+def _is_htmx(request: HttpRequest) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def _user_movie_state(user, movie) -> tuple[str | None, int | None]:
+    if not user.is_authenticated:
+        return None, None
+    status_row = UserMovieStatus.objects.filter(user=user, movie=movie).first()
+    rating_row = Rating.objects.filter(user=user, movie=movie).first()
+    return (
+        status_row.status if status_row else None,
+        rating_row.score if rating_row else None,
+    )
+
+
+def _detail_partial_context(request: HttpRequest, movie) -> dict[str, Any]:
+    user_status, user_rating = _user_movie_state(request.user, movie)
+    return {
+        "movie": movie,
+        "user_status": user_status,
+        "user_rating": user_rating,
+        "status_watched": UserMovieStatus.WATCHED,
+        "status_watchlist": UserMovieStatus.WATCHLIST,
+    }
+
+
+def _htmx_response(*fragments: str) -> HttpResponse:
+    return HttpResponse("\n".join(fragments))
+
+
+def _htmx_actions_response(request: HttpRequest, movie) -> HttpResponse:
+    """Swap the actions block + OOB-update the user-rating cell and rating modal."""
+    ctx = _detail_partial_context(request, movie)
+    return _htmx_response(
+        render_to_string("movies/_actions.html", ctx, request=request),
+        render_to_string(
+            "movies/_user_rating_cell.html", {**ctx, "oob": True}, request=request
+        ),
+        render_to_string(
+            "movies/_rating_modal.html", {**ctx, "oob": True}, request=request
+        ),
+    )
+
+
+def _htmx_comments_response(request: HttpRequest, movie) -> HttpResponse:
+    comments = list(visible_comments_for(movie))
+    ctx = {
+        "movie": movie,
+        "comments": comments,
+        "comments_count": len(comments),
+        "comment_max_length": Comment.MAX_LENGTH,
+    }
+    return _htmx_response(
+        render_to_string("movies/_comments_section.html", ctx, request=request),
+    )
+
+
+def _actions_response(request: HttpRequest, movie, tmdb_id: int) -> HttpResponse:
+    if _is_htmx(request):
+        return _htmx_actions_response(request, movie)
+    return _detail_redirect(tmdb_id)
+
+
+def _comments_response(request: HttpRequest, movie, tmdb_id: int) -> HttpResponse:
+    if _is_htmx(request):
+        return _htmx_comments_response(request, movie)
+    return _detail_redirect(tmdb_id)
+
+
 @login_required
 @require_POST
 def update_movie_status(request: HttpRequest, tmdb_id: int) -> HttpResponse:
@@ -363,34 +432,18 @@ def update_movie_status(request: HttpRequest, tmdb_id: int) -> HttpResponse:
 
     if action == "clear":
         remove_movie_status(user=request.user, movie=movie)
-        messages.info(request, f"„{movie.title}” usunięty z Twoich list.")
-        return _detail_redirect(tmdb_id)
+        return _actions_response(request, movie, tmdb_id)
 
     if action not in {UserMovieStatus.WATCHLIST, UserMovieStatus.WATCHED}:
-        messages.error(request, "Nieprawidłowa akcja.")
-        return _detail_redirect(tmdb_id)
+        return _actions_response(request, movie, tmdb_id)
 
     existing = UserMovieStatus.objects.filter(user=request.user, movie=movie).first()
     if existing is not None and existing.status == action:
         remove_movie_status(user=request.user, movie=movie)
-        messages.info(request, f"„{movie.title}” usunięty z Twoich list.")
-        return _detail_redirect(tmdb_id)
+        return _actions_response(request, movie, tmdb_id)
 
-    promoted_from_watchlist = (
-        existing is not None
-        and existing.status == UserMovieStatus.WATCHLIST
-        and action == UserMovieStatus.WATCHED
-    )
     set_movie_status(user=request.user, movie=movie, status=action)
-    if promoted_from_watchlist:
-        messages.success(
-            request,
-            f"„{movie.title}” przeniesiony z „do obejrzenia” do „obejrzane”.",
-        )
-    else:
-        label = "do obejrzenia" if action == UserMovieStatus.WATCHLIST else "obejrzane"
-        messages.success(request, f"„{movie.title}” dodany do listy „{label}”.")
-    return _detail_redirect(tmdb_id)
+    return _actions_response(request, movie, tmdb_id)
 
 
 @login_required
@@ -401,67 +454,34 @@ def update_movie_rating(request: HttpRequest, tmdb_id: int) -> HttpResponse:
     action = request.POST.get("action", "save").strip()
 
     if action == "delete":
-        if remove_rating(user=request.user, movie=movie):
-            messages.info(
-                request, f"Twoja ocena filmu „{movie.title}” została usunięta."
-            )
-        return _detail_redirect(tmdb_id)
+        remove_rating(user=request.user, movie=movie)
+        return _actions_response(request, movie, tmdb_id)
 
     raw_score = request.POST.get("score", "").strip()
     try:
         score = Decimal(raw_score)
     except (ValueError, InvalidOperation):
-        messages.error(request, "Wybierz ocenę od 0.5 do 5 gwiazdek.")
-        return _detail_redirect(tmdb_id)
-
-    # Detect "watchlist → watched" promotion before the rating upsert so we
-    # can tell the user that their watchlist entry was moved, not just that
-    # the rating was saved.
-    was_on_watchlist = UserMovieStatus.objects.filter(
-        user=request.user, movie=movie, status=UserMovieStatus.WATCHLIST
-    ).exists()
+        return _actions_response(request, movie, tmdb_id)
 
     try:
         upsert_rating(user=request.user, movie=movie, score=score)
     except ValueError:
-        messages.error(request, "Ocena musi mieścić się w zakresie 0.5–5.")
-        return _detail_redirect(tmdb_id)
-
-    display_score = score.normalize()
-    messages.success(request, f"Zapisano ocenę {display_score}/5 dla „{movie.title}”.")
-    if was_on_watchlist:
-        messages.info(
-            request,
-            f"„{movie.title}” przeniesiony z „do obejrzenia” do „obejrzane”.",
-        )
-    return _detail_redirect(tmdb_id)
+        pass
+    return _actions_response(request, movie, tmdb_id)
 
 
 @login_required
 @require_POST
 def create_movie_comment(request: HttpRequest, tmdb_id: int) -> HttpResponse:
-    """Create a new visible comment on the movie.
-
-    Validation is intentionally shallow: the service layer trims/caps
-    content and the view just surfaces the two error cases via messages so
-    the rendered page can tell the user what went wrong.
-    """
+    """Create a new visible comment on the movie. Empty/over-long content is
+    silently dropped — the comments section just re-renders unchanged."""
     movie = _resolve_movie_or_404(tmdb_id)
     content = request.POST.get("content", "")
     try:
         create_comment(user=request.user, movie=movie, content=content)
     except ValueError:
-        if not content.strip():
-            messages.error(request, "Komentarz nie może być pusty.")
-        else:
-            messages.error(
-                request,
-                f"Komentarz jest zbyt długi (maks. {Comment.MAX_LENGTH} znaków).",
-            )
-        return _detail_redirect(tmdb_id)
-
-    messages.success(request, "Dodano komentarz.")
-    return _detail_redirect(tmdb_id)
+        pass
+    return _comments_response(request, movie, tmdb_id)
 
 
 @login_required
@@ -471,7 +491,7 @@ def delete_movie_comment(
 ) -> HttpResponse:
     """Delete a comment the current user owns; 404 for anything else."""
     comment = get_object_or_404(Comment, pk=comment_id, movie__tmdb_id=tmdb_id)
+    movie = comment.movie
     if not delete_own_comment(user=request.user, comment=comment):
         raise Http404("Nie można usunąć tego komentarza.")
-    messages.info(request, "Komentarz usunięty.")
-    return _detail_redirect(tmdb_id)
+    return _comments_response(request, movie, tmdb_id)

@@ -3,10 +3,17 @@
   Each star position is split into two radio inputs (half + full) using CSS
   clipping so clicking the left or right side of a star sets 0.5 increments.
 {% endcomment %}
-<div class="modal fade rating-modal" id="ratingModal" tabindex="-1" aria-labelledby="ratingModalLabel" aria-hidden="true">
+<div class="modal fade rating-modal" id="ratingModal" tabindex="-1" aria-labelledby="ratingModalLabel" aria-hidden="true"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" action="{% url 'movies:update_rating' movie.tmdb_id %}" class="rating-form" data-rating-form>
+      <form method="post"
+            action="{% url 'movies:update_rating' movie.tmdb_id %}"
+            class="rating-form"
+            data-rating-form
+            hx-post="{% url 'movies:update_rating' movie.tmdb_id %}"
+            hx-target="#movie-actions"
+            hx-swap="outerHTML"
+            hx-on::after-request="if(event.detail.successful){bootstrap.Modal.getInstance(document.getElementById('ratingModal'))?.hide();}">
         {% csrf_token %}
         <input type="hidden" name="action" value="save">
         <div class="modal-header">

@@ -1,0 +1,15 @@
+{% comment %}
+  "Twoja ocena" ledger entry. Out-of-band swapped after rating updates so
+  the headline number on the detail page mirrors the modal value.
+{% endcomment %}
+<div class="movie-detail-ledger-entry" id="user-rating-cell"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
+  <dt>Twoja ocena</dt>
+  <dd>
+    {% if user_rating %}
+      <span class="movie-detail-ledger-num">{{ user_rating|floatformat:"-1" }}</span><span class="movie-detail-ledger-frac">/5</span>
+    {% else %}
+      <span class="movie-detail-ledger-empty">—</span>
+      <span class="movie-detail-ledger-sub">Jeszcze nie oceniono</span>
+    {% endif %}
+  </dd>
+</div>

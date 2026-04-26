@@ -3,7 +3,7 @@
   docs/database-design.md. Lists VISIBLE comments newest-first and lets the
   current user post new ones or delete their own.
 {% endcomment %}
-<section class="comments-section" aria-labelledby="comments-heading">
+<section class="comments-section" id="comments-section" aria-labelledby="comments-heading">
   <header class="comments-header">
     <h2 id="comments-heading">
       <i class="bi bi-chat-left-text"></i> Komentarze
@@ -17,6 +17,9 @@
       method="post"
       action="{% url 'movies:create_comment' movie.tmdb_id %}"
       data-comment-form
+      hx-post="{% url 'movies:create_comment' movie.tmdb_id %}"
+      hx-target="#comments-section"
+      hx-swap="outerHTML"
     >
       {% csrf_token %}
       <label for="commentBody" class="visually-hidden">Twój komentarz</label>
@@ -68,6 +71,9 @@
             method="post"
             action="{% url 'movies:delete_comment' movie.tmdb_id comment.pk %}"
             class="comment-delete-form"
+            hx-post="{% url 'movies:delete_comment' movie.tmdb_id comment.pk %}"
+            hx-target="#comments-section"
+            hx-swap="outerHTML"
           >
             {% csrf_token %}
             <button type="submit" class="btn btn-ghost btn-ghost-sm">

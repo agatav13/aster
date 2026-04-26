@@ -68,86 +68,10 @@
             {% endif %}
           </dd>
         </div>
-        <div class="movie-detail-ledger-entry">
-          <dt>Twoja ocena</dt>
-          <dd>
-            {% if user_rating %}
-              <span class="movie-detail-ledger-num">{{ user_rating|floatformat:"-1" }}</span><span class="movie-detail-ledger-frac">/5</span>
-            {% else %}
-              <span class="movie-detail-ledger-empty">—</span>
-              <span class="movie-detail-ledger-sub">Jeszcze nie oceniono</span>
-            {% endif %}
-          </dd>
-        </div>
+        {% include "movies/_user_rating_cell.html" %}
       </dl>
 
-      {% if request.user.is_authenticated %}
-        <div class="movie-actions" role="group" aria-label="Akcje na filmie">
-          <button
-            type="button"
-            class="movie-action-btn movie-action-btn--primary"
-            data-bs-toggle="modal"
-            data-bs-target="#ratingModal"
-          >
-            <i class="bi bi-star-fill" aria-hidden="true"></i>
-            <span>
-              {% if user_rating %}
-                Zmień ocenę ({{ user_rating|floatformat:"-1" }}/5)
-              {% else %}
-                Oceń film
-              {% endif %}
-            </span>
-          </button>
-
-          <form method="post" action="{% url 'movies:update_status' movie.tmdb_id %}" class="movie-action-form">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="{{ status_watched }}">
-            <button
-              type="submit"
-              class="movie-action-btn movie-action-btn--toggle {% if user_status == status_watched %}is-active{% endif %}"
-              aria-pressed="{% if user_status == status_watched %}true{% else %}false{% endif %}"
-            >
-              <i class="bi {% if user_status == status_watched %}bi-eye-fill{% else %}bi-eye{% endif %}" aria-hidden="true"></i>
-              <span>
-                {% if user_status == status_watched %}
-                  Obejrzane
-                {% else %}
-                  Oznacz jako obejrzane
-                {% endif %}
-              </span>
-            </button>
-          </form>
-
-          <form method="post" action="{% url 'movies:update_status' movie.tmdb_id %}" class="movie-action-form">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="{{ status_watchlist }}">
-            <button
-              type="submit"
-              class="movie-action-btn movie-action-btn--toggle {% if user_status == status_watchlist %}is-active{% endif %}"
-              aria-pressed="{% if user_status == status_watchlist %}true{% else %}false{% endif %}"
-            >
-              <i class="bi {% if user_status == status_watchlist %}bi-bookmark-check-fill{% else %}bi-bookmark-plus{% endif %}" aria-hidden="true"></i>
-              <span>
-                {% if user_status == status_watchlist %}
-                  Na liście „do obejrzenia”
-                {% else %}
-                  Obejrzyj później
-                {% endif %}
-              </span>
-            </button>
-          </form>
-        </div>
-      {% else %}
-        <div class="movie-actions-guest">
-          <p>
-            <i class="bi bi-info-circle" aria-hidden="true"></i>
-            Zaloguj się, aby oceniać filmy i zarządzać listą obejrzanych.
-          </p>
-          <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-accent">
-            <i class="bi bi-box-arrow-in-right"></i> Zaloguj się
-          </a>
-        </div>
-      {% endif %}
+      {% include "movies/_actions.html" %}
     </div>
   </div>
 

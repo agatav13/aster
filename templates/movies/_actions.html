@@ -1,0 +1,85 @@
+{% comment %}
+  Movie-detail action group (rate / mark watched / watchlist).
+  Rendered both in initial detail view and as the htmx swap target after
+  status/rating mutations. The wrapper id is the swap anchor.
+{% endcomment %}
+{% if request.user.is_authenticated %}
+  <div class="movie-actions"
+       id="movie-actions"
+       role="group"
+       aria-label="Akcje na filmie">
+    <button
+      type="button"
+      class="movie-action-btn movie-action-btn--primary"
+      data-bs-toggle="modal"
+      data-bs-target="#ratingModal"
+    >
+      <i class="bi bi-star-fill" aria-hidden="true"></i>
+      <span>
+        {% if user_rating %}
+          Zmień ocenę ({{ user_rating|floatformat:"-1" }}/5)
+        {% else %}
+          Oceń film
+        {% endif %}
+      </span>
+    </button>
+
+    <form method="post"
+          action="{% url 'movies:update_status' movie.tmdb_id %}"
+          class="movie-action-form"
+          hx-post="{% url 'movies:update_status' movie.tmdb_id %}"
+          hx-target="#movie-actions"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{{ status_watched }}">
+      <button
+        type="submit"
+        class="movie-action-btn movie-action-btn--toggle {% if user_status == status_watched %}is-active{% endif %}"
+        aria-pressed="{% if user_status == status_watched %}true{% else %}false{% endif %}"
+      >
+        <i class="bi {% if user_status == status_watched %}bi-eye-fill{% else %}bi-eye{% endif %}" aria-hidden="true"></i>
+        <span>
+          {% if user_status == status_watched %}
+            Obejrzane
+          {% else %}
+            Oznacz jako obejrzane
+          {% endif %}
+        </span>
+      </button>
+    </form>
+
+    <form method="post"
+          action="{% url 'movies:update_status' movie.tmdb_id %}"
+          class="movie-action-form"
+          hx-post="{% url 'movies:update_status' movie.tmdb_id %}"
+          hx-target="#movie-actions"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{{ status_watchlist }}">
+      <button
+        type="submit"
+        class="movie-action-btn movie-action-btn--toggle {% if user_status == status_watchlist %}is-active{% endif %}"
+        aria-pressed="{% if user_status == status_watchlist %}true{% else %}false{% endif %}"
+      >
+        <i class="bi {% if user_status == status_watchlist %}bi-bookmark-check-fill{% else %}bi-bookmark-plus{% endif %}" aria-hidden="true"></i>
+        <span>
+          {% if user_status == status_watchlist %}
+            Na liście „do obejrzenia”
+          {% else %}
+            Obejrzyj później
+          {% endif %}
+        </span>
+      </button>
+    </form>
+  </div>
+{% else %}
+  <div class="movie-actions-guest" id="movie-actions">
+    <p>
+      <i class="bi bi-info-circle" aria-hidden="true"></i>
+      Zaloguj się, aby oceniać filmy i zarządzać listą obejrzanych.
+    </p>
+    <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-accent">
+      <i class="bi bi-box-arrow-in-right"></i> Zaloguj się
+    </a>
+  </div>
+{% endif %}
