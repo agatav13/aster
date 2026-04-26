@@ -113,27 +113,6 @@
     </nav>
     {% endwith %}
 
-    {% if messages %}
-      <div class="flash-stack" role="region" aria-label="Powiadomienia" data-flash-stack>
-        {% for message in messages %}
-          {% with tag=message.tags|default:'info' %}
-            <div class="flash flash--{{ tag }}" role="status" data-flash>
-              <span class="flash-rule" aria-hidden="true"></span>
-              <i class="bi flash-icon
-                {% if tag == 'success' %}bi-check2
-                {% elif tag == 'warning' %}bi-exclamation
-                {% elif tag == 'error' or tag == 'danger' %}bi-x-octagon
-                {% else %}bi-asterisk{% endif %}" aria-hidden="true"></i>
-              <p class="flash-text">{{ message }}</p>
-              <button type="button" class="flash-close" aria-label="Zamknij powiadomienie" data-flash-close>
-                <i class="bi bi-x" aria-hidden="true"></i>
-              </button>
-            </div>
-          {% endwith %}
-        {% endfor %}
-      </div>
-    {% endif %}
-
     <main class="app-container app-main">
       {% block content %}{% endblock %}
     </main>
@@ -166,6 +145,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
     <script>
       (function () {
         var toggle = document.getElementById('theme-toggle');
@@ -182,37 +162,6 @@
           document.documentElement.setAttribute('data-theme', next);
           localStorage.setItem('theme', next);
           apply(next);
-        });
-      })();
-    </script>
-    <script>
-      (function () {
-        var stack = document.querySelector('[data-flash-stack]');
-        if (!stack) return;
-        var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var AUTODISMISS_MS = 4500;
-
-        function dismiss(el) {
-          if (!el || el.dataset.dismissing) return;
-          el.dataset.dismissing = '1';
-          el.classList.add('is-leaving');
-          var done = function () {
-            el.parentNode && el.parentNode.removeChild(el);
-            if (stack && !stack.querySelector('[data-flash]')) {
-              stack.parentNode && stack.parentNode.removeChild(stack);
-            }
-          };
-          if (reduceMotion) { done(); return; }
-          el.addEventListener('transitionend', done, { once: true });
-          setTimeout(done, 600);
-        }
-
-        Array.prototype.forEach.call(stack.querySelectorAll('[data-flash]'), function (flash, i) {
-          flash.style.setProperty('--flash-i', i);
-          var btn = flash.querySelector('[data-flash-close]');
-          if (btn) btn.addEventListener('click', function () { dismiss(flash); });
-          var timer = setTimeout(function () { dismiss(flash); }, AUTODISMISS_MS + i * 250);
-          flash.addEventListener('mouseenter', function () { clearTimeout(timer); });
         });
       })();
     </script>

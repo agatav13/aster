@@ -1,6 +1,5 @@
 import logging
 
-from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.tokens import default_token_generator
@@ -41,18 +40,9 @@ class RegisterView(FormView):
         try:
             send_activation_email(user)
             logger.info("Sent activation email to user id=%s", user.pk)
-            messages.success(
-                self.request,
-                "Konto zostało utworzone. Sprawdź skrzynkę e-mail i aktywuj konto.",
-            )
         except Exception:
             logger.exception(
                 "Activation email failed for user id=%s email=%s", user.pk, user.email
-            )
-            messages.warning(
-                self.request,
-                "Konto zostało utworzone, ale wysyłka e-maila się nie powiodła. "
-                "Sprawdź konfigurację SMTP i użyj ponownej wysyłki linku.",
             )
         return super().form_valid(form)
 
@@ -80,7 +70,6 @@ class LoginView(FormView):
         user = form.get_user()
         login(self.request, user)
         logger.info("User logged in id=%s email=%s", user.pk, user.email)
-        messages.success(self.request, "Zalogowano pomyślnie.")
         return super().form_valid(form)
 
 
@@ -132,21 +121,7 @@ class ResendActivationView(FormView):
                 logger.exception(
                     "Resend activation email failed for user id=%s", user.pk
                 )
-                messages.error(
-                    self.request,
-                    "Nie udało się ponownie wysłać wiadomości. Sprawdź konfigurację SMTP.",
-                )
                 return redirect("accounts:resend_activation")
-            messages.success(self.request, "Wysłaliśmy nowy link aktywacyjny.")
-        elif user and user.is_active:
-            messages.info(
-                self.request, "To konto jest już aktywne. Możesz się zalogować."
-            )
-        else:
-            messages.info(
-                self.request,
-                "Jeśli konto istnieje, wiadomość aktywacyjna została wysłana ponownie.",
-            )
         return super().form_valid(form)
 
 
@@ -157,7 +132,6 @@ class LogoutView(View):
         user_id = request.user.pk if request.user.is_authenticated else None
         logout(request)
         logger.info("User logged out id=%s", user_id)
-        messages.info(request, "Wylogowano pomyślnie.")
         return redirect("home")
 
 
@@ -325,7 +299,6 @@ class EditDisplayNameView(LoginRequiredMixin, UpdateView):
             self.request.user.pk,
             form.cleaned_data["display_name"],
         )
-        messages.success(self.request, "Wyświetlana nazwa została zaktualizowana.")
         return super().form_valid(form)
 
 
@@ -343,5 +316,4 @@ class EditFavoriteGenresView(LoginRequiredMixin, UpdateView):
             self.request.user.pk,
             list(form.cleaned_data["favorite_genres"].values_list("pk", flat=True)),
         )
-        messages.success(self.request, "Ulubione gatunki zostały zaktualizowane.")
         return super().form_valid(form)
