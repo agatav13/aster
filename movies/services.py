@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Any, Iterator
 
 from django.contrib.auth.models import AbstractBaseUser
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Avg, Count, Q, QuerySet
@@ -1035,6 +1036,7 @@ def set_movie_status(*, user, movie: Movie, status: str) -> UserMovieStatus:
     obj, _ = UserMovieStatus.objects.update_or_create(
         user=user, movie=movie, defaults={"status": status}
     )
+    bust_recommendations_cache(user)
     logger.info(
         "User id=%s set status=%s on movie tmdb_id=%s",
         user.pk,
@@ -1049,6 +1051,7 @@ def remove_movie_status(*, user, movie: Movie) -> bool:
     """Delete any status row for (user, movie). Returns True if one existed."""
     deleted, _ = UserMovieStatus.objects.filter(user=user, movie=movie).delete()
     if deleted:
+        bust_recommendations_cache(user)
         logger.info(
             "User id=%s cleared status on movie tmdb_id=%s",
             user.pk,
@@ -1103,6 +1106,7 @@ def upsert_rating(*, user, movie: Movie, score: Decimal | float | int) -> Rating
         movie=movie,
         defaults={"status": UserMovieStatus.WATCHED},
     )
+    bust_recommendations_cache(user)
     logger.info(
         "User id=%s %s rating=%s for movie tmdb_id=%s (status auto-set to watched)",
         user.pk,
@@ -1119,6 +1123,7 @@ def remove_rating(*, user, movie: Movie) -> bool:
     deleted, _ = Rating.objects.filter(user=user, movie=movie).delete()
     if deleted:
         _refresh_movie_rating_aggregates(movie)
+        bust_recommendations_cache(user)
         logger.info(
             "User id=%s removed rating on movie tmdb_id=%s",
             user.pk,
@@ -1540,30 +1545,27 @@ def _score_recommendation_candidate(
     return positive_score - negative_score
 
 
-def get_recommendations_for_user(
-    user: AbstractBaseUser,
-    *,
-    limit: int = DEFAULT_RECOMMENDATION_LIMIT,
-) -> list[Movie]:
-    """Return content-based movie recommendations for an authenticated user.
+RECOMMENDATIONS_CACHE_TTL = 30 * 60
+RECOMMENDATIONS_CACHE_VERSION = 1
 
-    Three signal types are combined:
-      1. Genre overlap — genres from highly-rated movies, favourites, and
-         watched-only history.
-      2. Director match — directors of highly-rated or watched-only movies.
-      3. Actor match — top-billed actors from highly-rated or watched-only
-         movies.
 
-    Movies the user has already interacted with (rated, watchlisted, or
-    watched) are excluded. Candidates are scored by a weighted sum of the
-    three signals, with watched-only signals counting less than explicit
-    preferences. Low ratings add negative signals that can suppress or remove
-    otherwise plausible matches. Candidate supply is hybrid: local matches are
-    augmented by TMDB recommendation/discovery fetches, cached locally, then
-    reranked with the same content score.
+def _recommendations_cache_key(user_id: int) -> str:
+    return f"recs:v{RECOMMENDATIONS_CACHE_VERSION}:user:{user_id}"
 
-    Returns an empty list when there are no signals or no candidates.
+
+def bust_recommendations_cache(user: AbstractBaseUser) -> None:
+    """Invalidate the cached recommendation IDs for a user.
+
+    Called from the rating/status mutation helpers so a freshly rated or
+    watchlisted movie shows up in the next dashboard load instead of waiting
+    for the TTL.
     """
+    if user is None or not getattr(user, "pk", None):
+        return
+    cache.delete(_recommendations_cache_key(user.pk))
+
+
+def _compute_recommendation_movie_ids(user: AbstractBaseUser) -> list[int]:
     signals = _build_recommendation_signals(user)
     if not signals.has_positive_signals():
         return []
@@ -1601,4 +1603,47 @@ def get_recommendations_for_user(
             item[0].title,
         )
     )
-    return [movie for movie, _score in scored[:limit]]
+    return [movie.id for movie, _score in scored]
+
+
+def get_recommendations_for_user(
+    user: AbstractBaseUser,
+    *,
+    limit: int = DEFAULT_RECOMMENDATION_LIMIT,
+) -> list[Movie]:
+    """Return content-based movie recommendations for an authenticated user.
+
+    Three signal types are combined:
+      1. Genre overlap — genres from highly-rated movies, favourites, and
+         watched-only history.
+      2. Director match — directors of highly-rated or watched-only movies.
+      3. Actor match — top-billed actors from highly-rated or watched-only
+         movies.
+
+    Movies the user has already interacted with (rated, watchlisted, or
+    watched) are excluded. Candidates are scored by a weighted sum of the
+    three signals, with watched-only signals counting less than explicit
+    preferences. Low ratings add negative signals that can suppress or remove
+    otherwise plausible matches. Candidate supply is hybrid: local matches are
+    augmented by TMDB recommendation/discovery fetches, cached locally, then
+    reranked with the same content score.
+
+    Results are memoised in Django's cache for ~30 minutes keyed on user id;
+    `bust_recommendations_cache` clears the entry when the user mutates a
+    rating or status. Limit only slices the final list, so different limits
+    share the same cache entry.
+
+    Returns an empty list when there are no signals or no candidates.
+    """
+    cache_key = _recommendations_cache_key(user.pk)
+    movie_ids = cache.get(cache_key)
+    if movie_ids is None:
+        movie_ids = _compute_recommendation_movie_ids(user)
+        cache.set(cache_key, movie_ids, RECOMMENDATIONS_CACHE_TTL)
+
+    if not movie_ids:
+        return []
+
+    sliced_ids = movie_ids[:limit]
+    movies_by_id = {m.id: m for m in Movie.objects.filter(id__in=sliced_ids)}
+    return [movies_by_id[mid] for mid in sliced_ids if mid in movies_by_id]
