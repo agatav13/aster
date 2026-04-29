@@ -119,6 +119,56 @@ class MovieListViewTests(TestCase):
         self.assertContains(response, "The Godfather")
         self.assertContains(response, "Mad Max")
 
+    def test_show_watched_toggle_unhides_watched_titles(self) -> None:
+        """`?show_watched=1` opts out of the watched filter so the user can
+        re-find titles they've already seen (e.g. to re-rate them)."""
+        user = get_user_model().objects.create_user(
+            email="reviewer@example.com", password="hunter2!!"
+        )
+        watched = Movie.objects.get(tmdb_id=1)
+        UserMovieStatus.objects.create(
+            user=user, movie=watched, status=UserMovieStatus.WATCHED
+        )
+
+        self.client.force_login(user)
+
+        # Default: watched title is hidden.
+        response = self.client.get(reverse("movies:list"))
+        self.assertNotContains(response, "Inception")
+
+        # show_watched=1: watched title returns.
+        response = self.client.get(reverse("movies:list"), {"show_watched": "1"})
+        self.assertContains(response, "Inception")
+        self.assertContains(response, "The Godfather")
+
+    def test_shelf_empty_state_surfaces_when_everything_is_watched(self) -> None:
+        """When the watched filter strips a shelf to zero, the shelf is
+        kept (not silently dropped) and renders an empty-state hint
+        pointing at the `Pokaż obejrzane` toggle. Without this the user
+        would see a rail just disappear with no explanation."""
+        user = get_user_model().objects.create_user(
+            email="completist@example.com", password="hunter2!!"
+        )
+        # Make tmdb_id=1 community-top-rated eligible (1 rating, COMMUNITY_MIN_RATINGS=1).
+        movie = Movie.objects.get(tmdb_id=1)
+        movie.average_rating = Decimal("4.50")
+        movie.ratings_count = 1
+        movie.save(update_fields=["average_rating", "ratings_count"])
+        UserMovieStatus.objects.create(
+            user=user, movie=movie, status=UserMovieStatus.WATCHED
+        )
+
+        self.client.force_login(user)
+
+        # Default: the community shelf had 1 item, all watched → empty-state shows.
+        response = self.client.get(reverse("movies:list"))
+        self.assertContains(response, "shelf-empty")
+        self.assertContains(response, "Wszystkie tytuły z tej listy")
+
+        # show_watched=1: the watched title comes back, so no empty state.
+        response = self.client.get(reverse("movies:list"), {"show_watched": "1"})
+        self.assertNotContains(response, "shelf-empty")
+
     def test_watchlist_status_does_not_hide_movie(self) -> None:
         """Only WATCHED hides — WATCHLIST entries should still appear."""
         user = get_user_model().objects.create_user(
@@ -1420,8 +1470,11 @@ class CuratedShelvesTests(TestCase):
         Rating.objects.create(user=user, movie=movie, score=Decimal(score))
 
     def test_community_top_rated_respects_min_ratings(self) -> None:
-        """One-user-one-rating films are excluded; a film with 2+ ratings
-        ranks by average, not by popularity."""
+        """With min_ratings=2, one-user-one-rating films are excluded; a
+        film with 2+ ratings ranks by average, not by popularity. (The
+        production default is currently 1 while the rating pool is small
+        — see COMMUNITY_MIN_RATINGS — but the gate still works when the
+        threshold is bumped back up.)"""
         # Popular-but-unrated row is created so we can assert popularity
         # alone isn't enough to surface it; the return value is unused.
         make_movie(tmdb_id=7001, title="Popular Unrated", popularity=900)
@@ -1441,7 +1494,7 @@ class CuratedShelvesTests(TestCase):
         community_fav.ratings_count = 2
         community_fav.save(update_fields=["average_rating", "ratings_count"])
 
-        items = fetch_community_top_rated_shelf()
+        items = fetch_community_top_rated_shelf(min_ratings=2)
 
         titles = [item.title for item in items]
         self.assertIn("Community Fav", titles)

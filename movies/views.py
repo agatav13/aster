@@ -55,15 +55,23 @@ class MovieListView(TemplateView):
         query = request.GET.get("q", "").strip()
         genre_id_raw = request.GET.get("genre", "").strip()
         page = self._parse_page(request.GET.get("page"))
+        # User-controlled escape hatch from the watched-filter. Default off
+        # so the rails stay personal; flipping it on lets the user re-find
+        # films they've already seen (e.g. to re-rate or revisit).
+        show_watched = request.GET.get("show_watched") == "1"
 
         shelves_mode = not query and not genre_id_raw
         context["query"] = query
         context["selected_genre"] = genre_id_raw
+        context["show_watched"] = show_watched
         context["genres"] = Genre.objects.order_by("name")
 
         # Hide titles the user has already marked as watched. Computed once
         # per request and applied to both the grid and the shelves below.
-        watched_ids = watched_tmdb_ids(request.user)
+        # When the user opts into "show watched" we collapse this to an
+        # empty set so every downstream `exclude_watched` call becomes a
+        # pass-through — no other branching needed.
+        watched_ids = set() if show_watched else watched_tmdb_ids(request.user)
 
         if shelves_mode:
             shelves = self._build_shelves(request, watched_ids=watched_ids)
@@ -121,7 +129,9 @@ class MovieListView(TemplateView):
         in the feed before the generic editorial and TMDB rails.
 
         Each shelf's items are filtered against `watched_ids` so titles the
-        user has already seen never appear in the rails. Empty shelves drop
+        user has already seen never appear in the rails. The caller can
+        pass an empty `watched_ids` to disable the filter globally (this
+        is what the `?show_watched=1` toggle does). Empty shelves drop
         out at the bottom of this method.
         """
         shelves: list[dict[str, Any]] = [
@@ -203,12 +213,20 @@ class MovieListView(TemplateView):
                     }
                 )
 
+        # Distinguish two kinds of empty: a shelf whose source returned no
+        # items (TMDB down, no qualifying movies, etc.) is dropped silently,
+        # but a shelf that *had* items and got filtered down to zero by the
+        # watched filter is kept with an `empty_state` marker so the
+        # template can prompt the user to flip the "Pokaż obejrzane"
+        # toggle. Without this distinction, an active rater could log in
+        # and see entire rails just disappear with no explanation.
         for shelf in shelves:
+            had_items = bool(shelf["items"])
             shelf["items"] = exclude_watched(shelf["items"], watched_ids)
+            if had_items and not shelf["items"]:
+                shelf["empty_state"] = "all_watched"
 
-        # Drop shelves that came back empty — either because TMDB was
-        # unavailable or because every item got filtered out as watched.
-        return [s for s in shelves if s["items"]]
+        return [s for s in shelves if s["items"] or s.get("empty_state")]
 
     @staticmethod
     def _parse_page(raw: str | None) -> int:
