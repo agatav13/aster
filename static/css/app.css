@@ -1182,12 +1182,30 @@ a:hover {
   align-items: center;
   margin-top: 1.5rem;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
-  grid-template-areas: "search select submit";
+  grid-template-areas:
+    "search select submit"
+    "watched watched watched";
 }
 
 .movies-search       { grid-area: search; }
 .movies-genre-select { grid-area: select; }
 .movies-filters > .btn { grid-area: submit; }
+.movies-show-watched { grid-area: watched; }
+
+.movies-show-watched {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary, var(--text-primary));
+  cursor: pointer;
+  user-select: none;
+}
+
+.movies-show-watched input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
 
 .movies-header .page-lede {
   margin-bottom: 0;
@@ -1223,7 +1241,8 @@ a:hover {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "search search"
-      "select submit";
+      "select submit"
+      "watched watched";
   }
 }
 
@@ -1234,7 +1253,8 @@ a:hover {
     grid-template-areas:
       "search"
       "select"
-      "submit";
+      "submit"
+      "watched";
   }
   .movies-filters > .btn {
     width: 100%;
@@ -3129,6 +3149,34 @@ a:hover {
   font-size: 0.78rem;
   color: var(--text-secondary);
   margin: 0;
+}
+
+.shelf-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+
+.shelf-empty i {
+  font-size: 1.4rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.shelf-empty p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.shelf-empty strong {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .section-link {

@@ -35,6 +35,18 @@
         {% endfor %}
       </select>
       <button type="submit" class="btn btn-accent">Szukaj</button>
+      {% if user.is_authenticated %}
+        <label class="movies-show-watched">
+          <input
+            type="checkbox"
+            name="show_watched"
+            value="1"
+            {% if show_watched %}checked{% endif %}
+            data-auto-submit="true"
+          >
+          Pokaż obejrzane
+        </label>
+      {% endif %}
     </form>
   </header>
 
@@ -59,23 +71,33 @@
               </a>
             {% endif %}
           </div>
-          <div class="shelf" aria-label="{{ shelf.title }}">
-            {% for item in shelf.items %}
-              <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card">
-                <div class="shelf-poster">
-                  {% if item.poster_url %}
-                    <img src="{{ item.poster_url }}" alt="Plakat: {{ item.title }}" loading="lazy">
-                  {% else %}
-                    <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+          {% if shelf.empty_state == "all_watched" %}
+            <div class="shelf-empty" role="status">
+              <i class="bi bi-check2-circle"></i>
+              <p>
+                Wszystkie tytuły z tej listy masz już obejrzane.
+                Włącz <strong>„Pokaż obejrzane”</strong>, aby je zobaczyć.
+              </p>
+            </div>
+          {% else %}
+            <div class="shelf" aria-label="{{ shelf.title }}">
+              {% for item in shelf.items %}
+                <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card">
+                  <div class="shelf-poster">
+                    {% if item.poster_url %}
+                      <img src="{{ item.poster_url }}" alt="Plakat: {{ item.title }}" loading="lazy">
+                    {% else %}
+                      <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+                    {% endif %}
+                  </div>
+                  <p class="shelf-title">{{ item.title }}</p>
+                  {% if item.release_date %}
+                    <p class="shelf-meta">{{ item.release_date|date:"Y" }}</p>
                   {% endif %}
-                </div>
-                <p class="shelf-title">{{ item.title }}</p>
-                {% if item.release_date %}
-                  <p class="shelf-meta">{{ item.release_date|date:"Y" }}</p>
-                {% endif %}
-              </a>
-            {% endfor %}
-          </div>
+                </a>
+              {% endfor %}
+            </div>
+          {% endif %}
         </section>
       {% endfor %}
     {% else %}
@@ -127,7 +149,7 @@
     {% if is_paginated %}
       <nav class="movies-pagination" aria-label="Paginacja">
         {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}" class="btn btn-ghost btn-ghost-sm">
+          <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if show_watched %}&show_watched=1{% endif %}" class="btn btn-ghost btn-ghost-sm">
             <i class="bi bi-chevron-left"></i> Poprzednia
           </a>
         {% endif %}
@@ -135,7 +157,7 @@
           Strona {{ page_obj.number }} z {{ page_obj.num_pages }}
         </span>
         {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}" class="btn btn-ghost btn-ghost-sm">
+          <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}{% if show_watched %}&show_watched=1{% endif %}" class="btn btn-ghost btn-ghost-sm">
             Następna <i class="bi bi-chevron-right"></i>
           </a>
         {% endif %}

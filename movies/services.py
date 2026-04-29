@@ -676,9 +676,11 @@ def fetch_genre_shelf(
 
 
 # Minimum number of Aster users who must have rated a movie before it's
-# eligible for the "Najwyżej oceniane w Aster" shelf. Guards against a single
-# 5-star rating crowning an obscure title while the community is still small.
-COMMUNITY_MIN_RATINGS = 2
+# eligible for the "Najwyżej oceniane w Aster" shelf. Temporarily lowered to
+# 1 while the community is still tiny — without this the rail would be empty
+# for most visitors. Bump back to 2+ once we have enough ratings that a single
+# 5-star vote shouldn't be able to crown an obscure title.
+COMMUNITY_MIN_RATINGS = 1
 
 
 def fetch_community_top_rated_shelf(
