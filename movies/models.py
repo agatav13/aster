@@ -156,6 +156,7 @@ class Rating(models.Model):
         ]
         indexes = [
             models.Index(fields=["movie"]),
+            models.Index(fields=["user", "score"]),
         ]
         verbose_name = "rating"
         verbose_name_plural = "ratings"
