@@ -28,6 +28,8 @@ from .tmdb import (
 
 logger = logging.getLogger(__name__)
 
+PERSONALIZED_SHELF_CACHE_TTL = 15 * 60
+
 # TMDB caps `page` at 500 server-side; exceed it and the API returns 422.
 # Kept as a hard upper bound for the inner pagination loop so we never issue
 # a guaranteed-bad request, but the UI cap below is deliberately much lower.
@@ -723,6 +725,32 @@ def _interacted_tmdb_ids(user: AbstractBaseUser) -> set[int]:
     return set(Movie.objects.filter(id__in=local_ids).values_list("tmdb_id", flat=True))
 
 
+def _personal_shelf_version_key(user_id: int) -> str:
+    return f"user-shelf-version:{user_id}"
+
+
+def _personal_shelf_version(user_id: int) -> int:
+    version = cache.get(_personal_shelf_version_key(user_id))
+    return int(version) if version is not None else 1
+
+
+def _personal_shelf_cache_key(
+    name: str, user_id: int, *, limit: int, extra: str = ""
+) -> str:
+    version = _personal_shelf_version(user_id)
+    suffix = f":{extra}" if extra else ""
+    return f"user-shelf:v{version}:user:{user_id}:{name}:limit:{limit}{suffix}"
+
+
+def bust_personalized_shelves_cache(user: AbstractBaseUser) -> None:
+    """Rotate the cache namespace for per-user browse shelves."""
+    if user is None or not getattr(user, "pk", None):
+        return
+    version_key = _personal_shelf_version_key(user.pk)
+    current = _personal_shelf_version(user.pk)
+    cache.set(version_key, current + 1, None)
+
+
 def _pick_recommendation_seed(user: AbstractBaseUser) -> Rating | None:
     """Pick the rating that will seed "Bo oceniłeś wysoko" recommendations.
 
@@ -748,8 +776,20 @@ def fetch_seeded_recommendations_shelf(
     recommendations. The caller uses the seed to label the rail
     ("Bo oceniłeś wysoko „Seven”").
     """
+    cache_key = _personal_shelf_cache_key("seeded", user.pk, limit=limit)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        seed_movie_id = cached["seed_movie_id"]
+        seed_movie = Movie.objects.filter(pk=seed_movie_id).first() if seed_movie_id else None
+        return seed_movie, cached["items"]
+
     seed_rating = _pick_recommendation_seed(user)
     if seed_rating is None:
+        cache.set(
+            cache_key,
+            {"seed_movie_id": None, "items": []},
+            PERSONALIZED_SHELF_CACHE_TTL,
+        )
         return None, []
     seed_movie = seed_rating.movie
     excluded = _interacted_tmdb_ids(user)
@@ -779,6 +819,11 @@ def fetch_seeded_recommendations_shelf(
         items.append(MovieListItem.from_tmdb(summary, client))
         if len(items) >= limit:
             break
+    cache.set(
+        cache_key,
+        {"seed_movie_id": seed_movie.pk, "items": items},
+        PERSONALIZED_SHELF_CACHE_TTL,
+    )
     return seed_movie, items
 
 
@@ -819,8 +864,26 @@ def fetch_recently_watched_recommendations_shelf(
     another rail (typically the rated-recommendations seed) so we don't
     render two near-identical rails seeded from the same title.
     """
+    excluded_seed_ids = sorted(exclude_seed_movie_ids or set())
+    cache_key = _personal_shelf_cache_key(
+        "watched",
+        user.pk,
+        limit=limit,
+        extra=",".join(str(movie_id) for movie_id in excluded_seed_ids),
+    )
+    cached = cache.get(cache_key)
+    if cached is not None:
+        seed_movie_id = cached["seed_movie_id"]
+        seed_movie = Movie.objects.filter(pk=seed_movie_id).first() if seed_movie_id else None
+        return seed_movie, cached["items"]
+
     seed_movie = _pick_watched_seed(user, exclude_movie_ids=exclude_seed_movie_ids)
     if seed_movie is None:
+        cache.set(
+            cache_key,
+            {"seed_movie_id": None, "items": []},
+            PERSONALIZED_SHELF_CACHE_TTL,
+        )
         return None, []
 
     excluded = _interacted_tmdb_ids(user)
@@ -848,6 +911,11 @@ def fetch_recently_watched_recommendations_shelf(
         items.append(MovieListItem.from_tmdb(summary, client))
         if len(items) >= limit:
             break
+    cache.set(
+        cache_key,
+        {"seed_movie_id": seed_movie.pk, "items": items},
+        PERSONALIZED_SHELF_CACHE_TTL,
+    )
     return seed_movie, items
 
 
@@ -900,8 +968,20 @@ def fetch_continue_exploring_shelf(
     unreachable, returns `(None, [])` / `(person, [])` so the caller can
     drop the shelf silently.
     """
+    cache_key = _personal_shelf_cache_key("explore", user.pk, limit=limit)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        person_id = cached["person_id"]
+        person = Person.objects.filter(pk=person_id).first() if person_id else None
+        return person, cached["items"]
+
     person = _pick_exploration_person(user)
     if person is None or person.tmdb_id is None:
+        cache.set(
+            cache_key,
+            {"person_id": None, "items": []},
+            PERSONALIZED_SHELF_CACHE_TTL,
+        )
         return None, []
 
     excluded = _interacted_tmdb_ids(user)
@@ -930,6 +1010,11 @@ def fetch_continue_exploring_shelf(
         items.append(MovieListItem.from_tmdb(summary, client))
         if len(items) >= limit:
             break
+    cache.set(
+        cache_key,
+        {"person_id": person.pk, "items": items},
+        PERSONALIZED_SHELF_CACHE_TTL,
+    )
     return person, items
 
 
@@ -1565,6 +1650,7 @@ def bust_recommendations_cache(user: AbstractBaseUser) -> None:
     if user is None or not getattr(user, "pk", None):
         return
     cache.delete(_recommendations_cache_key(user.pk))
+    bust_personalized_shelves_cache(user)
 
 
 def _compute_recommendation_movie_ids(user: AbstractBaseUser) -> list[int]:

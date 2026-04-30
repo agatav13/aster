@@ -31,6 +31,7 @@ from .services import (
 from .tmdb import (
     TmdbApiError,
     TmdbCastMember,
+    TmdbClient,
     TmdbConfigError,
     TmdbCredits,
     TmdbCrewMember,
@@ -239,6 +240,42 @@ class TmdbClientConfigTests(TestCase):
     def test_client_raises_when_api_key_missing(self) -> None:
         with self.assertRaises(TmdbConfigError):
             fetch_and_cache_movie(tmdb_id=99999)
+
+    @override_settings(
+        TMDB_API_KEY="fake-key",
+        TMDB_RESPONSE_CACHE_TTL=60,
+        CACHES={
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "LOCATION": "tmdb-client-cache-tests",
+            }
+        },
+    )
+    @patch("movies.tmdb.httpx.get")
+    def test_client_caches_successful_responses(self, mock_get) -> None:
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "page": 1,
+            "total_pages": 1,
+            "total_results": 1,
+            "results": [
+                {
+                    "id": 1,
+                    "title": "Cached Remote",
+                    "poster_path": "/poster.jpg",
+                    "popularity": 12.0,
+                }
+            ],
+        }
+
+        client = TmdbClient()
+        first = client.list_trending()
+        second = client.list_trending()
+
+        self.assertEqual(first.results[0].title, "Cached Remote")
+        self.assertEqual(second.results[0].title, "Cached Remote")
+        mock_get.assert_called_once()
 
 
 class GenreRelocationTests(TestCase):
@@ -1547,6 +1584,45 @@ class CuratedShelvesTests(TestCase):
         titles = [item.title for item in items]
         self.assertIn("Fresh Recommendation", titles)
         self.assertNotIn("Already Watched", titles)
+
+    @override_settings(
+        TMDB_API_KEY="fake-key",
+        CACHES={
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "LOCATION": "personal-shelf-cache-tests",
+            }
+        },
+    )
+    @patch("movies.services.TmdbClient")
+    def test_seeded_recommendations_are_cached_per_user(self, mock_client_class) -> None:
+        seed = make_movie(tmdb_id=8110, title="Seed Movie", popularity=100)
+        self._rate(self.viewer, seed, "5.0")
+
+        mock_client = mock_client_class.return_value
+        mock_client.get_movie_recommendations.return_value = TmdbDiscoverResponse(
+            page=1,
+            total_pages=1,
+            total_results=1,
+            results=[
+                TmdbMovieSummary(
+                    id=9015,
+                    title="Cached Shelf Result",
+                    poster_path="/x.jpg",
+                    popularity=10.0,
+                )
+            ],
+        )
+        mock_client.image_url.side_effect = lambda path: ""
+
+        first_seed, first_items = fetch_seeded_recommendations_shelf(self.viewer)
+        second_seed, second_items = fetch_seeded_recommendations_shelf(self.viewer)
+
+        self.assertEqual(first_seed, seed)
+        self.assertEqual(second_seed, seed)
+        self.assertEqual([item.title for item in first_items], ["Cached Shelf Result"])
+        self.assertEqual([item.title for item in second_items], ["Cached Shelf Result"])
+        mock_client.get_movie_recommendations.assert_called_once_with(seed.tmdb_id)
 
     def test_seeded_recommendations_returns_none_without_ratings(self) -> None:
         """No ratings → nothing to seed from."""
