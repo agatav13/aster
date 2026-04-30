@@ -2,6 +2,12 @@
 
 {% block title %}{{ movie.title }} · Aster{% endblock %}
 
+{% block extra_head %}
+  {% if movie.poster_url %}
+    <link rel="preload" as="image" href="{{ movie.poster_url }}">
+  {% endif %}
+{% endblock %}
+
 {% block content %}
 <article class="movie-detail movie-detail--editorial">
 
@@ -23,7 +29,10 @@
   <div class="movie-detail-body">
     <aside class="movie-detail-poster">
       {% if movie.poster_url %}
-        <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}">
+        <img src="{{ movie.poster_url }}"
+             alt="Plakat: {{ movie.title }}"
+             fetchpriority="high"
+             decoding="async">
       {% else %}
         <div class="movie-poster-placeholder large">
           <i class="bi bi-film"></i>
@@ -107,4 +116,10 @@
 {% if request.user.is_authenticated %}
   {% include "movies/_rating_modal.html" %}
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/htmx.org@2.0.4"
+        integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+        crossorigin="anonymous"></script>
 {% endblock %}

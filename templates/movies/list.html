@@ -35,6 +35,9 @@
         {% endfor %}
       </select>
       <button type="submit" class="btn btn-accent">Szukaj</button>
+      {% if query or selected_genre or show_watched %}
+        <a href="{% url 'movies:list' %}" class="btn btn-ghost btn-ghost-sm">Wyczyść</a>
+      {% endif %}
       {% if user.is_authenticated %}
         <label class="movies-show-watched">
           <input

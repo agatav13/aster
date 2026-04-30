@@ -7,12 +7,15 @@ be swapped to AsyncClient later when views go async.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from datetime import date
 from typing import Annotated, Any
 
 import httpx
 from django.conf import settings
+from django.core.cache import cache
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
@@ -139,6 +142,20 @@ class TmdbClient:
                 "before calling the TMDB client."
             )
 
+    def _cache_key(self, path: str, params: dict[str, Any]) -> str:
+        serialized = json.dumps(
+            {
+                "path": path,
+                "language": self.language,
+                "params": params,
+            },
+            sort_keys=True,
+            default=str,
+            separators=(",", ":"),
+        )
+        digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+        return f"tmdb:response:{digest}"
+
     def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         url = f"{self.base_url}/{path.lstrip('/')}"
         merged_params: dict[str, Any] = {
@@ -149,6 +166,11 @@ class TmdbClient:
             merged_params.update(params)
         # Log only the public params — never the api_key.
         safe_params = {k: v for k, v in merged_params.items() if k != "api_key"}
+        cache_key = self._cache_key(path, safe_params)
+        cached_payload = cache.get(cache_key)
+        if cached_payload is not None:
+            logger.debug("TMDB cache hit %s params=%s", path, safe_params)
+            return cached_payload
         logger.debug("TMDB GET %s params=%s", path, safe_params)
         try:
             response = httpx.get(url, params=merged_params, timeout=self.timeout)
@@ -167,7 +189,13 @@ class TmdbClient:
             raise TmdbApiError(
                 f"TMDB request to {path} failed with status {response.status_code}"
             )
-        return response.json()
+        payload = response.json()
+        cache.set(
+            cache_key,
+            payload,
+            getattr(settings, "TMDB_RESPONSE_CACHE_TTL", 15 * 60),
+        )
+        return payload
 
     def list_genres(self) -> list[TmdbGenre]:
         payload = self._get("/genre/movie/list")

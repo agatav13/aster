@@ -174,6 +174,7 @@ TMDB_IMAGE_BASE_URL = os.getenv(
 )
 TMDB_REQUEST_TIMEOUT = float(os.getenv("TMDB_REQUEST_TIMEOUT", "3"))
 TMDB_LANGUAGE = os.getenv("TMDB_LANGUAGE", "pl-PL")
+TMDB_RESPONSE_CACHE_TTL = int(os.getenv("TMDB_RESPONSE_CACHE_TTL", "900"))
 
 _IS_TEST_RUN = "test" in sys.argv
 APP_LOG_LEVEL = os.getenv(
