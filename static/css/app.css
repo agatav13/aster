@@ -740,6 +740,16 @@ a:hover {
   display: block;
 }
 
+.dashboard-section + .dashboard-section {
+  margin-top: 3rem;
+}
+
+@media (max-width: 600px) {
+  .dashboard-section + .dashboard-section {
+    margin-top: 2rem;
+  }
+}
+
 .eyebrow {
   font-size: 0.75rem;
   font-weight: 600;
@@ -1179,7 +1189,7 @@ a:hover {
 .movies-filters {
   display: grid;
   gap: 0.75rem;
-  align-items: center;
+  align-items: stretch;
   margin-top: 1.5rem;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
   grid-template-areas:
@@ -1212,20 +1222,48 @@ a:hover {
 }
 
 .movies-search,
+.movies-genre-select,
+.movies-filters > .btn {
+  box-sizing: border-box;
+  min-height: 44px;
+  height: 44px;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  line-height: 1;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.movies-search,
 .movies-genre-select {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
   color: var(--text-primary);
-  padding: 0.65rem 0.9rem;
-  font-size: 0.95rem;
+  padding: 0 0.9rem;
   min-width: 0;
   width: 100%;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.movies-genre-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%238a7b7b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  padding-right: 2.25rem;
+}
+
+:root[data-theme="dark"] .movies-genre-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23b5a8a7' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
 .movies-filters > .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   white-space: nowrap;
+  padding: 0 1.5rem;
+  border: 1px solid transparent;
 }
 
 .movies-search:focus,
@@ -2392,32 +2430,45 @@ a:hover {
 
 .activity-empty {
   text-align: center;
-  padding: 2.5rem 1.5rem;
-  background: var(--bg-secondary);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
+  padding: 1.25rem 1.25rem 1.4rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: border-color 0.2s;
 }
 
-.activity-empty i {
+.activity-empty:hover {
+  border-color: var(--border-accent);
+}
+
+.activity-empty > i {
   display: block;
-  font-size: 2.25rem;
+  font-size: 1.1rem;
   color: var(--accent);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .activity-empty h3 {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  margin-bottom: 0.4rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.25rem;
 }
 
 .activity-empty p {
   color: var(--text-secondary);
-  font-size: 0.88rem;
-  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  margin: 0 auto;
   max-width: 360px;
-  margin-left: auto;
-  margin-right: auto;
+}
+
+.activity-empty .btn {
+  margin-top: 0.85rem;
+  padding: 0.35rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-radius: 3px;
 }
 
 /* ── Recommendation cards ──────────────────────────────── */
@@ -5052,7 +5103,7 @@ a:hover {
 }
 
 .community-section .activity-empty .btn {
-  margin-top: 1.25rem;
+  margin-top: 0.85rem;
 }
 
 .community-section .person-id {
