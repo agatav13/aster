@@ -1,0 +1,18 @@
+{# Single person card — flat, no avatar. #}
+<article class="person-card">
+  <a href="{% url 'community:profile' p.id %}" class="person-id">
+    <h3>{{ p.name }}</h3>
+    <p class="person-handle">{{ p.handle }}</p>
+  </a>
+  <div class="person-actions">
+    <form method="post" action="{% url 'community:follow_toggle' p.id %}" class="m-0">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+      {% if following %}
+        <button type="submit" class="btn btn-ghost btn-ghost-sm">Obserwujesz</button>
+      {% else %}
+        <button type="submit" class="btn btn-accent btn-sm">Obserwuj</button>
+      {% endif %}
+    </form>
+  </div>
+</article>

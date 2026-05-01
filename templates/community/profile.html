@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile_display_name }} · Społeczność · Aster{% endblock %}
+
+{% block content %}
+<section class="community-section profile-page profile-page--ledger">
+
+  <header class="profile-hero" aria-labelledby="profile-hero-name">
+    <div class="profile-hero-body">
+      <h1 id="profile-hero-name" class="profile-hero-name">{{ profile_display_name }}</h1>
+      <p class="profile-hero-meta">
+        <span class="profile-hero-meta-email">{{ profile_handle }}</span>
+        <span class="profile-hero-meta-dot" aria-hidden="true">·</span>
+        <span class="profile-hero-meta-since">Dołączył(a) {{ profile_joined|date:"F Y" }}</span>
+      </p>
+      <p class="profile-hero-meta">
+        <span><strong>{{ followers_count }}</strong> obserwujących</span>
+        <span class="profile-hero-meta-dot" aria-hidden="true">·</span>
+        <span><strong>{{ following_count }}</strong> obserwowanych</span>
+      </p>
+
+      <form method="post" action="{% url 'community:follow_toggle' target.pk %}" class="m-0 mt-2">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        {% if is_following %}
+          <button type="submit" class="btn btn-ghost btn-ghost-sm">Obserwujesz</button>
+        {% else %}
+          <button type="submit" class="btn btn-accent btn-sm">Obserwuj</button>
+        {% endif %}
+      </form>
+
+      <dl class="profile-hero-ledger mt-3">
+        <div class="profile-hero-ledger-entry">
+          <dt>Obejrzane</dt>
+          <dd>{{ watched_count }}</dd>
+        </div>
+        <div class="profile-hero-ledger-entry">
+          <dt>Ocenione</dt>
+          <dd>{{ rated_count }}</dd>
+        </div>
+        <div class="profile-hero-ledger-entry">
+          <dt>Średnia ocena</dt>
+          <dd>
+            {% if avg_rating %}{{ avg_rating|floatformat:"-2" }}<span class="stat-suffix">/5</span>{% else %}<span class="profile-hero-ledger-empty">—</span>{% endif %}
+          </dd>
+        </div>
+        <div class="profile-hero-ledger-entry">
+          <dt>Ulubiona dekada</dt>
+          <dd>
+            {% if top_decade %}{{ top_decade }}{% else %}<span class="profile-hero-ledger-empty">—</span>{% endif %}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </header>
+
+  {% if top_genres %}
+    <section class="profile-taste" aria-labelledby="profile-taste-label">
+      <p class="profile-taste-label" id="profile-taste-label">
+        <i class="bi bi-compass"></i>
+        <span>Najczęściej wybiera</span>
+      </p>
+      <ul class="profile-taste-pills">
+        {% for g in top_genres %}
+          <li class="genre-pill">{{ g }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <section class="dashboard-section profile-library">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow mb-1">Kolekcja</p>
+        <h2 class="section-title">Obejrzane filmy</h2>
+      </div>
+    </div>
+
+    {% if library_entries %}
+      <div class="library-grid">
+        {% for entry in library_entries %}
+          <a href="{% url 'movies:detail' entry.movie.tmdb_id %}"
+             class="library-card{% if entry.has_rating %} library-card--rated{% else %} library-card--watched-only{% endif %}">
+            <div class="library-card-poster">
+              {% if entry.movie.poster_url %}
+                <img src="{{ entry.movie.poster_url }}" alt="Plakat: {{ entry.movie.title }}" loading="lazy">
+              {% else %}
+                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+              {% endif %}
+              <div class="library-card-scrim" aria-hidden="true"></div>
+              {% if entry.has_rating %}
+                <span class="library-seal" aria-label="Ocena: {{ entry.score|floatformat:'-1' }} z 5">
+                  <i class="bi bi-star-fill library-seal-icon" aria-hidden="true"></i>
+                  <span class="library-seal-score">{{ entry.score|floatformat:"-1" }}</span>
+                  <span class="library-seal-frac">/5</span>
+                </span>
+              {% else %}
+                <span class="library-mark library-mark--watched" aria-label="Obejrzane, bez oceny">
+                  <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                </span>
+              {% endif %}
+            </div>
+            <div class="library-card-body">
+              <h3 class="library-card-title">{{ entry.movie.title }}</h3>
+              <p class="library-card-meta">
+                {% if entry.movie.release_date %}<span>{{ entry.movie.release_date|date:"Y" }}</span>{% endif %}
+                {% if entry.has_rating %}
+                  <span class="library-card-meta-sep" aria-hidden="true">·</span>
+                  <span class="library-card-meta-score"><i class="bi bi-star-fill"></i> {{ entry.score|floatformat:"-1" }}/5</span>
+                {% endif %}
+              </p>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="activity-empty activity-empty--library">
+        <i class="bi bi-camera-reels"></i>
+        <h3>Pusta biblioteka</h3>
+        <p>Ten użytkownik nie oznaczył jeszcze żadnego filmu jako obejrzany.</p>
+      </div>
+    {% endif %}
+  </section>
+
+</section>
+{% endblock %}
