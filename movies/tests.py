@@ -1595,7 +1595,9 @@ class CuratedShelvesTests(TestCase):
         },
     )
     @patch("movies.services.TmdbClient")
-    def test_seeded_recommendations_are_cached_per_user(self, mock_client_class) -> None:
+    def test_seeded_recommendations_are_cached_per_user(
+        self, mock_client_class
+    ) -> None:
         seed = make_movie(tmdb_id=8110, title="Seed Movie", popularity=100)
         self._rate(self.viewer, seed, "5.0")
 

@@ -780,7 +780,9 @@ def fetch_seeded_recommendations_shelf(
     cached = cache.get(cache_key)
     if cached is not None:
         seed_movie_id = cached["seed_movie_id"]
-        seed_movie = Movie.objects.filter(pk=seed_movie_id).first() if seed_movie_id else None
+        seed_movie = (
+            Movie.objects.filter(pk=seed_movie_id).first() if seed_movie_id else None
+        )
         return seed_movie, cached["items"]
 
     seed_rating = _pick_recommendation_seed(user)
@@ -874,7 +876,9 @@ def fetch_recently_watched_recommendations_shelf(
     cached = cache.get(cache_key)
     if cached is not None:
         seed_movie_id = cached["seed_movie_id"]
-        seed_movie = Movie.objects.filter(pk=seed_movie_id).first() if seed_movie_id else None
+        seed_movie = (
+            Movie.objects.filter(pk=seed_movie_id).first() if seed_movie_id else None
+        )
         return seed_movie, cached["items"]
 
     seed_movie = _pick_watched_seed(user, exclude_movie_ids=exclude_seed_movie_ids)
