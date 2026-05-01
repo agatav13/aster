@@ -11,50 +11,22 @@
   <section class="dashboard-section">
     <div class="section-head">
       <div>
-        <p class="eyebrow mb-1">Spersonalizowane</p>
-        <h2 class="section-title"><i class="bi bi-magic"></i> Rekomendacje dla Ciebie</h2>
+        <p class="eyebrow mb-1">Społeczność</p>
+        <h2 class="section-title"><i class="bi bi-people"></i> Co oglądają znajomi</h2>
       </div>
+      <a href="{% url 'community:feed' %}" class="section-link">
+        Cały feed <i class="bi bi-arrow-right"></i>
+      </a>
     </div>
 
-    {% if recommendations %}
-      <p class="text-secondary mb-3">
-        Na podstawie Twoich ulubionych gatunków, wysoko ocenionych filmów i historii oglądania.
-      </p>
-      <div class="recommendation-grid">
-        {% for movie in recommendations %}
-          <a href="{% url 'movies:detail' movie.tmdb_id %}" class="movie-card">
-            <div class="movie-poster">
-              {% if movie.poster_url %}
-                <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
-              {% else %}
-                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
-              {% endif %}
-            </div>
-            <div class="movie-card-body">
-              <h3 class="movie-title">{{ movie.title }}</h3>
-              {% if movie.release_date %}
-                <p class="movie-meta">{{ movie.release_date|date:"Y" }}</p>
-              {% endif %}
-            </div>
-          </a>
-        {% endfor %}
-      </div>
+    {% if feed_groups %}
+      {% include "community/_feed_groups.html" %}
     {% else %}
-      <p class="text-secondary mb-3">
-        Po wystawieniu kilku ocen i zaznaczeniu obejrzanych filmów algorytm zacznie
-        proponować tytuły dopasowane do Twoich preferencji.
-      </p>
-      <div class="recommendation-grid">
-        {% for _ in "12345678" %}
-          <div class="recommendation-card recommendation-card--placeholder" aria-hidden="true">
-            <div class="recommendation-poster"><i class="bi bi-film"></i></div>
-            <div class="recommendation-body">
-              <div class="placeholder-line placeholder-line--title"></div>
-              <div class="placeholder-line placeholder-line--meta"></div>
-              <div class="placeholder-line placeholder-line--meta short"></div>
-            </div>
-          </div>
-        {% endfor %}
+      <div class="activity-empty">
+        <i class="bi bi-people"></i>
+        <h3>Brak aktywności</h3>
+        <p>Dodaj znajomych, aby zobaczyć, co oglądają i oceniają.</p>
+        <a href="{% url 'community:people' %}" class="btn btn-ghost">Znajdź znajomych</a>
       </div>
     {% endif %}
   </section>
@@ -83,6 +55,37 @@
             <p class="shelf-title">{{ movie.title }}</p>
             {% if movie.release_date %}
               <p class="shelf-meta">{{ movie.release_date|date:"Y" }}</p>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if community_shelf %}
+    <section class="dashboard-section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow mb-1">Głosami widzów Aster</p>
+          <h2 class="section-title"><i class="bi bi-heart"></i> Najwyżej oceniane w Aster</h2>
+        </div>
+        <a href="{% url 'movies:list' %}" class="section-link">
+          Odkrywaj filmy <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+      <div class="shelf" aria-label="Najwyżej oceniane">
+        {% for item in community_shelf %}
+          <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card">
+            <div class="shelf-poster">
+              {% if item.poster_url %}
+                <img src="{{ item.poster_url }}" alt="Plakat: {{ item.title }}" loading="lazy">
+              {% else %}
+                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+              {% endif %}
+            </div>
+            <p class="shelf-title">{{ item.title }}</p>
+            {% if item.release_date %}
+              <p class="shelf-meta">{{ item.release_date|date:"Y" }}</p>
             {% endif %}
           </a>
         {% endfor %}

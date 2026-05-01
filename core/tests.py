@@ -38,7 +38,7 @@ class HomeViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         # Dashboard content is rendered in place at /, no redirect.
         self.assertContains(response, "Witaj, Ada")
-        self.assertContains(response, "Rekomendacje dla Ciebie")
+        self.assertContains(response, "Co oglądają znajomi")
 
     def test_no_separate_dashboard_url(self):
         with self.assertRaises(Exception):
@@ -511,18 +511,19 @@ class RecommendationTests(TestCase):
 
         self.user.favorite_genres.clear()
 
-    def test_recommendations_in_dashboard_context(self) -> None:
+    def test_dashboard_does_not_compute_recommendations(self) -> None:
+        """Recommendations have moved to /movies/ — the dashboard now shows
+        a friends-activity feed instead, so a logged-in user with a rating
+        but no follows should land on a page that surfaces neither
+        TMDB-derived recs nor a recommendations context entry."""
         self.client.force_login(self.user)
         Rating.objects.create(user=self.user, movie=self.liked_movie, score=5)
 
         response = self.client.get(reverse("home"))
 
         self.assertEqual(response.status_code, 200)
-        recommendations = response.context["recommendations"]
-        self.assertTrue(len(recommendations) > 0)
-        # The liked movie itself must not appear
-        rec_ids = [m.tmdb_id for m in recommendations]
-        self.assertNotIn(9001, rec_ids)
+        self.assertNotIn("recommendations", response.context)
+        self.assertEqual(response.context["feed_groups"], [])
 
         Rating.objects.filter(user=self.user).delete()
 
@@ -615,10 +616,10 @@ class RecommendationTests(TestCase):
 
         Rating.objects.filter(user=self.user).delete()
 
-    def test_empty_recommendations_show_placeholder(self) -> None:
+    def test_empty_feed_shows_find_friends_prompt(self) -> None:
         self.client.force_login(self.user)
         response = self.client.get(reverse("home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context["recommendations"]), 0)
-        self.assertContains(response, "algorytm zacznie")
+        self.assertEqual(response.context["feed_groups"], [])
+        self.assertContains(response, "Brak aktywności")
