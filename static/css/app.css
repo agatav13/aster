@@ -3250,29 +3250,41 @@ a:hover {
   color: #fff;
 }
 
-/* ── Community feed cards ─────────────────────────────── */
+/* ── Community feed — date-grouped, multi-column compact cards ─ */
+.feed-group {
+  margin-bottom: 2.25rem;
+}
+
+.feed-group-label {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border);
+}
+
 .feed-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 0.75rem;
-}
-
-.feed-list--compact {
-  gap: 0.5rem;
 }
 
 .feed-item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.9rem 1rem;
+  grid-template-columns: 60px 1fr;
+  align-items: stretch;
+  gap: 0.85rem;
+  padding: 0.75rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 4px;
   transition: border-color 0.2s;
 }
 
@@ -3280,59 +3292,10 @@ a:hover {
   border-color: var(--border-accent);
 }
 
-.feed-body {
-  min-width: 0;
-}
-
-.feed-line {
-  margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.feed-user {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.feed-verb {
-  margin: 0 0.2rem;
-}
-
-.feed-movie {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.feed-movie:hover {
-  color: var(--accent-hover);
-}
-
-.feed-score {
-  margin-left: 0.4rem;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.feed-when {
-  color: var(--text-tertiary);
-  font-size: 0.85rem;
-}
-
-.feed-snippet {
-  margin: 0.4rem 0 0;
-  padding: 0 0 0 0.75rem;
-  border-left: 2px solid var(--border-accent);
-  color: var(--text-secondary);
-  font-style: italic;
-  font-size: 0.9rem;
-}
-
 .feed-thumb {
-  width: 44px;
-  height: 66px;
-  border-radius: var(--radius-sm);
+  width: 60px;
+  height: 90px;
+  border-radius: 3px;
   overflow: hidden;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
@@ -3351,6 +3314,72 @@ a:hover {
 .feed-thumb-placeholder {
   color: var(--text-tertiary);
   font-size: 1rem;
+}
+
+.feed-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.feed-movie {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  text-decoration: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feed-movie:hover {
+  color: var(--accent);
+}
+
+.feed-line {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.feed-user {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.feed-user:hover {
+  color: var(--accent);
+}
+
+.feed-verb {
+  color: var(--text-secondary);
+}
+
+.feed-foot {
+  margin: auto 0 0;
+  padding-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+}
+
+.feed-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.feed-when {
+  color: var(--text-tertiary);
 }
 
 /* ── Sub-tabs (community) ─────────────────────────────── */
@@ -5013,4 +5042,53 @@ a:hover {
 .app-shell textarea:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px var(--bg-card) inset, 0 0 0 3px var(--accent-dim);
   border-color: var(--accent);
+}
+
+
+/* ── Community — flatten ──────────────────────────────────────── */
+.community-section .person-card {
+  border-radius: 4px;
+  padding: 1rem 1.1rem;
+}
+
+.community-section .activity-empty .btn {
+  margin-top: 1.25rem;
+}
+
+.community-section .person-id {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 0.85rem;
+}
+
+.community-section .person-id:hover h3 {
+  color: var(--accent);
+}
+
+.community-section .btn-accent,
+.community-section .btn-ghost {
+  border-radius: 3px;
+  padding: 0.4rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.community-section .btn-ghost-sm,
+.community-section .btn-sm {
+  padding: 0.4rem 0.95rem;
+  font-size: 0.85rem;
+}
+
+.community-section .btn-accent:hover {
+  transform: none;
+  box-shadow: none;
+  background: var(--accent-hover);
+}
+
+.community-section .btn-ghost:hover {
+  background: transparent;
+  border-color: var(--accent);
+  color: var(--accent);
 }
