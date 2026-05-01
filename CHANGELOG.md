@@ -9,15 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Community follow graph**: new `community.Follow` model (with `uq_follow_pair` unique constraint and `ck_follow_not_self` check), idempotent `POST /community/people/<user_id>/follow/` toggle, and a public read-only profile page at `/community/u/<user_id>/` showing the target's library, average rating, top genres, and top decade.
+- **Friends-activity feed** rendered on the dashboard `/` and the `/community/` page via `community.services.build_feed_groups` — merges followees' `Rating` and `WATCHED` `UserMovieStatus` rows, deduplicates by `(user, movie)`, sorts newest-first, and groups under relative date headings ("Dzisiaj", "Wczoraj", "3 dni temu", …).
+- **Community-top-rated rail** is now always rendered on the home dashboard beneath the watchlist rail (no longer gated on prior interaction).
+- **Shared Redis cache**: `config/settings.py` switches `CACHES["default"]` to `RedisCache` when `REDIS_URL` is set, so the TMDB-response, recommendation, and personalized-shelf caches survive across Gunicorn workers and deploys. `LocMemCache` remains the dev fallback, `DummyCache` is used in tests. New env var documented in `render.yaml` and the deployment guide.
+- **TMDB response cache** in `movies/tmdb.py`: every GET is keyed by `sha256(url+params)` and stored for `TMDB_RESPONSE_CACHE_TTL` seconds (default `900`).
+- **htmx-driven actions on the movie detail page**: `update_movie_status`, `update_movie_rating`, `create_movie_comment`, and `delete_movie_comment` now recognise the `HX-Request` header and return the `templates/movies/_actions.html` / `_user_rating_cell.html` / `_comments_section.html` fragments instead of issuing a 302 redirect. The plain-form path is preserved as a JS-disabled fallback.
+- **GZip middleware** (`django.middleware.gzip.GZipMiddleware`) added to the dynamic-response pipeline; WhiteNoise continues to serve static assets pre-compressed.
+- **"Show watched" toggle** on `/movies/` plus a shelf empty-state hint shown when every entry has been filtered out by the watched filter.
 - **"Bo obejrzałeś" recommendations rail** on `/movies/` (shelves mode), seeded from the user's most recently watched movie via TMDB recommendations. Walks back to the next-most-recent watch when the seed is already used by the rated-recommendations rail, so the page never renders two near-identical "Podobne do «X»" rails from the same title.
 - **Hide watched titles** from the `/movies/` listing and every shelf for authenticated users. New helpers `watched_tmdb_ids` and `exclude_watched` in `movies/services.py`; computed once per request and applied to both the grid and rails. WATCHLIST entries are not affected — only WATCHED hides.
 
 ### Changed
 
+- **Home dashboard (`/`)**: the TMDB-personalized recommendations block has been replaced with the friends-activity feed (`build_feed_groups`) — removes a TMDB round-trip from every dashboard load. Layout is now `feed → watchlist rail → community-top-rated rail`.
+- **`TMDB_REQUEST_TIMEOUT`** default lowered from `10` s to `3` s — TMDB sits on the critical render path and falling back to the local DB / empty rail is preferable to blocking the response.
+- **Personalized recommendation rails are cached** per user under `PERSONALIZED_SHELF_CACHE_TTL` (15 min); credit backfill now uses row-level locking so concurrent detail-page renders cannot race the same `MovieCredit` insert.
+- **Search results show watched titles by default** — the watched-hiding filter only applies to the catalogue grid and the shelves, not to the `?q=` search response.
 - **Editorial flash toasts** replace the wide Bootstrap `.alert-*` strip for Django messages. Top-right corner stack, theme-tinted accent rule per tag (info / success / warning / error), auto-dismisses after ~4.5 s, manually dismissable, respects `prefers-reduced-motion`.
 - **Editorial form fields** applied globally — bare Django widget inputs (and `.form-control` / `.form-select`) now share a hairline-border + accent-focus style, with autofill neutralized to the parchment palette. Bespoke pickers (`.movies-genre-select`, `.library-sort`) intentionally untouched.
 - **`/movies/` filter row** reworked to a CSS grid with explicit tablet (≤ 820 px) and phone (≤ 520 px) breakpoints — submit no longer drops to a stranded second row, and fields stack full-width on phones.
 - **Footer "Zgłoś problem"** GitHub-issue link is hidden for anonymous users so it only appears for members who can act on it.
+
+### Fixed
+
+- **Health check** (`/health/`) no longer executes `SELECT 1` against the database, so external uptime pings stop holding the managed Postgres compute awake.
+- **Rating modal flash on htmx save**: stopped out-of-band swapping the rating dialog during a save in `movies/views.py`, so the modal no longer flickers or reopens after a successful rating.
+
+### Removed
+
+- **`/community/lists/`** placeholder page (mock-data preview shipped in 0.1.0) is gone, together with the `community/_tabs.html` partial. Curated community lists move back to the roadmap; the new follow-driven `/community/u/<user_id>/` profile takes its place in the navigation.
 
 ### Planned
 

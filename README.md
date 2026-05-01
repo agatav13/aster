@@ -16,7 +16,9 @@ A Django-based web application for browsing, rating, and tracking movies, with d
 
 - **Backend:** Django 5.2.13, Gunicorn, Python 3.13
 - **Database:** SQLite (development), PostgreSQL (production)
+- **Cache:** Redis (production), LocMem (development)
 - **External APIs:** TMDB v3 (catalog), Brevo / Gmail SMTP (email)
+- **Frontend:** Bootstrap 5, htmx 2 (progressive enhancement on the movie detail view)
 - **Static files:** WhiteNoise
 - **Deployment:** Render.com
 - **Package manager:** uv

@@ -72,14 +72,14 @@ Plik [`build.sh`](https://github.com/agatav13/aster/blob/main/build.sh):
 ```bash
 #!/usr/bin/env bash
 set -o errexit
-uv sync --frozen
+uv sync --python 3.13
 uv run manage.py collectstatic --noinput
-uv run manage.py migrate --noinput
+uv run manage.py migrate
 ```
 
 ### Start
 
-Render uruchamia: `uv run gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 1`.
+Render uruchamia: `uv run gunicorn config.wsgi:application` (parametry serwowania — port, liczba workerów — pochodzą ze zmiennych środowiskowych Render / domyślnych Gunicorna).
 
 ### Wymagane zmienne środowiskowe
 
@@ -89,7 +89,10 @@ Render uruchamia: `uv run gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 1`
 | `DJANGO_DEBUG` | `False` | wyłącza tryb dev |
 | `DJANGO_ALLOWED_HOSTS` | `aster-1lf7.onrender.com` | jak w hoście Render |
 | `DATABASE_URL` | `postgresql://...` | z Render Managed DB |
+| `REDIS_URL` | `redis://...` | współdzielony cache między workerami Gunicorna; gdy nie ustawiona, aplikacja degraduje do `LocMemCache` (cache per-proces) |
 | `TMDB_API_KEY` | klucz v3 | konieczny dla katalogu |
+| `TMDB_REQUEST_TIMEOUT` | `3` (domyślnie) | timeout HTTP w sekundach dla klienta TMDB |
+| `TMDB_RESPONSE_CACHE_TTL` | `900` (domyślnie) | TTL cache odpowiedzi TMDB w sekundach |
 | `BREVO_API_KEY` | (opcjonalnie) | jeśli chcesz Brevo zamiast SMTP |
 | `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | — | gdy używasz SMTP |
 | `DEFAULT_FROM_EMAIL` | `noreply@aster.example` | adres nadawcy |

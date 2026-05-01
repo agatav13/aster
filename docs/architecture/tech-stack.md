@@ -11,11 +11,14 @@
 | Baza (prod) | PostgreSQL | Render Managed | Pełne wsparcie ORM, indeksy częściowe, JSONB jeśli potrzeba |
 | Sterownik DB | psycopg | 3.2+ (binary) | Najnowsza generacja sterownika postgres |
 | Konfiguracja URL bazy | dj-database-url | 2.3+ | Parsuje `DATABASE_URL` |
+| Cache | Redis (prod) / LocMem (dev) | redis 5.x | Współdzielony cache między workerami Gunicorna; w dev fallback do `LocMemCache`, w testach `DummyCache` |
 | Serwer aplikacyjny | Gunicorn | 23.x | Stabilny WSGI |
+| Kompresja HTTP | `django.middleware.gzip.GZipMiddleware` | wbudowane | GZip dla dynamicznych odpowiedzi (statyki obsługuje WhiteNoise) |
 | Statyki | WhiteNoise | 6.x | Eliminuje potrzebę osobnego CDN, kompresja Brotli/gzip + manifest |
 | E-mail | django-anymail (Brevo) | 14.x | Brevo w prod (transactional), fallback SMTP |
 | CSS framework | Bootstrap | 5 | Szybki prototyp, gotowe komponenty (modal, alerts) |
 | Ikony | Bootstrap Icons | 1.x | Spójna paleta z BS5 |
+| Frontend interactivity | htmx | 2.0.4 | Punktowe użycie na widoku szczegółów filmu — POST + swap fragmentu zamiast pełnego reloadu strony. Załadowane z CDN, brak buildu JS. |
 | Manager pakietów | uv | aktualna | Szybkość, lockfile, dependency groups |
 | Linter / formatter | Ruff | 0.11+ | Najszybszy w Pythonie, jeden tool zamiast Flake8+isort+Black |
 | Type checker | ty | 0.0.1a7 | Eksperymentalny, lekki sprawdzacz typów Astral |
