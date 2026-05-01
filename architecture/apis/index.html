@@ -931,6 +931,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#post-communitypeopleuser_idfollow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /community/people/&lt;user_id&gt;/follow/
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1511,6 +1522,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#post-communitypeopleuser_idfollow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /community/people/&lt;user_id&gt;/follow/
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1665,6 +1687,32 @@ przegląd kontraktu wybranych endpointów modyfikujących stan.</p>
 </table>
 <h3 id="post-moviestmdb_idcommentscomment_iddelete"><code>POST /movies/&lt;tmdb_id&gt;/comments/&lt;comment_id&gt;/delete/</code><a class="headerlink" href="#post-moviestmdb_idcommentscomment_iddelete" title="Permanent link">&para;</a></h3>
 <p>Usuwa komentarz. Tylko autor (sprawdzane w <code>services.delete_own_comment</code>).</p>
+<h3 id="post-communitypeopleuser_idfollow"><code>POST /community/people/&lt;user_id&gt;/follow/</code><a class="headerlink" href="#post-communitypeopleuser_idfollow" title="Permanent link">&para;</a></h3>
+<p>Toggle obserwowania innego użytkownika. Idempotentny: jeśli relacja
+istnieje — usuwa, w przeciwnym razie tworzy <code>community.Follow</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Pole</th>
+<th>Wartości</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>csrfmiddlewaretoken</code></td>
+<td>string</td>
+<td>wymagane</td>
+</tr>
+<tr>
+<td><code>next</code></td>
+<td>string (relatywny URL)</td>
+<td>opcjonalny — ścieżka redirectu po toggle (domyślnie <code>community:people</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Walidacja: <code>400</code> przy próbie obserwowania samego siebie,
+<code>404</code> gdy <code>user_id</code> nie wskazuje aktywnego konta.</p>
 <h2 id="integracja-z-tmdb">Integracja z TMDB<a class="headerlink" href="#integracja-z-tmdb" title="Permanent link">&para;</a></h2>
 <p>Klient w <a href="https://github.com/agatav13/aster/blob/main/movies/tmdb.py"><code>movies/tmdb.py</code></a>
 opakowuje <code>httpx.Client</code> i wystawia metody domeny:</p>
@@ -1687,7 +1735,8 @@ i editorial-rail „Polskie kino".</p>
 <li><strong>Base URL:</strong> <code>https://api.themoviedb.org/3</code> (zmienna <code>TMDB_API_BASE_URL</code>)</li>
 <li><strong>Authoryzacja:</strong> klucz v3 jako parametr <code>api_key=</code> (zmienna <code>TMDB_API_KEY</code>)</li>
 <li><strong>Język:</strong> <code>language=pl-PL</code> (zmienna <code>TMDB_LANGUAGE</code>)</li>
-<li><strong>Timeout:</strong> 10 s domyślnie (zmienna <code>TMDB_REQUEST_TIMEOUT</code>)</li>
+<li><strong>Timeout:</strong> 3 s domyślnie (zmienna <code>TMDB_REQUEST_TIMEOUT</code>). Tak agresywna wartość celowa: TMDB jest na ścieżce krytycznej renderu listingu, a fallback do lokalnej bazy + pusta półka są bezpieczne.</li>
+<li><strong>Cache odpowiedzi:</strong> każde GET trafia do Django cache pod kluczem <code>sha256(url+params)</code> z TTL <code>TMDB_RESPONSE_CACHE_TTL</code> (domyślnie 900 s). W produkcji backendem jest Redis (<code>REDIS_URL</code>), więc cache jest współdzielony między workerami Gunicorna.</li>
 <li><strong>Obsługa błędów:</strong> <code>TmdbApiError</code> (4xx/5xx, network), <code>TmdbConfigError</code> (brak klucza). Service layer łapie i zwraca puste wyniki + log warning.</li>
 </ul>
 <h3 id="przykad-pobranie-szczegoow-filmu">Przykład: pobranie szczegółów filmu<a class="headerlink" href="#przykad-pobranie-szczegoow-filmu" title="Permanent link">&para;</a></h3>

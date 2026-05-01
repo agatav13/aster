@@ -1547,6 +1547,7 @@ procesie WSGI.</p>
     end
 
     DB[(PostgreSQL / SQLite)]
+    Redis[("Redis&lt;br/&gt;cache (prod)")]
     TMDB[(TMDB API)]
     BrevoOrSMTP[(Brevo / Gmail SMTP)]
 
@@ -1556,6 +1557,8 @@ procesie WSGI.</p>
     Views --&gt; Services
     Services --&gt; Models
     Services --&gt; TmdbClient
+    Services --&gt; Redis
+    TmdbClient --&gt; Redis
     Models --&gt; DB
     TmdbClient --&gt;|httpx| TMDB
     Views --&gt; Email
@@ -1578,10 +1581,11 @@ procesie WSGI.</p>
 </ul>
 <h3 id="3-dane">3. Dane<a class="headerlink" href="#3-dane" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>ORM Django</strong> mapuje modele (<code>accounts.User</code>, <code>movies.Movie</code>, <code>movies.Rating</code>, <code>movies.Comment</code>, <code>movies.UserMovieStatus</code>, <code>movies.Person</code>, <code>movies.MovieCredit</code>, <code>movies.Genre</code>) na tabele PostgreSQL/SQLite.</li>
-<li><strong>Migracje</strong> w <code>accounts/migrations/</code>, <code>movies/migrations/</code> — w tym data migration <code>0003_seed_all_tmdb_genres.py</code> zapełniający słownik gatunków.</li>
+<li><strong>ORM Django</strong> mapuje modele (<code>accounts.User</code>, <code>movies.Movie</code>, <code>movies.Rating</code>, <code>movies.Comment</code>, <code>movies.UserMovieStatus</code>, <code>movies.Person</code>, <code>movies.MovieCredit</code>, <code>movies.Genre</code>, <code>community.Follow</code>) na tabele PostgreSQL/SQLite.</li>
+<li><strong>Migracje</strong> w <code>accounts/migrations/</code>, <code>movies/migrations/</code>, <code>community/migrations/</code> — w tym data migration <code>0003_seed_all_tmdb_genres.py</code> zapełniający słownik gatunków oraz <code>community/migrations/0001_initial.py</code> wprowadzająca model <code>Follow</code>.</li>
 <li><strong>Kompletny opis schematu</strong> w <a href="../database/">Architektura → Baza danych</a>.</li>
-<li>Aplikacja <code>community/</code> jest preview — wpisana w <code>INSTALLED_APPS</code>, ale bez <code>models.py</code>/migracji. Widoki feedu, znajomych i list zasila deterministycznie <code>community/mock.py</code>, miksując fikcyjnych userów z prawdziwymi filmami z cache. Modele społecznościowe (follow, listy) trafią do bazy w kolejnej iteracji.</li>
+<li><strong>Cache</strong> — w produkcji <code>RedisCache</code> (zmienna <code>REDIS_URL</code>), współdzielony między procesami Gunicorna; w dev / w testach degraduje do <code>LocMemCache</code> / <code>DummyCache</code>. Klucze: cache odpowiedzi TMDB, cache rekomendacji i półek personalizowanych.</li>
+<li>Aplikacja <code>community/</code> ma własny model <code>Follow</code> oraz serwis <code>build_feed_groups</code>, który łączy ratingi i statusy „watched" obserwowanych użytkowników w jeden, posortowany feed znajomych (renderowany na <code>/</code> i <code>/community/</code>).</li>
 </ul>
 
 

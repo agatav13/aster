@@ -947,6 +947,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#community_follow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        community_follow
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1549,6 +1560,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#community_follow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        community_follow
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1583,6 +1605,8 @@
     USER ||--o{ COMMENT : pisze
     USER ||--o{ USER_MOVIE_STATUS : oznacza
     USER }o--o{ GENRE : "ulubione (m2m)"
+    USER ||--o{ FOLLOW : "obserwuje (jako follower)"
+    USER ||--o{ FOLLOW : "obserwowany (jako followee)"
 
     MOVIE ||--o{ RATING : ocena
     MOVIE ||--o{ COMMENT : komentowany
@@ -1667,6 +1691,12 @@
         string credit_type "cast | director"
         string character
         int order
+    }
+    FOLLOW {
+        bigint id PK
+        bigint follower_id FK
+        bigint followee_id FK
+        datetime created_at
     }</code></pre>
 <h2 id="tabele">Tabele<a class="headerlink" href="#tabele" title="Permanent link">&para;</a></h2>
 <h3 id="accounts_user"><code>accounts_user</code><a class="headerlink" href="#accounts_user" title="Permanent link">&para;</a></h3>
@@ -2033,6 +2063,45 @@ przełącza stan.</p>
 </table>
 <ul>
 <li><strong><code>UniqueConstraint(movie, person, credit_type)</code></strong> — bez duplikatów.</li>
+</ul>
+<h3 id="community_follow"><code>community_follow</code><a class="headerlink" href="#community_follow" title="Permanent link">&para;</a></h3>
+<p>Relacja „follower → followee" zasilająca feed znajomych w
+<a href="https://github.com/agatav13/aster/blob/main/community/services.py"><code>community/services.build_feed_groups</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>Kolumna</th>
+<th>Typ</th>
+<th>Uwagi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>bigint PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>follower_id</code></td>
+<td>bigint FK → user</td>
+<td>obserwujący; ON DELETE CASCADE</td>
+</tr>
+<tr>
+<td><code>followee_id</code></td>
+<td>bigint FK → user</td>
+<td>obserwowany; ON DELETE CASCADE</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>datetime</td>
+<td>używane do sortowania w listingu „znajomi"</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong><code>UniqueConstraint(follower, followee)</code></strong> (<code>uq_follow_pair</code>) — jedna relacja na parę.</li>
+<li><strong><code>CheckConstraint(follower != followee)</code></strong> (<code>ck_follow_not_self</code>) — blokuje self-follow.</li>
+<li>Indeksy <code>(follower, -created_at)</code> i <code>(followee, -created_at)</code> — wspierają zapytania feedu („kogo obserwuję") i listy followers (panel profilu publicznego).</li>
 </ul>
 
 

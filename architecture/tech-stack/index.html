@@ -1452,10 +1452,22 @@
 <td>Parsuje <code>DATABASE_URL</code></td>
 </tr>
 <tr>
+<td>Cache</td>
+<td>Redis (prod) / LocMem (dev)</td>
+<td>redis 5.x</td>
+<td>Współdzielony cache między workerami Gunicorna; w dev fallback do <code>LocMemCache</code>, w testach <code>DummyCache</code></td>
+</tr>
+<tr>
 <td>Serwer aplikacyjny</td>
 <td>Gunicorn</td>
 <td>23.x</td>
 <td>Stabilny WSGI</td>
+</tr>
+<tr>
+<td>Kompresja HTTP</td>
+<td><code>django.middleware.gzip.GZipMiddleware</code></td>
+<td>wbudowane</td>
+<td>GZip dla dynamicznych odpowiedzi (statyki obsługuje WhiteNoise)</td>
 </tr>
 <tr>
 <td>Statyki</td>
@@ -1480,6 +1492,12 @@
 <td>Bootstrap Icons</td>
 <td>1.x</td>
 <td>Spójna paleta z BS5</td>
+</tr>
+<tr>
+<td>Frontend interactivity</td>
+<td>htmx</td>
+<td>2.0.4</td>
+<td>Punktowe użycie na widoku szczegółów filmu — POST + swap fragmentu zamiast pełnego reloadu strony. Załadowane z CDN, brak buildu JS.</td>
 </tr>
 <tr>
 <td>Manager pakietów</td>

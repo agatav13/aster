@@ -1073,6 +1073,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6. Class-based vs function-based views — movies/views.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#htmx-na-widoku-szczegoow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        htmx na widoku szczegółów
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1529,6 +1546,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6. Class-based vs function-based views — movies/views.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#htmx-na-widoku-szczegoow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        htmx na widoku szczegółów
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1591,22 +1625,25 @@ repozytorium — tu pokazujemy wzorce i decyzje.</p>
 <h2 id="struktura-projektu">Struktura projektu<a class="headerlink" href="#struktura-projektu" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>config/          — settings.py, urls.py, wsgi.py
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>accounts/        — User, formularze auth, e-maile aktywacyjne, profil + ustawienia
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>core/            — editorial landing (recommendations + watchlist rail)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>core/            — editorial landing (feed znajomych + watchlist + community shelf)
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>movies/          — katalog, oceny, komentarze, statusy, integracja TMDB, shelves
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>community/       — preview UI (feed, znajomi, listy) — dane z mock.py, bez modeli
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>community/       — Follow model, feed znajomych, profile publiczne
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>feedback/        — widget zgłoszeń przekierowujący do GitHub Issues
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>templates/       — wszystkie szablony DTL (auth, movies, community, partials, e-maile)
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>static/          — CSS, JS, ikony
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>tests/           — e2e/ (Playwright), perf/ (locust)
 </code></pre></div>
 <blockquote>
-<p><strong>Uwaga o <code>community/</code>:</strong> aplikacja jest zarejestrowana w
-<code>INSTALLED_APPS</code>, ale nie ma <code>models.py</code> ani migracji. Trzy widoki
-(<code>FeedView</code>, <code>PeopleView</code>, <code>ListsView</code>) generują kontekst przez
-<code>community/mock.py</code>, który deterministycznie sieje dane (RNG seedowane
-per-user) i miksuje je z prawdziwymi filmami z cache. Modele
-społecznościowe (follow, polubienia, kuratorowane listy) dojdą w
-kolejnej iteracji — wtedy zniknie <code>mock.py</code>.</p>
+<p><strong>Uwaga o <code>community/</code>:</strong> aplikacja ma własny model <code>Follow</code>
+(migracja <code>community/0001_initial.py</code>) i serwis
+<a href="https://github.com/agatav13/aster/blob/main/community/services.py"><code>build_feed_groups</code></a>,
+który łączy <code>Rating</code> i <code>UserMovieStatus</code> obserwowanych użytkowników w
+deduplikowany feed pogrupowany po datach. Widoki: <code>FeedView</code>
+(<code>/community/</code>), <code>PeopleView</code> (<code>/community/people/</code>),
+<code>UserProfileView</code> (<code>/community/u/&lt;id&gt;/</code> — read-only profil publiczny)
+oraz <code>follow_toggle</code> (POST). Plik <code>community/mock.py</code> został
+ograniczony do dataclass’ów <code>FeedItem</code> / <code>FeedGroup</code> używanych przez
+serwis i szablony.</p>
 </blockquote>
 <h2 id="1-rejestracja-z-weryfikacja-e-mail-accountsviewspyregisterview">1. Rejestracja z weryfikacją e-mail — <code>accounts/views.py:RegisterView</code><a class="headerlink" href="#1-rejestracja-z-weryfikacja-e-mail-accountsviewspyregisterview" title="Permanent link">&para;</a></h2>
 <p>Wzorzec: <strong>Form + post-save side effect</strong> w <code>form_valid</code>.</p>
@@ -1703,12 +1740,13 @@ po <code>PASSWORD_RESET_TIMEOUT</code> (24 h).</p>
   filmy są wykluczane przez <code>_interacted_tmdb_ids</code>.</li>
 </ul>
 <h2 id="5-klient-tmdb-moviestmdbpy">5. Klient TMDB — <code>movies/tmdb.py</code><a class="headerlink" href="#5-klient-tmdb-moviestmdbpy" title="Permanent link">&para;</a></h2>
-<p>Wzorzec: <strong>Adapter</strong> + <strong>typed payloads</strong> (Pydantic-podobne <code>TypedDict</code>-y <code>TmdbMovieSummary</code>, <code>TmdbMovieDetail</code>, <code>TmdbCredits</code>).</p>
+<p>Wzorzec: <strong>Adapter</strong> + <strong>typed payloads</strong> (modele Pydantic v2 — <code>TmdbMovieSummary</code>, <code>TmdbMovieDetail</code>, <code>TmdbCredits</code>).</p>
 <ul>
-<li><code>httpx.Client</code> z timeoutem konfigurowalnym przez ENV.</li>
+<li><code>httpx.Client</code> z timeoutem konfigurowalnym przez ENV (domyślnie 3 s — TMDB jest na ścieżce krytycznej, fallback do lokalnej bazy + pusta półka są bezpieczne).</li>
 <li>Centralne wyjątki: <code>TmdbApiError</code>, <code>TmdbConfigError</code> (separate config-vs-runtime errors).</li>
 <li>Wszystkie zapytania dodają <code>language=pl-PL</code> (lub wartość ze <code>settings.TMDB_LANGUAGE</code>).</li>
 <li><code>append_to_response</code> używane do pobrania szczegółów + credits w jednym GET (<code>/movie/&lt;id&gt;?append_to_response=credits</code>).</li>
+<li><strong>Cache odpowiedzi:</strong> każde GET trafia do Django cache pod kluczem <code>sha256(url+params)</code> z TTL <code>TMDB_RESPONSE_CACHE_TTL</code> (domyślnie 900 s). W produkcji backend to Redis (<code>REDIS_URL</code>), więc cache jest współdzielony między workerami Gunicorna — bez tego trafność spada do <code>1/N_workers</code> i resetuje się na każdym deploju.</li>
 </ul>
 <h2 id="6-class-based-vs-function-based-views-moviesviewspy">6. Class-based vs function-based views — <code>movies/views.py</code><a class="headerlink" href="#6-class-based-vs-function-based-views-moviesviewspy" title="Permanent link">&para;</a></h2>
 <p>Decyzja stylu: <strong>CBV dla widoków renderujących templatkę</strong>, <strong>FBV dla akcji POST modyfikujących stan</strong>.</p>
@@ -1725,6 +1763,15 @@ po <code>PASSWORD_RESET_TIMEOUT</code> (24 h).</p>
 <p>Powód: CBV dają darmowo <code>get_context_data</code>, mixiny (<code>LoginRequiredMixin</code>).
 FBV są krótsze i czytelniejsze dla wąskich akcji, gdzie cały handler to
 walidacja + 1 wywołanie serwisowe.</p>
+<h3 id="htmx-na-widoku-szczegoow">htmx na widoku szczegółów<a class="headerlink" href="#htmx-na-widoku-szczegoow" title="Permanent link">&para;</a></h3>
+<p>Akcje <code>update_status</code>, <code>update_rating</code>, <code>create_comment</code> i
+<code>delete_comment</code> rozpoznają nagłówek <code>HX-Request</code>: zamiast <code>302</code> redirectu
+zwracają fragment HTML (<code>templates/movies/_actions.html</code>,
+<code>_user_rating_cell.html</code>, <code>_comments_section.html</code>), który htmx
+podmienia w docelowym kontenerze. Dzięki temu klik „Oceń" /
+„Obejrzane" / „Wyślij komentarz" nie powoduje pełnego reloadu strony.
+Pełna ścieżka POST → redirect zostaje zachowana jako fallback dla
+klientów bez JS.</p>
 <h2 id="7-konfiguracja-srodowiskowa-configsettingspy">7. Konfiguracja środowiskowa — <code>config/settings.py</code><a class="headerlink" href="#7-konfiguracja-srodowiskowa-configsettingspy" title="Permanent link">&para;</a></h2>
 <p>Wzorzec: <strong>12-factor</strong> — wszystkie różnice dev/prod sterowane zmiennymi
 środowiskowymi z bezpiecznymi domyślnymi.</p>

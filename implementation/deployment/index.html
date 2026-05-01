@@ -1644,12 +1644,12 @@ issue trackerach obu pluginów.</p>
 <p>Plik <a href="https://github.com/agatav13/aster/blob/main/build.sh"><code>build.sh</code></a>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="ch">#!/usr/bin/env bash</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>errexit
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>uv<span class="w"> </span>sync<span class="w"> </span>--frozen
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>uv<span class="w"> </span>sync<span class="w"> </span>--python<span class="w"> </span><span class="m">3</span>.13
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>uv<span class="w"> </span>run<span class="w"> </span>manage.py<span class="w"> </span>collectstatic<span class="w"> </span>--noinput
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>uv<span class="w"> </span>run<span class="w"> </span>manage.py<span class="w"> </span>migrate<span class="w"> </span>--noinput
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>uv<span class="w"> </span>run<span class="w"> </span>manage.py<span class="w"> </span>migrate
 </code></pre></div>
 <h3 id="start">Start<a class="headerlink" href="#start" title="Permanent link">&para;</a></h3>
-<p>Render uruchamia: <code>uv run gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 1</code>.</p>
+<p>Render uruchamia: <code>uv run gunicorn config.wsgi:application</code> (parametry serwowania — port, liczba workerów — pochodzą ze zmiennych środowiskowych Render / domyślnych Gunicorna).</p>
 <h3 id="wymagane-zmienne-srodowiskowe">Wymagane zmienne środowiskowe<a class="headerlink" href="#wymagane-zmienne-srodowiskowe" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1681,9 +1681,24 @@ issue trackerach obu pluginów.</p>
 <td>z Render Managed DB</td>
 </tr>
 <tr>
+<td><code>REDIS_URL</code></td>
+<td><code>redis://...</code></td>
+<td>współdzielony cache między workerami Gunicorna; gdy nie ustawiona, aplikacja degraduje do <code>LocMemCache</code> (cache per-proces)</td>
+</tr>
+<tr>
 <td><code>TMDB_API_KEY</code></td>
 <td>klucz v3</td>
 <td>konieczny dla katalogu</td>
+</tr>
+<tr>
+<td><code>TMDB_REQUEST_TIMEOUT</code></td>
+<td><code>3</code> (domyślnie)</td>
+<td>timeout HTTP w sekundach dla klienta TMDB</td>
+</tr>
+<tr>
+<td><code>TMDB_RESPONSE_CACHE_TTL</code></td>
+<td><code>900</code> (domyślnie)</td>
+<td>TTL cache odpowiedzi TMDB w sekundach</td>
 </tr>
 <tr>
 <td><code>BREVO_API_KEY</code></td>

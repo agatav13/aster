@@ -1443,10 +1443,11 @@ poziom dostępu.</p>
       comment_del["/movies/&amp;lt;id&amp;gt;/comments/&amp;lt;cid&amp;gt;/delete/&lt;br/&gt;&lt;i&gt;POST&lt;/i&gt;"]
     end
 
-    subgraph Community["/community/&lt;br/&gt;&lt;i&gt;preview, dane mockowane&lt;/i&gt;"]
+    subgraph Community["/community/"]
       feed["/community/&lt;br/&gt;&lt;i&gt;feed znajomych&lt;/i&gt;"]
       people["/community/people/"]
-      lists["/community/lists/"]
+      profile_pub["/community/u/&amp;lt;user_id&amp;gt;/&lt;br/&gt;&lt;i&gt;publiczny profil&lt;/i&gt;"]
+      follow_act["/community/people/&amp;lt;user_id&amp;gt;/follow/&lt;br/&gt;&lt;i&gt;POST (toggle)&lt;/i&gt;"]
     end
 
     root --&gt; Movies
@@ -1456,12 +1457,15 @@ poziom dostępu.</p>
     detail --&gt; rating_act
     detail --&gt; comment_create
     detail --&gt; comment_del
+    people --&gt; follow_act
+    people --&gt; profile_pub
 
     style admin fill:#fde7e9,stroke:#c4314b
     style status_act fill:#fff5d6,stroke:#b08800
     style rating_act fill:#fff5d6,stroke:#b08800
     style comment_create fill:#fff5d6,stroke:#b08800
-    style comment_del fill:#fff5d6,stroke:#b08800</code></pre>
+    style comment_del fill:#fff5d6,stroke:#b08800
+    style follow_act fill:#fff5d6,stroke:#b08800</code></pre>
 <h2 id="mapowanie-do-plikow">Mapowanie do plików<a class="headerlink" href="#mapowanie-do-plikow" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1494,11 +1498,14 @@ poziom dostępu.</p>
 </tbody>
 </table>
 <blockquote>
-<p><strong>Uwaga:</strong> sekcja <code>/community/</code> to obecnie podgląd UI — widoki są
-zalogowane (<code>LoginRequiredMixin</code>), ale dane (feed, sugestie znajomych,
-kuratorowane listy) generuje deterministycznie <a href="https://github.com/agatav13/aster/blob/main/community/mock.py"><code>community/mock.py</code></a>
-z prawdziwych filmów w cache. Modele społecznościowe i akcje POST
-(follow, polubienia, dodanie do listy) pojawią się w kolejnej iteracji.</p>
+<p><strong>Uwaga:</strong> sekcja <code>/community/</code> jest w pełni działająca. Feed
+znajomych i profile publiczne są zasilane modelem
+<a href="https://github.com/agatav13/aster/blob/main/community/models.py"><code>community.Follow</code></a>
+oraz serwisem
+<a href="https://github.com/agatav13/aster/blob/main/community/services.py"><code>build_feed_groups</code></a>,
+który łączy ratingi i statusy „watched" obserwowanych użytkowników.
+Akcja <code>POST /community/people/&lt;user_id&gt;/follow/</code> jest idempotentnym
+toggle’em. Kuratorowane listy społecznościowe pozostają na roadmapie.</p>
 </blockquote>
 
 
