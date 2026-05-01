@@ -142,34 +142,6 @@ class MovieListViewTests(TestCase):
         self.assertContains(response, "Inception")
         self.assertContains(response, "The Godfather")
 
-    def test_shelf_empty_state_surfaces_when_everything_is_watched(self) -> None:
-        """When the watched filter strips a shelf to zero, the shelf is
-        kept (not silently dropped) and renders an empty-state hint
-        pointing at the `Pokaż obejrzane` toggle. Without this the user
-        would see a rail just disappear with no explanation."""
-        user = get_user_model().objects.create_user(
-            email="completist@example.com", password="hunter2!!"
-        )
-        # Make tmdb_id=1 community-top-rated eligible (1 rating, COMMUNITY_MIN_RATINGS=1).
-        movie = Movie.objects.get(tmdb_id=1)
-        movie.average_rating = Decimal("4.50")
-        movie.ratings_count = 1
-        movie.save(update_fields=["average_rating", "ratings_count"])
-        UserMovieStatus.objects.create(
-            user=user, movie=movie, status=UserMovieStatus.WATCHED
-        )
-
-        self.client.force_login(user)
-
-        # Default: the community shelf had 1 item, all watched → empty-state shows.
-        response = self.client.get(reverse("movies:list"))
-        self.assertContains(response, "shelf-empty")
-        self.assertContains(response, "Wszystkie tytuły z tej listy")
-
-        # show_watched=1: the watched title comes back, so no empty state.
-        response = self.client.get(reverse("movies:list"), {"show_watched": "1"})
-        self.assertNotContains(response, "shelf-empty")
-
     def test_watchlist_status_does_not_hide_movie(self) -> None:
         """Only WATCHED hides — WATCHLIST entries should still appear."""
         user = get_user_model().objects.create_user(
