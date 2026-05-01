@@ -9,22 +9,25 @@ repozytorium — tu pokazujemy wzorce i decyzje.
 ```
 config/          — settings.py, urls.py, wsgi.py
 accounts/        — User, formularze auth, e-maile aktywacyjne, profil + ustawienia
-core/            — editorial landing (recommendations + watchlist rail)
+core/            — editorial landing (feed znajomych + watchlist + community shelf)
 movies/          — katalog, oceny, komentarze, statusy, integracja TMDB, shelves
-community/       — preview UI (feed, znajomi, listy) — dane z mock.py, bez modeli
+community/       — Follow model, feed znajomych, profile publiczne
 feedback/        — widget zgłoszeń przekierowujący do GitHub Issues
 templates/       — wszystkie szablony DTL (auth, movies, community, partials, e-maile)
 static/          — CSS, JS, ikony
 tests/           — e2e/ (Playwright), perf/ (locust)
 ```
 
-> **Uwaga o `community/`:** aplikacja jest zarejestrowana w
-> `INSTALLED_APPS`, ale nie ma `models.py` ani migracji. Trzy widoki
-> (`FeedView`, `PeopleView`, `ListsView`) generują kontekst przez
-> `community/mock.py`, który deterministycznie sieje dane (RNG seedowane
-> per-user) i miksuje je z prawdziwymi filmami z cache. Modele
-> społecznościowe (follow, polubienia, kuratorowane listy) dojdą w
-> kolejnej iteracji — wtedy zniknie `mock.py`.
+> **Uwaga o `community/`:** aplikacja ma własny model `Follow`
+> (migracja `community/0001_initial.py`) i serwis
+> [`build_feed_groups`](https://github.com/agatav13/aster/blob/main/community/services.py),
+> który łączy `Rating` i `UserMovieStatus` obserwowanych użytkowników w
+> deduplikowany feed pogrupowany po datach. Widoki: `FeedView`
+> (`/community/`), `PeopleView` (`/community/people/`),
+> `UserProfileView` (`/community/u/<id>/` — read-only profil publiczny)
+> oraz `follow_toggle` (POST). Plik `community/mock.py` został
+> ograniczony do dataclass’ów `FeedItem` / `FeedGroup` używanych przez
+> serwis i szablony.
 
 ## 1. Rejestracja z weryfikacją e-mail — `accounts/views.py:RegisterView`
 
@@ -137,12 +140,13 @@ def visible_comments_for(movie: Movie) -> QuerySet[Comment]:
 
 ## 5. Klient TMDB — `movies/tmdb.py`
 
-Wzorzec: **Adapter** + **typed payloads** (Pydantic-podobne `TypedDict`-y `TmdbMovieSummary`, `TmdbMovieDetail`, `TmdbCredits`).
+Wzorzec: **Adapter** + **typed payloads** (modele Pydantic v2 — `TmdbMovieSummary`, `TmdbMovieDetail`, `TmdbCredits`).
 
-- `httpx.Client` z timeoutem konfigurowalnym przez ENV.
+- `httpx.Client` z timeoutem konfigurowalnym przez ENV (domyślnie 3 s — TMDB jest na ścieżce krytycznej, fallback do lokalnej bazy + pusta półka są bezpieczne).
 - Centralne wyjątki: `TmdbApiError`, `TmdbConfigError` (separate config-vs-runtime errors).
 - Wszystkie zapytania dodają `language=pl-PL` (lub wartość ze `settings.TMDB_LANGUAGE`).
 - `append_to_response` używane do pobrania szczegółów + credits w jednym GET (`/movie/<id>?append_to_response=credits`).
+- **Cache odpowiedzi:** każde GET trafia do Django cache pod kluczem `sha256(url+params)` z TTL `TMDB_RESPONSE_CACHE_TTL` (domyślnie 900 s). W produkcji backend to Redis (`REDIS_URL`), więc cache jest współdzielony między workerami Gunicorna — bez tego trafność spada do `1/N_workers` i resetuje się na każdym deploju.
 
 ## 6. Class-based vs function-based views — `movies/views.py`
 
@@ -163,6 +167,17 @@ def update_movie_rating(request, tmdb_id: int):  # POST endpoint
 Powód: CBV dają darmowo `get_context_data`, mixiny (`LoginRequiredMixin`).
 FBV są krótsze i czytelniejsze dla wąskich akcji, gdzie cały handler to
 walidacja + 1 wywołanie serwisowe.
+
+### htmx na widoku szczegółów
+
+Akcje `update_status`, `update_rating`, `create_comment` i
+`delete_comment` rozpoznają nagłówek `HX-Request`: zamiast `302` redirectu
+zwracają fragment HTML (`templates/movies/_actions.html`,
+`_user_rating_cell.html`, `_comments_section.html`), który htmx
+podmienia w docelowym kontenerze. Dzięki temu klik „Oceń" /
+„Obejrzane" / „Wyślij komentarz" nie powoduje pełnego reloadu strony.
+Pełna ścieżka POST → redirect zostaje zachowana jako fallback dla
+klientów bez JS.
 
 ## 7. Konfiguracja środowiskowa — `config/settings.py`
 

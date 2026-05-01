@@ -45,6 +45,7 @@ graph TD
     end
 
     DB[(PostgreSQL / SQLite)]
+    Redis[("Redis<br/>cache (prod)")]
     TMDB[(TMDB API)]
     BrevoOrSMTP[(Brevo / Gmail SMTP)]
 
@@ -54,6 +55,8 @@ graph TD
     Views --> Services
     Services --> Models
     Services --> TmdbClient
+    Services --> Redis
+    TmdbClient --> Redis
     Models --> DB
     TmdbClient -->|httpx| TMDB
     Views --> Email
@@ -79,7 +82,8 @@ graph TD
 
 ### 3. Dane
 
-- **ORM Django** mapuje modele (`accounts.User`, `movies.Movie`, `movies.Rating`, `movies.Comment`, `movies.UserMovieStatus`, `movies.Person`, `movies.MovieCredit`, `movies.Genre`) na tabele PostgreSQL/SQLite.
-- **Migracje** w `accounts/migrations/`, `movies/migrations/` — w tym data migration `0003_seed_all_tmdb_genres.py` zapełniający słownik gatunków.
+- **ORM Django** mapuje modele (`accounts.User`, `movies.Movie`, `movies.Rating`, `movies.Comment`, `movies.UserMovieStatus`, `movies.Person`, `movies.MovieCredit`, `movies.Genre`, `community.Follow`) na tabele PostgreSQL/SQLite.
+- **Migracje** w `accounts/migrations/`, `movies/migrations/`, `community/migrations/` — w tym data migration `0003_seed_all_tmdb_genres.py` zapełniający słownik gatunków oraz `community/migrations/0001_initial.py` wprowadzająca model `Follow`.
 - **Kompletny opis schematu** w [Architektura → Baza danych](database.md).
-- Aplikacja `community/` jest preview — wpisana w `INSTALLED_APPS`, ale bez `models.py`/migracji. Widoki feedu, znajomych i list zasila deterministycznie `community/mock.py`, miksując fikcyjnych userów z prawdziwymi filmami z cache. Modele społecznościowe (follow, listy) trafią do bazy w kolejnej iteracji.
+- **Cache** — w produkcji `RedisCache` (zmienna `REDIS_URL`), współdzielony między procesami Gunicorna; w dev / w testach degraduje do `LocMemCache` / `DummyCache`. Klucze: cache odpowiedzi TMDB, cache rekomendacji i półek personalizowanych.
+- Aplikacja `community/` ma własny model `Follow` oraz serwis `build_feed_groups`, który łączy ratingi i statusy „watched" obserwowanych użytkowników w jeden, posortowany feed znajomych (renderowany na `/` i `/community/`).

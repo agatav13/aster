@@ -11,6 +11,8 @@ erDiagram
     USER ||--o{ COMMENT : pisze
     USER ||--o{ USER_MOVIE_STATUS : oznacza
     USER }o--o{ GENRE : "ulubione (m2m)"
+    USER ||--o{ FOLLOW : "obserwuje (jako follower)"
+    USER ||--o{ FOLLOW : "obserwowany (jako followee)"
 
     MOVIE ||--o{ RATING : ocena
     MOVIE ||--o{ COMMENT : komentowany
@@ -95,6 +97,12 @@ erDiagram
         string credit_type "cast | director"
         string character
         int order
+    }
+    FOLLOW {
+        bigint id PK
+        bigint follower_id FK
+        bigint followee_id FK
+        datetime created_at
     }
 ```
 
@@ -214,3 +222,19 @@ Obsada i reżyseria z TMDB.
 | `order` | int | kolejność na liście |
 
 - **`UniqueConstraint(movie, person, credit_type)`** — bez duplikatów.
+
+### `community_follow`
+
+Relacja „follower → followee" zasilająca feed znajomych w
+[`community/services.build_feed_groups`](https://github.com/agatav13/aster/blob/main/community/services.py).
+
+| Kolumna | Typ | Uwagi |
+|---|---|---|
+| `id` | bigint PK | |
+| `follower_id` | bigint FK → user | obserwujący; ON DELETE CASCADE |
+| `followee_id` | bigint FK → user | obserwowany; ON DELETE CASCADE |
+| `created_at` | datetime | używane do sortowania w listingu „znajomi" |
+
+- **`UniqueConstraint(follower, followee)`** (`uq_follow_pair`) — jedna relacja na parę.
+- **`CheckConstraint(follower != followee)`** (`ck_follow_not_self`) — blokuje self-follow.
+- Indeksy `(follower, -created_at)` i `(followee, -created_at)` — wspierają zapytania feedu („kogo obserwuję") i listy followers (panel profilu publicznego).

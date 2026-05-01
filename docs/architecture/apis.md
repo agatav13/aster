@@ -44,6 +44,19 @@ Tworzy komentarz.
 
 Usuwa komentarz. Tylko autor (sprawdzane w `services.delete_own_comment`).
 
+### `POST /community/people/<user_id>/follow/`
+
+Toggle obserwowania innego użytkownika. Idempotentny: jeśli relacja
+istnieje — usuwa, w przeciwnym razie tworzy `community.Follow`.
+
+| Pole | Wartości | Opis |
+|---|---|---|
+| `csrfmiddlewaretoken` | string | wymagane |
+| `next` | string (relatywny URL) | opcjonalny — ścieżka redirectu po toggle (domyślnie `community:people`) |
+
+Walidacja: `400` przy próbie obserwowania samego siebie,
+`404` gdy `user_id` nie wskazuje aktywnego konta.
+
 ## Integracja z TMDB
 
 Klient w [`movies/tmdb.py`](https://github.com/agatav13/aster/blob/main/movies/tmdb.py)
@@ -67,7 +80,8 @@ i editorial-rail „Polskie kino".
 - **Base URL:** `https://api.themoviedb.org/3` (zmienna `TMDB_API_BASE_URL`)
 - **Authoryzacja:** klucz v3 jako parametr `api_key=` (zmienna `TMDB_API_KEY`)
 - **Język:** `language=pl-PL` (zmienna `TMDB_LANGUAGE`)
-- **Timeout:** 10 s domyślnie (zmienna `TMDB_REQUEST_TIMEOUT`)
+- **Timeout:** 3 s domyślnie (zmienna `TMDB_REQUEST_TIMEOUT`). Tak agresywna wartość celowa: TMDB jest na ścieżce krytycznej renderu listingu, a fallback do lokalnej bazy + pusta półka są bezpieczne.
+- **Cache odpowiedzi:** każde GET trafia do Django cache pod kluczem `sha256(url+params)` z TTL `TMDB_RESPONSE_CACHE_TTL` (domyślnie 900 s). W produkcji backendem jest Redis (`REDIS_URL`), więc cache jest współdzielony między workerami Gunicorna.
 - **Obsługa błędów:** `TmdbApiError` (4xx/5xx, network), `TmdbConfigError` (brak klucza). Service layer łapie i zwraca puste wyniki + log warning.
 
 ### Przykład: pobranie szczegółów filmu

@@ -37,10 +37,11 @@ graph TD
       comment_del["/movies/&lt;id&gt;/comments/&lt;cid&gt;/delete/<br/><i>POST</i>"]
     end
 
-    subgraph Community["/community/<br/><i>preview, dane mockowane</i>"]
+    subgraph Community["/community/"]
       feed["/community/<br/><i>feed znajomych</i>"]
       people["/community/people/"]
-      lists["/community/lists/"]
+      profile_pub["/community/u/&lt;user_id&gt;/<br/><i>publiczny profil</i>"]
+      follow_act["/community/people/&lt;user_id&gt;/follow/<br/><i>POST (toggle)</i>"]
     end
 
     root --> Movies
@@ -50,12 +51,15 @@ graph TD
     detail --> rating_act
     detail --> comment_create
     detail --> comment_del
+    people --> follow_act
+    people --> profile_pub
 
     style admin fill:#fde7e9,stroke:#c4314b
     style status_act fill:#fff5d6,stroke:#b08800
     style rating_act fill:#fff5d6,stroke:#b08800
     style comment_create fill:#fff5d6,stroke:#b08800
     style comment_del fill:#fff5d6,stroke:#b08800
+    style follow_act fill:#fff5d6,stroke:#b08800
 ```
 
 ## Mapowanie do plików
@@ -68,8 +72,11 @@ graph TD
 | `/community/...` | [`community/urls.py`](https://github.com/agatav13/aster/blob/main/community/urls.py) |
 | `/admin/`, `/health/`, root include | [`config/urls.py`](https://github.com/agatav13/aster/blob/main/config/urls.py) |
 
-> **Uwaga:** sekcja `/community/` to obecnie podgląd UI — widoki są
-> zalogowane (`LoginRequiredMixin`), ale dane (feed, sugestie znajomych,
-> kuratorowane listy) generuje deterministycznie [`community/mock.py`](https://github.com/agatav13/aster/blob/main/community/mock.py)
-> z prawdziwych filmów w cache. Modele społecznościowe i akcje POST
-> (follow, polubienia, dodanie do listy) pojawią się w kolejnej iteracji.
+> **Uwaga:** sekcja `/community/` jest w pełni działająca. Feed
+> znajomych i profile publiczne są zasilane modelem
+> [`community.Follow`](https://github.com/agatav13/aster/blob/main/community/models.py)
+> oraz serwisem
+> [`build_feed_groups`](https://github.com/agatav13/aster/blob/main/community/services.py),
+> który łączy ratingi i statusy „watched" obserwowanych użytkowników.
+> Akcja `POST /community/people/<user_id>/follow/` jest idempotentnym
+> toggle’em. Kuratorowane listy społecznościowe pozostają na roadmapie.
