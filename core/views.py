@@ -17,10 +17,9 @@ class HomeView(View):
 
     Anonymous → login. Signed-in visitors see a community-first start page:
     a friends-activity feed up top, the watchlist rail beneath it, and a
-    community-top-rated rail as the empty-state filler when the user
-    follows nobody (or nobody they follow has logged anything yet). Personal
-    recommendations live on /movies/ now — moving them off this page cuts
-    a TMDB round-trip from every dashboard load.
+    community-top-rated rail underneath. Personal recommendations live on
+    /movies/ now — moving them off this page cuts a TMDB round-trip from
+    every dashboard load.
     """
 
     def get(self, request: HttpRequest) -> HttpResponse:
@@ -38,11 +37,7 @@ class HomeView(View):
             ).order_by("-user_statuses__updated_at")[:WATCHLIST_RAIL_LIMIT]
         )
 
-        # Only build the fallback when we'd otherwise leave the page mostly
-        # empty — fetch_community_top_rated_shelf is local + cached, so the
-        # cost is trivial, but skipping it keeps the dashboard tight when
-        # the friends feed already filled the screen.
-        community_shelf = fetch_community_top_rated_shelf() if not feed_groups else []
+        community_shelf = fetch_community_top_rated_shelf()
 
         return render(
             request,
