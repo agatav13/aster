@@ -48,6 +48,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django.middleware.gzip.GZipMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -88,6 +89,18 @@ else:
 if "test" in sys.argv or "pytest" in sys.modules:
     CACHES = {
         "default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"},
+    }
+elif os.getenv("REDIS_URL"):
+    # Shared cache across Gunicorn workers — required for the TMDB,
+    # recommendation and personalized-shelf caches to actually work in
+    # production. LocMemCache is per-process, so cache hit rate falls to
+    # 1/N_workers and resets on every deploy.
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.getenv("REDIS_URL"),
+            "KEY_PREFIX": "aster",
+        },
     }
 else:
     CACHES = {
