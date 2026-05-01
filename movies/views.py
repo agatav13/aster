@@ -57,7 +57,9 @@ class MovieListView(TemplateView):
         page = self._parse_page(request.GET.get("page"))
         # User-controlled escape hatch from the watched-filter. Default off
         # so the rails stay personal; flipping it on lets the user re-find
-        # films they've already seen (e.g. to re-rate or revisit).
+        # films they've already seen (e.g. to re-rate or revisit). An
+        # explicit text query also disables the filter — when the user
+        # types a title they want to find it regardless of watched status.
         show_watched = request.GET.get("show_watched") == "1"
 
         shelves_mode = not query and not genre_id_raw
@@ -66,12 +68,7 @@ class MovieListView(TemplateView):
         context["show_watched"] = show_watched
         context["genres"] = Genre.objects.order_by("name")
 
-        # Hide titles the user has already marked as watched. Computed once
-        # per request and applied to both the grid and the shelves below.
-        # When the user opts into "show watched" we collapse this to an
-        # empty set so every downstream `exclude_watched` call becomes a
-        # pass-through — no other branching needed.
-        watched_ids = set() if show_watched else watched_tmdb_ids(request.user)
+        watched_ids = set() if show_watched or query else watched_tmdb_ids(request.user)
 
         if shelves_mode:
             shelves = self._build_shelves(request, watched_ids=watched_ids)
