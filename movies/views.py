@@ -21,7 +21,6 @@ from .services import (
     discover_tmdb_movies,
     exclude_watched,
     fetch_and_cache_movie,
-    fetch_community_top_rated_shelf,
     fetch_continue_exploring_shelf,
     fetch_genre_shelf,
     fetch_personal_recommendations_shelf,
@@ -186,16 +185,6 @@ class MovieListView(TemplateView):
                         "filter_genre_id": None,
                     }
                 )
-
-        shelves.append(
-            {
-                "eyebrow": "Głosami widzów Aster",
-                "title": "Najwyżej oceniane w Aster",
-                "icon": "bi-heart",
-                "items": fetch_community_top_rated_shelf(),
-                "filter_genre_id": None,
-            }
-        )
 
         if user.is_authenticated:
             favs = list(user.favorite_genres.all()[: self.PERSONAL_GENRE_SHELVES])
