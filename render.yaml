@@ -20,6 +20,8 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: REDIS_URL
+        sync: false
       - key: BREVO_API_KEY
         sync: false
       - key: DEFAULT_FROM_EMAIL
