@@ -1739,3 +1739,17 @@ def get_recommendations_for_user(
     sliced_ids = movie_ids[:limit]
     movies_by_id = {m.id: m for m in Movie.objects.filter(id__in=sliced_ids)}
     return [movies_by_id[mid] for mid in sliced_ids if mid in movies_by_id]
+
+
+def fetch_personal_recommendations_shelf(
+    user: AbstractBaseUser, *, limit: int = SHELF_LIMIT
+) -> list[MovieListItem]:
+    """Shelf-shaped wrapper around `get_recommendations_for_user`.
+
+    Same content-scoring engine, just returned as `MovieListItem`s so it
+    can sit alongside the TMDB-driven rails on /movies/. Returns an empty
+    list when the user has no signals (which makes the caller drop the
+    shelf entirely instead of rendering an empty rail).
+    """
+    movies = get_recommendations_for_user(user, limit=limit)
+    return [MovieListItem.from_local(movie) for movie in movies]

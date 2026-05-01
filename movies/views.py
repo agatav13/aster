@@ -24,6 +24,7 @@ from .services import (
     fetch_community_top_rated_shelf,
     fetch_continue_exploring_shelf,
     fetch_genre_shelf,
+    fetch_personal_recommendations_shelf,
     fetch_recently_watched_recommendations_shelf,
     fetch_seeded_recommendations_shelf,
     fetch_trending_shelf,
@@ -142,6 +143,7 @@ class MovieListView(TemplateView):
         ]
 
         user = request.user
+
         if user.is_authenticated:
             seed_movie, seeded_items = fetch_seeded_recommendations_shelf(user)
             if seeded_items:
@@ -223,7 +225,31 @@ class MovieListView(TemplateView):
             if had_items and not shelf["items"]:
                 shelf["empty_state"] = "all_watched"
 
-        return [s for s in shelves if s["items"] or s.get("empty_state")]
+        visible_shelves = [s for s in shelves if s["items"] or s.get("empty_state")]
+
+        # Personal recs lead the page, but only when the other rails already
+        # carry it. Promoting a one-shelf personal-only response would force
+        # browse into shelves mode with very thin coverage (e.g. when TMDB
+        # is unreachable and the local-only scorer returns a handful of
+        # titles); the caller would much rather fall through to the grid in
+        # that case so the user can still see the rest of the catalog.
+        if user.is_authenticated and visible_shelves:
+            personal_items = exclude_watched(
+                fetch_personal_recommendations_shelf(user), watched_ids
+            )
+            if personal_items:
+                visible_shelves.insert(
+                    0,
+                    {
+                        "eyebrow": "Spersonalizowane",
+                        "title": "Polecane dla Ciebie",
+                        "icon": "bi-magic",
+                        "items": personal_items,
+                        "filter_genre_id": None,
+                    },
+                )
+
+        return visible_shelves
 
     @staticmethod
     def _parse_page(raw: str | None) -> int:

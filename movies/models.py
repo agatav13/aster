@@ -100,6 +100,7 @@ class UserMovieStatus(models.Model):
         ]
         indexes = [
             models.Index(fields=["user", "status"]),
+            models.Index(fields=["user", "status", "-updated_at"]),
         ]
         verbose_name = "user movie status"
         verbose_name_plural = "user movie statuses"
@@ -157,6 +158,7 @@ class Rating(models.Model):
         indexes = [
             models.Index(fields=["movie"]),
             models.Index(fields=["user", "score"]),
+            models.Index(fields=["user", "-created_at"]),
         ]
         verbose_name = "rating"
         verbose_name_plural = "ratings"
