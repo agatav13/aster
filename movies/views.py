@@ -330,6 +330,10 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
 
     comments = list(visible_comments_for(movie))
 
+    watched_count = UserMovieStatus.objects.filter(
+        movie=movie, status=UserMovieStatus.WATCHED
+    ).count()
+
     credits = movie.credits.select_related("person").order_by("credit_type", "order")
     directors = [c for c in credits if c.credit_type == MovieCredit.DIRECTOR]
     cast = [c for c in credits if c.credit_type == MovieCredit.CAST]
@@ -357,6 +361,7 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
             "comments_count": len(comments),
             "comment_max_length": Comment.MAX_LENGTH,
             "backdrop_hires_url": backdrop_hires_url,
+            "watched_count": watched_count,
         },
     )
 

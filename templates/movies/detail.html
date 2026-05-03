@@ -77,6 +77,19 @@
             {% endif %}
           </dd>
         </div>
+        <div class="movie-detail-ledger-entry">
+          <dt>Obejrzeli</dt>
+          <dd>
+            {% if watched_count %}
+              <span class="movie-detail-ledger-num">{{ watched_count }}</span>
+              <span class="movie-detail-ledger-sub">{% if watched_count == 1 %}widz{% else %}widzów{% endif %}</span>
+            {% else %}
+              <span class="movie-detail-ledger-empty">—</span>
+              <span class="movie-detail-ledger-sub">Nikt jeszcze nie obejrzał</span>
+            {% endif %}
+          </dd>
+        </div>
+
         {% include "movies/_user_rating_cell.html" %}
       </dl>
 
