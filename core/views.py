@@ -15,11 +15,11 @@ FEED_GROUPS_LIMIT = 24
 class HomeView(View):
     """Editorial landing page for signed-in users.
 
-    Anonymous → login. Signed-in visitors see a community-first start page:
-    a friends-activity feed up top, the watchlist rail beneath it, and a
-    community-top-rated rail underneath. Personal recommendations live on
-    /movies/ now — moving them off this page cuts a TMDB round-trip from
-    every dashboard load.
+    Anonymous → login. Signed-in visitors see a discovery-first start
+    page: the community-top-rated rail leads, the user's watchlist comes
+    next, and the friends-activity feed sits at the bottom. Personal
+    recommendations live on /movies/ now — moving them off this page cuts
+    a TMDB round-trip from every dashboard load.
     """
 
     def get(self, request: HttpRequest) -> HttpResponse:
