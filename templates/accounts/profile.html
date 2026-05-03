@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}{{ profile_display_name }} · Aster{% endblock %}
 
@@ -139,8 +140,8 @@
             <a href="{% url 'movies:detail' entry.movie.tmdb_id %}"
                class="library-card{% if entry.has_rating %} library-card--rated{% else %} library-card--watched-only{% endif %}"
                data-has-rating="{% if entry.has_rating %}1{% else %}0{% endif %}"
-               data-score="{% if entry.score %}{{ entry.score }}{% else %}0{% endif %}"
-               data-updated="{{ entry.updated_ts|floatformat:0 }}"
+               data-score="{% localize off %}{% if entry.score %}{{ entry.score }}{% else %}0{% endif %}{% endlocalize %}"
+               data-updated="{% localize off %}{{ entry.updated_ts|floatformat:0 }}{% endlocalize %}"
                data-title="{{ entry.movie.title|lower }}"
                data-year="{% if entry.movie.release_date %}{{ entry.movie.release_date|date:'Y' }}{% else %}0{% endif %}">
               <div class="library-card-poster">
@@ -334,6 +335,16 @@
       var cards = Array.prototype.slice.call(grid.querySelectorAll('.library-card'));
       cards.sort(function (a, b) {
         if (value === 'rating-desc' || value === 'rating-asc') {
+          var ra = a.getAttribute('data-has-rating') === '1';
+          var rb = b.getAttribute('data-has-rating') === '1';
+          // Unrated entries sink to the bottom in both directions so
+          // "lowest to highest" actually starts at the lowest real rating
+          // (0.5) rather than score=0 placeholders for unrated movies.
+          if (ra !== rb) return ra ? -1 : 1;
+          if (!ra) {
+            return (parseFloat(b.getAttribute('data-updated')) || 0)
+              - (parseFloat(a.getAttribute('data-updated')) || 0);
+          }
           var sa = parseFloat(a.getAttribute('data-score')) || 0;
           var sb = parseFloat(b.getAttribute('data-score')) || 0;
           if (sa === sb) {
