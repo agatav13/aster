@@ -91,6 +91,13 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
             .select_related("movie")
             .order_by("-updated_at")
         )
+        watchlist_rows = (
+            UserMovieStatus.objects.filter(
+                user=target, status=UserMovieStatus.WATCHLIST
+            )
+            .select_related("movie")
+            .order_by("-updated_at")
+        )
         rated_rows = (
             Rating.objects.filter(user=target)
             .select_related("movie")
@@ -98,6 +105,7 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
         )
 
         watched_movies = [r.movie for r in watched_rows]
+        watchlist_movies = [r.movie for r in watchlist_rows]
         rated_count = rated_rows.count()
 
         avg_rating: Decimal | None = None
@@ -124,17 +132,31 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
             if decade_counter:
                 top_decade = decade_counter.most_common(1)[0][0]
 
-        score_by_movie = {r.movie.pk: r.score for r in rated_rows}
+        ratings_by_movie = {
+            r.movie.pk: (r.score, r.updated_at.timestamp()) for r in rated_rows
+        }
         library_entries = []
-        for movie in watched_movies:
-            score = score_by_movie.get(movie.pk)
+        for row in watched_rows:
+            score_ts = ratings_by_movie.get(row.movie.pk)
+            score = score_ts[0] if score_ts else None
+            updated_ts = row.updated_at.timestamp()
+            if score_ts:
+                updated_ts = max(updated_ts, score_ts[1])
             library_entries.append(
                 {
-                    "movie": movie,
+                    "movie": row.movie,
                     "score": score,
+                    "updated_ts": updated_ts,
                     "has_rating": score is not None,
                 }
             )
+        library_entries.sort(key=lambda e: e["updated_ts"], reverse=True)
+        library_count = len(library_entries)
+        library_rated_count = sum(1 for e in library_entries if e["has_rating"])
+        library_unrated_count = library_count - library_rated_count
+
+        raw_tab = self.request.GET.get("tab")
+        active_library_tab = "watchlist" if raw_tab == "watchlist" else "library"
 
         is_following = Follow.objects.filter(
             follower=self.request.user, followee=target
@@ -149,11 +171,17 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
                 "profile_handle": handle_for(target),
                 "profile_joined": target.date_joined,
                 "watched_count": len(watched_movies),
+                "watchlist_count": len(watchlist_movies),
+                "watchlist_movies": watchlist_movies,
                 "rated_count": rated_count,
                 "avg_rating": avg_rating,
                 "top_genres": top_genres,
                 "top_decade": top_decade,
                 "library_entries": library_entries,
+                "library_count": library_count,
+                "library_rated_count": library_rated_count,
+                "library_unrated_count": library_unrated_count,
+                "active_library_tab": active_library_tab,
                 "is_following": is_following,
                 "followers_count": followers_count,
                 "following_count": following_count,
