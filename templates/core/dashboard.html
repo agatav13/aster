@@ -8,28 +8,36 @@
     </h1>
   </header>
 
-  <section class="dashboard-section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow mb-1">Społeczność</p>
-        <h2 class="section-title"><i class="bi bi-people"></i> Co oglądają znajomi</h2>
+  {% if community_shelf %}
+    <section class="dashboard-section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow mb-1">Głosami widzów Aster</p>
+          <h2 class="section-title"><i class="bi bi-heart"></i> Najwyżej oceniane w Aster</h2>
+        </div>
+        <a href="{% url 'movies:list' %}" class="section-link">
+          Odkrywaj filmy <i class="bi bi-arrow-right"></i>
+        </a>
       </div>
-      <a href="{% url 'community:feed' %}" class="section-link">
-        Cały feed <i class="bi bi-arrow-right"></i>
-      </a>
-    </div>
-
-    {% if feed_groups %}
-      {% include "community/_feed_groups.html" %}
-    {% else %}
-      <div class="activity-empty">
-        <i class="bi bi-people"></i>
-        <h3>Brak aktywności</h3>
-        <p>Dodaj znajomych, aby zobaczyć, co oglądają i oceniają.</p>
-        <a href="{% url 'community:people' %}" class="btn btn-ghost">Znajdź znajomych</a>
+      <div class="shelf" aria-label="Najwyżej oceniane">
+        {% for item in community_shelf %}
+          <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card">
+            <div class="shelf-poster">
+              {% if item.poster_url %}
+                <img src="{{ item.poster_url }}" alt="Plakat: {{ item.title }}" loading="lazy">
+              {% else %}
+                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+              {% endif %}
+            </div>
+            <p class="shelf-title">{{ item.title }}</p>
+            {% if item.release_date %}
+              <p class="shelf-meta">{{ item.release_date|date:"Y" }}</p>
+            {% endif %}
+          </a>
+        {% endfor %}
       </div>
-    {% endif %}
-  </section>
+    </section>
+  {% endif %}
 
   {% if watchlist_rail %}
     <section class="dashboard-section">
@@ -62,36 +70,28 @@
     </section>
   {% endif %}
 
-  {% if community_shelf %}
-    <section class="dashboard-section">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow mb-1">Głosami widzów Aster</p>
-          <h2 class="section-title"><i class="bi bi-heart"></i> Najwyżej oceniane w Aster</h2>
-        </div>
-        <a href="{% url 'movies:list' %}" class="section-link">
-          Odkrywaj filmy <i class="bi bi-arrow-right"></i>
-        </a>
+  <section class="dashboard-section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow mb-1">Społeczność</p>
+        <h2 class="section-title"><i class="bi bi-people"></i> Co oglądają znajomi</h2>
       </div>
-      <div class="shelf" aria-label="Najwyżej oceniane">
-        {% for item in community_shelf %}
-          <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card">
-            <div class="shelf-poster">
-              {% if item.poster_url %}
-                <img src="{{ item.poster_url }}" alt="Plakat: {{ item.title }}" loading="lazy">
-              {% else %}
-                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
-              {% endif %}
-            </div>
-            <p class="shelf-title">{{ item.title }}</p>
-            {% if item.release_date %}
-              <p class="shelf-meta">{{ item.release_date|date:"Y" }}</p>
-            {% endif %}
-          </a>
-        {% endfor %}
+      <a href="{% url 'community:feed' %}" class="section-link">
+        Cały feed <i class="bi bi-arrow-right"></i>
+      </a>
+    </div>
+
+    {% if feed_groups %}
+      {% include "community/_feed_groups.html" %}
+    {% else %}
+      <div class="activity-empty">
+        <i class="bi bi-people"></i>
+        <h3>Brak aktywności</h3>
+        <p>Dodaj znajomych, aby zobaczyć, co oglądają i oceniają.</p>
+        <a href="{% url 'community:people' %}" class="btn btn-ghost">Znajdź znajomych</a>
       </div>
-    </section>
-  {% endif %}
+    {% endif %}
+  </section>
 
 </section>
 {% endblock %}
