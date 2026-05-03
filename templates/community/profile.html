@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}{{ profile_display_name }} · Społeczność · Aster{% endblock %}
 
@@ -72,55 +73,298 @@
     <div class="section-head">
       <div>
         <p class="eyebrow mb-1">Kolekcja</p>
-        <h2 class="section-title">Obejrzane filmy</h2>
+        <h2 class="section-title">Biblioteka filmów</h2>
       </div>
     </div>
 
-    {% if library_entries %}
-      <div class="library-grid">
-        {% for entry in library_entries %}
-          <a href="{% url 'movies:detail' entry.movie.tmdb_id %}"
-             class="library-card{% if entry.has_rating %} library-card--rated{% else %} library-card--watched-only{% endif %}">
-            <div class="library-card-poster">
-              {% if entry.movie.poster_url %}
-                <img src="{{ entry.movie.poster_url }}" alt="Plakat: {{ entry.movie.title }}" loading="lazy">
-              {% else %}
-                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
-              {% endif %}
-              <div class="library-card-scrim" aria-hidden="true"></div>
-              {% if entry.has_rating %}
-                <span class="library-seal" aria-label="Ocena: {{ entry.score|floatformat:'-1' }} z 5">
-                  <i class="bi bi-star-fill library-seal-icon" aria-hidden="true"></i>
-                  <span class="library-seal-score">{{ entry.score|floatformat:"-1" }}</span>
-                  <span class="library-seal-frac">/5</span>
-                </span>
-              {% else %}
-                <span class="library-mark library-mark--watched" aria-label="Obejrzane, bez oceny">
-                  <i class="bi bi-eye-fill" aria-hidden="true"></i>
-                </span>
-              {% endif %}
-            </div>
-            <div class="library-card-body">
-              <h3 class="library-card-title">{{ entry.movie.title }}</h3>
-              <p class="library-card-meta">
-                {% if entry.movie.release_date %}<span>{{ entry.movie.release_date|date:"Y" }}</span>{% endif %}
-                {% if entry.has_rating %}
-                  <span class="library-card-meta-sep" aria-hidden="true">·</span>
-                  <span class="library-card-meta-score"><i class="bi bi-star-fill"></i> {{ entry.score|floatformat:"-1" }}/5</span>
+    <div class="library-switch" role="tablist" aria-label="Kolekcja filmów">
+      <button type="button"
+              id="library-tab-library"
+              class="library-switch-btn{% if active_library_tab == 'library' %} is-active{% endif %}"
+              data-library-tab="library"
+              role="tab"
+              aria-selected="{% if active_library_tab == 'library' %}true{% else %}false{% endif %}"
+              aria-controls="library-panel-library"
+              tabindex="{% if active_library_tab == 'library' %}0{% else %}-1{% endif %}">
+        <i class="bi bi-collection-play" aria-hidden="true"></i>
+        <span>Biblioteka</span>
+        <span class="library-switch-count">{{ library_count }}</span>
+      </button>
+      <button type="button"
+              id="library-tab-watchlist"
+              class="library-switch-btn{% if active_library_tab == 'watchlist' %} is-active{% endif %}"
+              data-library-tab="watchlist"
+              role="tab"
+              aria-selected="{% if active_library_tab == 'watchlist' %}true{% else %}false{% endif %}"
+              aria-controls="library-panel-watchlist"
+              tabindex="{% if active_library_tab == 'watchlist' %}0{% else %}-1{% endif %}">
+        <i class="bi bi-bookmark" aria-hidden="true"></i>
+        <span>Do obejrzenia</span>
+        <span class="library-switch-count">{{ watchlist_count }}</span>
+      </button>
+    </div>
+
+    <div class="library-panel"
+         id="library-panel-library"
+         role="tabpanel"
+         aria-labelledby="library-tab-library"
+         data-library-panel="library"
+         {% if active_library_tab != 'library' %}hidden{% endif %}>
+
+      {% if library_entries %}
+        <div class="library-controls">
+          <div class="library-filter" role="radiogroup" aria-label="Filtruj bibliotekę">
+            <button type="button" class="library-filter-btn is-active" data-library-filter="all" role="radio" aria-checked="true">
+              <span>Wszystkie</span>
+              <em>{{ library_count }}</em>
+            </button>
+            <button type="button" class="library-filter-btn" data-library-filter="rated" role="radio" aria-checked="false">
+              <i class="bi bi-star-fill" aria-hidden="true"></i>
+              <span>Ocenione</span>
+              <em>{{ library_rated_count }}</em>
+            </button>
+            <button type="button" class="library-filter-btn" data-library-filter="unrated" role="radio" aria-checked="false">
+              <i class="bi bi-eye" aria-hidden="true"></i>
+              <span>Bez oceny</span>
+              <em>{{ library_unrated_count }}</em>
+            </button>
+          </div>
+          <label class="library-sort">
+            <span class="visually-hidden">Sortuj bibliotekę</span>
+            <i class="bi bi-arrow-down-up" aria-hidden="true"></i>
+            <select data-library-sort>
+              <option value="recent">Ostatnio dodane</option>
+              <option value="rating-desc">Ocena: od najwyższej</option>
+              <option value="rating-asc">Ocena: od najniższej</option>
+              <option value="title">Tytuł (A–Z)</option>
+              <option value="year-desc">Rok: od najnowszego</option>
+            </select>
+            <i class="bi bi-chevron-down library-sort-caret" aria-hidden="true"></i>
+          </label>
+        </div>
+
+        <div class="library-grid" data-library-grid data-active-filter="all">
+          {% for entry in library_entries %}
+            <a href="{% url 'movies:detail' entry.movie.tmdb_id %}"
+               class="library-card{% if entry.has_rating %} library-card--rated{% else %} library-card--watched-only{% endif %}"
+               data-has-rating="{% if entry.has_rating %}1{% else %}0{% endif %}"
+               data-score="{% localize off %}{% if entry.score %}{{ entry.score }}{% else %}0{% endif %}{% endlocalize %}"
+               data-updated="{% localize off %}{{ entry.updated_ts|floatformat:0 }}{% endlocalize %}"
+               data-title="{{ entry.movie.title|lower }}"
+               data-year="{% if entry.movie.release_date %}{{ entry.movie.release_date|date:'Y' }}{% else %}0{% endif %}">
+              <div class="library-card-poster">
+                {% if entry.movie.poster_url %}
+                  <img src="{{ entry.movie.poster_url }}" alt="Plakat: {{ entry.movie.title }}" loading="lazy">
+                {% else %}
+                  <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
                 {% endif %}
-              </p>
-            </div>
-          </a>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="activity-empty activity-empty--library">
-        <i class="bi bi-camera-reels"></i>
-        <h3>Pusta biblioteka</h3>
-        <p>Ten użytkownik nie oznaczył jeszcze żadnego filmu jako obejrzany.</p>
-      </div>
-    {% endif %}
+                <div class="library-card-scrim" aria-hidden="true"></div>
+                {% if entry.has_rating %}
+                  <span class="library-seal" aria-label="Ocena: {{ entry.score|floatformat:'-1' }} z 5">
+                    <i class="bi bi-star-fill library-seal-icon" aria-hidden="true"></i>
+                    <span class="library-seal-score">{{ entry.score|floatformat:"-1" }}</span>
+                    <span class="library-seal-frac">/5</span>
+                  </span>
+                {% else %}
+                  <span class="library-mark library-mark--watched" aria-label="Obejrzane, bez oceny">
+                    <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                  </span>
+                {% endif %}
+              </div>
+              <div class="library-card-body">
+                <h3 class="library-card-title">{{ entry.movie.title }}</h3>
+                <p class="library-card-meta">
+                  {% if entry.movie.release_date %}<span>{{ entry.movie.release_date|date:"Y" }}</span>{% endif %}
+                  {% if entry.has_rating %}
+                    <span class="library-card-meta-sep" aria-hidden="true">·</span>
+                    <span class="library-card-meta-score"><i class="bi bi-star-fill"></i> {{ entry.score|floatformat:"-1" }}/5</span>
+                  {% else %}
+                    <span class="library-card-meta-sep" aria-hidden="true">·</span>
+                    <span class="library-card-meta-unrated">Bez oceny</span>
+                  {% endif %}
+                </p>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+
+        <div class="library-filter-empty" data-library-filter-empty hidden>
+          <i class="bi bi-funnel"></i>
+          <p>Żaden film nie pasuje do tego filtra.</p>
+        </div>
+      {% else %}
+        <div class="activity-empty activity-empty--library">
+          <i class="bi bi-camera-reels"></i>
+          <h3>Pusta biblioteka</h3>
+          <p>Ten użytkownik nie oznaczył jeszcze żadnego filmu jako obejrzany.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="library-panel"
+         id="library-panel-watchlist"
+         role="tabpanel"
+         aria-labelledby="library-tab-watchlist"
+         data-library-panel="watchlist"
+         {% if active_library_tab != 'watchlist' %}hidden{% endif %}>
+      {% if watchlist_movies %}
+        <div class="library-grid library-grid--watchlist">
+          {% for movie in watchlist_movies %}
+            <a href="{% url 'movies:detail' movie.tmdb_id %}"
+               class="library-card library-card--pending">
+              <div class="library-card-poster">
+                {% if movie.poster_url %}
+                  <img src="{{ movie.poster_url }}" alt="Plakat: {{ movie.title }}" loading="lazy">
+                {% else %}
+                  <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+                {% endif %}
+                <div class="library-card-scrim" aria-hidden="true"></div>
+                <span class="library-mark library-mark--pending" aria-label="Na liście do obejrzenia">
+                  <i class="bi bi-bookmark-fill" aria-hidden="true"></i>
+                </span>
+              </div>
+              <div class="library-card-body">
+                <h3 class="library-card-title">{{ movie.title }}</h3>
+                <p class="library-card-meta">
+                  {% if movie.release_date %}<span>{{ movie.release_date|date:"Y" }}</span>{% endif %}
+                  <span class="library-card-meta-sep" aria-hidden="true">·</span>
+                  <span class="library-card-meta-pending">Zaplanowane</span>
+                </p>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="activity-empty">
+          <i class="bi bi-bookmark"></i>
+          <h3>Pusta lista do obejrzenia</h3>
+          <p>Ten użytkownik nie zapisał jeszcze żadnego filmu na później.</p>
+        </div>
+      {% endif %}
+    </div>
+
   </section>
 
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var tabs = Array.prototype.slice.call(
+      document.querySelectorAll('[data-library-tab]')
+    );
+    var panels = Array.prototype.slice.call(
+      document.querySelectorAll('[data-library-panel]')
+    );
+
+    function activateTab(tab) {
+      var target = tab.getAttribute('data-library-tab');
+      tabs.forEach(function (t) {
+        var active = t === tab;
+        t.classList.toggle('is-active', active);
+        t.setAttribute('aria-selected', active ? 'true' : 'false');
+        t.setAttribute('tabindex', active ? '0' : '-1');
+      });
+      panels.forEach(function (p) {
+        p.hidden = p.getAttribute('data-library-panel') !== target;
+      });
+      try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('tab', target);
+        window.history.replaceState({}, '', url);
+      } catch (_e) { /* no-op */ }
+    }
+
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener('click', function () { activateTab(tab); });
+      tab.addEventListener('keydown', function (event) {
+        var next = null;
+        if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+        else if (event.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
+        else if (event.key === 'Home') next = tabs[0];
+        else if (event.key === 'End') next = tabs[tabs.length - 1];
+        if (next) {
+          event.preventDefault();
+          activateTab(next);
+          next.focus();
+        }
+      });
+    });
+
+    var filterButtons = Array.prototype.slice.call(
+      document.querySelectorAll('[data-library-filter]')
+    );
+    var grid = document.querySelector('[data-library-grid]');
+    var filterEmpty = document.querySelector('[data-library-filter-empty]');
+
+    function applyFilter(value) {
+      if (!grid) return;
+      grid.setAttribute('data-active-filter', value);
+      filterButtons.forEach(function (btn) {
+        var active = btn.getAttribute('data-library-filter') === value;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-checked', active ? 'true' : 'false');
+      });
+      var cards = grid.querySelectorAll('.library-card');
+      var visible = 0;
+      cards.forEach(function (card) {
+        var rated = card.getAttribute('data-has-rating') === '1';
+        var show = value === 'all'
+          || (value === 'rated' && rated)
+          || (value === 'unrated' && !rated);
+        card.classList.toggle('is-hidden', !show);
+        if (show) visible += 1;
+      });
+      if (filterEmpty) filterEmpty.hidden = visible !== 0;
+    }
+
+    filterButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyFilter(btn.getAttribute('data-library-filter'));
+      });
+    });
+
+    var sortSelect = document.querySelector('[data-library-sort]');
+    function applySort(value) {
+      if (!grid) return;
+      var cards = Array.prototype.slice.call(grid.querySelectorAll('.library-card'));
+      cards.sort(function (a, b) {
+        if (value === 'rating-desc' || value === 'rating-asc') {
+          var ra = a.getAttribute('data-has-rating') === '1';
+          var rb = b.getAttribute('data-has-rating') === '1';
+          if (ra !== rb) return ra ? -1 : 1;
+          if (!ra) {
+            return (parseFloat(b.getAttribute('data-updated')) || 0)
+              - (parseFloat(a.getAttribute('data-updated')) || 0);
+          }
+          var sa = parseFloat(a.getAttribute('data-score')) || 0;
+          var sb = parseFloat(b.getAttribute('data-score')) || 0;
+          if (sa === sb) {
+            return (parseFloat(b.getAttribute('data-updated')) || 0)
+              - (parseFloat(a.getAttribute('data-updated')) || 0);
+          }
+          return value === 'rating-desc' ? sb - sa : sa - sb;
+        }
+        if (value === 'title') {
+          return a.getAttribute('data-title').localeCompare(
+            b.getAttribute('data-title'), 'pl'
+          );
+        }
+        if (value === 'year-desc') {
+          return (parseInt(b.getAttribute('data-year'), 10) || 0)
+            - (parseInt(a.getAttribute('data-year'), 10) || 0);
+        }
+        return (parseFloat(b.getAttribute('data-updated')) || 0)
+          - (parseFloat(a.getAttribute('data-updated')) || 0);
+      });
+      cards.forEach(function (card) { grid.appendChild(card); });
+    }
+    if (sortSelect) {
+      sortSelect.addEventListener('change', function () {
+        applySort(sortSelect.value);
+      });
+    }
+  })();
+</script>
 {% endblock %}
