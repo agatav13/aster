@@ -117,6 +117,14 @@ class ProfileActivityTests(TestCase):
         self.assertIn(self.watchlist_movie, response.context["watchlist_movies"])
 
     def test_rated_tab_shows_rated_movies_with_score(self) -> None:
+        # Rating a movie via the service flow also marks it watched, so the
+        # film lands in the unified library with its score attached. Mirror
+        # that here so the test reflects realistic state.
+        UserMovieStatus.objects.create(
+            user=self.user,
+            movie=self.rated_movie,
+            status=UserMovieStatus.WATCHED,
+        )
         Rating.objects.create(user=self.user, movie=self.rated_movie, score=4)
 
         response = self.client.get(reverse("accounts:profile"))

@@ -170,37 +170,32 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         watchlist_movies = [row.movie for row in watchlist_rows]
         rated_movies = [{"movie": row.movie, "score": row.score} for row in rated_rows]
 
-        # Unified "library" = union of watched ∪ rated, keyed by movie id so a
-        # film rated without an explicit "watched" mark (or vice versa) still
-        # shows up exactly once. Score is attached when known; updated_ts is
-        # the most recent touch across either table so the grid sorts by the
-        # user's real activity, not just one of the two timelines.
-        library_map: dict[int, dict] = {}
+        # "Library" = strictly watched movies, with the user's rating attached
+        # when one exists. A rating without an explicit watched mark stays out
+        # of this list (the watchlist tab covers planned-to-watch separately).
+        # updated_ts uses the latest of (watched, rated) so the grid still
+        # surfaces recent activity even when the rating arrived after the
+        # watched mark.
+        ratings_by_movie: dict[int, tuple[Decimal, float]] = {
+            row.movie.pk: (row.score, row.updated_at.timestamp()) for row in rated_rows
+        }
+        library_entries = []
         for row in watched_rows:
-            library_map[row.movie.pk] = {
-                "movie": row.movie,
-                "score": None,
-                "updated_ts": row.updated_at.timestamp(),
-            }
-        for row in rated_rows:
-            existing = library_map.get(row.movie.pk)
-            ts = row.updated_at.timestamp()
-            if existing:
-                existing["score"] = row.score
-                existing["updated_ts"] = max(existing["updated_ts"], ts)
-            else:
-                library_map[row.movie.pk] = {
+            score_ts = ratings_by_movie.get(row.movie.pk)
+            score = score_ts[0] if score_ts else None
+            updated_ts = row.updated_at.timestamp()
+            if score_ts:
+                updated_ts = max(updated_ts, score_ts[1])
+            library_entries.append(
+                {
                     "movie": row.movie,
-                    "score": row.score,
-                    "updated_ts": ts,
+                    "score": score,
+                    "updated_ts": updated_ts,
+                    "score_int": int(score) if score is not None else 0,
+                    "has_rating": score is not None,
                 }
-        library_entries = sorted(
-            library_map.values(), key=lambda e: e["updated_ts"], reverse=True
-        )
-        for entry in library_entries:
-            score = entry["score"]
-            entry["score_int"] = int(score) if score is not None else 0
-            entry["has_rating"] = score is not None
+            )
+        library_entries.sort(key=lambda e: e["updated_ts"], reverse=True)
         library_count = len(library_entries)
         library_rated_count = sum(1 for e in library_entries if e["has_rating"])
         library_unrated_count = library_count - library_rated_count
