@@ -19,9 +19,24 @@ from movies.tmdb import (
 
 
 class HomeViewTests(TestCase):
-    def test_anonymous_visitor_is_redirected_to_login(self):
+    def test_anonymous_visitor_sees_landing_page(self):
         response = self.client.get(reverse("home"))
-        self.assertRedirects(response, reverse("accounts:login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/landing.html")
+        # Hero CTAs link to register/login.
+        self.assertContains(response, reverse("accounts:register"))
+        self.assertContains(response, reverse("accounts:login"))
+        # Editorial feature list renders (three numbered cards: kinoteka,
+        # znajomi, rekomendacje).
+        self.assertContains(response, "Twoja kinoteka")
+        self.assertContains(response, "Twoi znajomi")
+        self.assertContains(response, "Rekomendacje")
+        # Top-rated and trending shelves are passed in context (rail bodies
+        # may be empty when no community ratings or TMDB key exist; the
+        # landing render itself is what's being guarded here).
+        self.assertIn("top_rated", response.context)
+        self.assertIn("trending", response.context)
 
     def test_authenticated_user_sees_dashboard_inline(self):
         user = get_user_model().objects.create_user(

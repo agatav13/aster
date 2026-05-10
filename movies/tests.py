@@ -467,7 +467,8 @@ class TmdbLiveSearchTests(TestCase):
         self.assertContains(response, "Galactic Empire")
         # The local row whose title doesn't match must NOT leak in.
         self.assertNotContains(response, "Local Only")
-        self.assertContains(response, "Wyniki z TMDB")
+        # Editorial source tag identifies TMDB as the result origin.
+        self.assertContains(response, 'class="search-source-source">TMDB<')
         mock_client.search_movies.assert_called_once_with(query="galactic", page=1)
 
     @override_settings(TMDB_API_KEY="fake-key")
@@ -495,8 +496,9 @@ class TmdbLiveSearchTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Local Galactic Captain")
-        self.assertNotContains(response, "Wyniki z TMDB")
-        self.assertContains(response, "Wyniki z lokalnej bazy")
+        # Source tag identifies Aster (local) — not TMDB — as the origin.
+        self.assertNotContains(response, 'class="search-source-source">TMDB<')
+        self.assertContains(response, 'class="search-source-source">Aster<')
 
     @override_settings(TMDB_API_KEY="fake-key")
     @patch("movies.services.TmdbClient")
