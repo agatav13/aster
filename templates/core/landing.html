@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<section class="aster-landing">
+
+  <div class="aster-fold">
+  <header class="aster-hero">
+    <div class="aster-hero-text">
+      <h1 class="aster-hero-title">
+        <span class="aster-hero-word">Oglądaj.</span>
+        <span class="aster-hero-word"><em class="aster-hero-italic">Oceniaj</em>.</span>
+        <span class="aster-hero-word">Polecaj.</span>
+      </h1>
+      <div class="aster-hero-meta">
+        <p class="aster-hero-sub">
+          Zapisuj filmy do&nbsp;obejrzenia, oceniaj w&nbsp;skali 1–5
+          i&nbsp;sprawdzaj, co polecają znajomi.
+        </p>
+        <div class="aster-hero-actions">
+          <a href="{% url 'accounts:register' %}" class="aster-btn aster-btn-primary">
+            Załóż konto
+            <i class="bi bi-arrow-right"></i>
+          </a>
+          <a href="{% url 'accounts:login' %}" class="aster-btn aster-btn-outline">
+            Zaloguj się
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {% if top_rated %}
+      <aside class="aster-hero-stack" aria-hidden="true">
+        {% for item in top_rated|slice:":5" %}
+          <figure class="aster-stack-card aster-stack-card-{{ forloop.counter }}">
+            {% if item.poster_url %}
+              <img src="{{ item.poster_url }}" alt="" loading="lazy">
+            {% else %}
+              <div class="aster-stack-placeholder"><i class="bi bi-film"></i></div>
+            {% endif %}
+          </figure>
+        {% endfor %}
+        <div class="aster-stack-tag" aria-hidden="true">
+          <span>★</span> Najwyżej oceniane
+        </div>
+      </aside>
+    {% endif %}
+  </header>
+
+  <hr class="aster-rule" aria-hidden="true">
+
+  <section class="aster-features" aria-label="Co wyróżnia Aster">
+    <article class="aster-feature">
+      <p class="aster-feature-num">№ 01</p>
+      <h2 class="aster-feature-title">
+        Twoja kinoteka.<br>
+        <em>Tylko Twoja</em>.
+      </h2>
+      <p class="aster-feature-text">
+        Zapisuj filmy „do obejrzenia”, oznaczaj obejrzane
+        i&nbsp;oceniaj w&nbsp;skali 1–5. Cała Twoja historia
+        oglądania w&nbsp;jednym miejscu.
+      </p>
+    </article>
+
+    <article class="aster-feature">
+      <p class="aster-feature-num">№ 02</p>
+      <h2 class="aster-feature-title">
+        Co oglądają<br>
+        <em>Twoi znajomi</em>.
+      </h2>
+      <p class="aster-feature-text">
+        Obserwuj znajomych i&nbsp;sprawdzaj, co oglądają i&nbsp;jak
+        oceniają. Rankingi powstają z&nbsp;głosów widzów.
+      </p>
+    </article>
+
+    <article class="aster-feature">
+      <p class="aster-feature-num">№ 03</p>
+      <h2 class="aster-feature-title">
+        <em>Im więcej oceniasz</em>,<br>
+        tym lepiej.
+      </h2>
+      <p class="aster-feature-text">
+        Rekomendacje na&nbsp;podstawie Twoich gatunków, reżyserów
+        i&nbsp;ocen. Każdy nowy film w&nbsp;bibliotece doprecyzowuje
+        propozycje.
+      </p>
+    </article>
+  </section>
+  </div>
+
+  {% if top_rated %}
+    <section class="dashboard-section rail-section">
+      <header class="rail-head">
+        <div class="rail-head-text">
+          <p class="rail-eyebrow">Głosami widzów</p>
+          <h2 class="rail-title">Najwyżej <em>oceniane</em>.</h2>
+        </div>
+        <a href="{% url 'movies:list' %}" class="rail-link">
+          <span>Pełny katalog</span>
+          <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        </a>
+      </header>
+      <div class="shelf" aria-label="Najwyżej oceniane">
+        {% for item in top_rated %}
+          <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card shelf-card--ranked">
+            <div class="shelf-poster">
+              {% if item.poster_url %}
+                <img src="{{ item.poster_url }}" alt="Plakat: {{ item.title }}" loading="lazy">
+              {% else %}
+                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+              {% endif %}
+            </div>
+            <p class="shelf-rank" aria-hidden="true">№&nbsp;{{ forloop.counter|stringformat:"02d" }}</p>
+            <p class="shelf-title">{{ item.title }}</p>
+            {% if item.release_date %}
+              <p class="shelf-meta">{{ item.release_date|date:"Y" }}</p>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if trending %}
+    <section class="dashboard-section rail-section">
+      <header class="rail-head">
+        <div class="rail-head-text">
+          <p class="rail-eyebrow">Ten tydzień</p>
+          <h2 class="rail-title">Co <em>teraz</em> oglądają.</h2>
+        </div>
+        <a href="{% url 'movies:list' %}" class="rail-link">
+          <span>Pełny katalog</span>
+          <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        </a>
+      </header>
+      <div class="shelf" aria-label="Popularne">
+        {% for item in trending %}
+          <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card">
+            <div class="shelf-poster">
+              {% if item.poster_url %}
+                <img src="{{ item.poster_url }}" alt="Plakat: {{ item.title }}" loading="lazy">
+              {% else %}
+                <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+              {% endif %}
+            </div>
+            <p class="shelf-title">{{ item.title }}</p>
+            {% if item.release_date %}
+              <p class="shelf-meta">{{ item.release_date|date:"Y" }}</p>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+</section>
+{% endblock %}

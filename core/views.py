@@ -1,30 +1,41 @@
 from __future__ import annotations
 
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.views import View
 
 from community.services import build_feed_groups
 from movies.models import Movie, UserMovieStatus
-from movies.services import fetch_community_top_rated_shelf
+from movies.services import (
+    fetch_community_top_rated_shelf,
+    fetch_trending_shelf,
+)
 
 WATCHLIST_RAIL_LIMIT = 8
 FEED_GROUPS_LIMIT = 24
 
 
 class HomeView(View):
-    """Editorial landing page for signed-in users.
+    """Dual-mode entry page.
 
-    Anonymous → login. Signed-in visitors see a discovery-first start
-    page: the community-top-rated rail leads, the user's watchlist comes
-    next, and the friends-activity feed sits at the bottom. Personal
-    recommendations live on /movies/ now — moving them off this page cuts
-    a TMDB round-trip from every dashboard load.
+    Anonymous visitors get a discovery-first landing: a hero with
+    login/register CTAs, a search box that submits to /movies/, and the
+    community-top-rated and trending rails so they can start browsing
+    immediately without manually navigating to /movies/. Signed-in users
+    see the dashboard: top-rated rail, their watchlist, and the
+    friends-activity feed.
     """
 
     def get(self, request: HttpRequest) -> HttpResponse:
         if not request.user.is_authenticated:
-            return redirect("accounts:login")
+            return render(
+                request,
+                "core/landing.html",
+                {
+                    "top_rated": fetch_community_top_rated_shelf(),
+                    "trending": fetch_trending_shelf(),
+                },
+            )
 
         user = request.user
 

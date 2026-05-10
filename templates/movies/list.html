@@ -3,18 +3,15 @@
 {% block title %}Filmy | Aster{% endblock %}
 
 {% block content %}
-<section class="movies-section">
+<section class="movies-section movies-section--editorial">
   <header class="movies-header">
-    <p class="eyebrow">Katalog</p>
-    <h1 class="page-title">Przeglądaj filmy</h1>
-    <p class="page-lede">
+    <p class="movies-page-eyebrow">№ Katalog</p>
+    <h1 class="movies-page-title">Przeglądaj <em>filmy</em>.</h1>
+    <p class="movies-page-lede">
       {% if shelves_mode %}
-        Wybrane zestawienia z TMDB i Aster — popularne tytuły, rekomendacje
-        dopasowane do Twoich ocen oraz najwyżej oceniane przez społeczność.
-        Wpisz tytuł lub wybierz gatunek, aby przeszukać pełną bazę.
+        Popularne, polecane, najwyżej oceniane — albo wpisz tytuł poniżej.
       {% else %}
-        Wpisz tytuł, aby przeszukać całą bazę TMDB, albo zawęź wyniki filtrem
-        gatunku.
+        Przeszukaj bazę TMDB lub zawęź wyniki filtrem gatunku.
       {% endif %}
     </p>
     <form method="get" class="movies-filters" id="moviesFilters">
@@ -34,10 +31,12 @@
           </option>
         {% endfor %}
       </select>
-      <button type="submit" class="btn btn-accent">Szukaj</button>
-      {% if query or selected_genre or show_watched %}
-        <a href="{% url 'movies:list' %}" class="btn btn-ghost btn-ghost-sm">Wyczyść</a>
-      {% endif %}
+      <div class="movies-submit-group">
+        <button type="submit" class="btn btn-accent">Szukaj</button>
+        {% if query or selected_genre or show_watched %}
+          <a href="{% url 'movies:list' %}" class="btn btn-ghost btn-ghost-sm">Wyczyść</a>
+        {% endif %}
+      </div>
       {% if user.is_authenticated and not query %}
         <label class="movies-show-watched">
           <input
@@ -62,18 +61,19 @@
   {% if shelves_mode %}
     {% if shelves %}
       {% for shelf in shelves %}
-        <section class="dashboard-section">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow mb-1">{{ shelf.eyebrow }}</p>
-              <h2 class="section-title"><i class="bi {{ shelf.icon }}"></i> {{ shelf.title }}</h2>
+        <section class="dashboard-section movies-rail-section">
+          <header class="movies-rail-head">
+            <div class="movies-rail-head-text">
+              <p class="movies-rail-eyebrow">{{ shelf.eyebrow }}</p>
+              <h2 class="movies-rail-title"><em>{{ shelf.title }}</em>.</h2>
             </div>
             {% if shelf.filter_genre_id %}
-              <a href="?genre={{ shelf.filter_genre_id }}" class="section-link">
-                Zobacz wszystkie <i class="bi bi-arrow-right"></i>
+              <a href="?genre={{ shelf.filter_genre_id }}" class="movies-rail-link">
+                <span>Zobacz wszystkie</span>
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
               </a>
             {% endif %}
-          </div>
+          </header>
           {% if shelf.empty_state == "all_watched" %}
             <div class="shelf-empty" role="status">
               <i class="bi bi-check2-circle"></i>
@@ -118,11 +118,11 @@
     {% if search_mode %}
       <p class="search-source">
         {% if search_source == "tmdb" %}
-          <i class="bi bi-cloud-arrow-down"></i>
-          Wyniki z TMDB dla zapytania <strong>„{{ query }}”</strong>
+          <span class="search-source-source">TMDB</span>
+          <span class="search-source-text">Wyniki dla <strong>„{{ query }}”</strong></span>
         {% else %}
-          <i class="bi bi-database"></i>
-          Wyniki z lokalnej bazy dla zapytania <strong>„{{ query }}”</strong>
+          <span class="search-source-source">Aster</span>
+          <span class="search-source-text">Wyniki z bazy lokalnej dla <strong>„{{ query }}”</strong></span>
         {% endif %}
       </p>
     {% endif %}

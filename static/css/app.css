@@ -5,6 +5,13 @@
    no pure white" rule is intentional — every neutral is tinted toward warm
    to keep the editorial feel. --accent-rgb is exposed so rgba() callers
    can pick up the theme switch automatically. */
+:root {
+  /* Editorial typography — shared across landing and the rest of the app
+     so headings, brand wordmark and numbered eyebrows feel continuous. */
+  --font-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Menlo, monospace;
+}
+
 :root,
 :root[data-theme="dark"] {
   --bg-primary: #0f0e0e;          /* warm charcoal surface */
@@ -205,7 +212,7 @@ a:hover {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   border: 1px solid color-mix(in srgb, var(--text-tertiary) 40%, transparent);
-  border-radius: 999px;
+  border-radius: 4px;
   color: var(--text-tertiary);
   background: transparent;
   line-height: 1;
@@ -349,7 +356,7 @@ a:hover {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--accent-dim);
   color: var(--accent);
   font-size: 0.95rem;
@@ -424,13 +431,15 @@ a:hover {
 
 .app-brand {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  align-items: baseline;
+  gap: 0.55rem;
   text-decoration: none;
   color: var(--text-primary);
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.15rem;
-  letter-spacing: -0.02em;
+  font-size: 1.45rem;
+  letter-spacing: -0.025em;
+  font-feature-settings: 'ss01', 'liga';
 }
 
 .app-brand:hover {
@@ -438,8 +447,9 @@ a:hover {
 }
 
 .app-brand .brand-icon {
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   color: var(--accent);
+  align-self: center;
 }
 
 /* Keep legacy utility for anywhere else using the old pill shape. */
@@ -533,22 +543,33 @@ a:hover {
   outline: none;
 }
 
-/* ── Buttons ───────────────────────────────────────────── */
+/* ── Buttons (editorial pill) ──────────────────────────────
+   Primary becomes a charcoal-fill pill (cream text), mirroring the
+   landing's "Załóż darmowe konto" CTA so every CTA in the app reads
+   as one visual family. Hover lifts to dusty rose. */
 .btn-accent {
-  background: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--text-primary);
   color: var(--bg-primary);
-  border: none;
+  border: 1px solid var(--text-primary);
   font-weight: 600;
-  border-radius: var(--radius-sm);
-  padding: 0.65rem 1.5rem;
-  transition: all 0.2s;
+  font-size: 0.92rem;
+  letter-spacing: 0.005em;
+  border-radius: 4px;
+  padding: 0.7rem 1.45rem;
+  transition: transform 0.2s ease, background 0.2s ease,
+              border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-accent:hover {
-  background: var(--accent-hover);
+  background: var(--accent);
+  border-color: var(--accent);
   color: var(--bg-primary);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.25);
+  box-shadow: 0 12px 28px -10px rgba(var(--accent-rgb), 0.55);
 }
 
 .btn-accent:active {
@@ -556,24 +577,33 @@ a:hover {
 }
 
 .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.65rem 1.5rem;
+  border-radius: 4px;
+  padding: 0.7rem 1.45rem;
   font-weight: 500;
-  transition: all 0.2s;
+  font-size: 0.92rem;
+  letter-spacing: 0.005em;
+  transition: transform 0.2s ease, border-color 0.2s ease,
+              color 0.2s ease, background 0.2s ease;
 }
 
 .btn-ghost:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  background: transparent;
+  transform: translateY(-1px);
 }
 
-.btn-ghost-sm {
-  padding: 0.35rem 1rem;
-  font-size: 0.85rem;
+.btn-ghost-sm,
+.btn-accent-sm {
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
 }
 
 /* ── Cards ─────────────────────────────────────────────── */
@@ -789,7 +819,7 @@ a:hover {
   display: inline-block;
   margin: 0 0.5rem 0.5rem 0;
   padding: 0.35rem 0.85rem;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--accent-dim);
   color: var(--accent);
   font-size: 0.85rem;
@@ -899,18 +929,19 @@ a:hover {
   align-items: center;
   justify-content: center;
   min-width: 110px;
-  min-height: 42px;
-  padding: 0.6rem 1rem;
+  min-height: 44px;
+  padding: 0.55rem 1.15rem;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--bg-secondary);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s ease, color 0.2s ease,
+              background 0.2s ease, transform 0.2s ease;
 }
 
 .genre-choice:hover {
-  border-color: var(--accent);
+  border-color: var(--text-primary);
   color: var(--text-primary);
   transform: translateY(-1px);
 }
@@ -922,16 +953,22 @@ a:hover {
 }
 
 .genre-choice span {
-  font-size: 0.88rem;
-  line-height: 1.2;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
   font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
 }
 
 .genre-option input:checked + .genre-choice {
-  background: var(--accent);
+  background: transparent;
   border-color: var(--accent);
-  color: var(--bg-primary);
-  box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.3);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.genre-option input:checked + .genre-choice span {
+  font-weight: 600;
 }
 
 .genre-option input:focus-visible + .genre-choice {
@@ -951,7 +988,7 @@ a:hover {
   padding: 0.45rem 0.9rem;
   background: transparent;
   border: 1px dashed var(--border);
-  border-radius: 999px;
+  border-radius: 4px;
   color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 500;
@@ -1077,11 +1114,13 @@ a:hover {
 
 .app-footer-mark {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.4rem;
   color: var(--text-primary);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
 }
 
 .app-footer-mark i {
@@ -1121,21 +1160,26 @@ a:hover {
 }
 
 /* ── Bootstrap overrides ───────────────────────────────── */
+/* Bootstrap's btn-dark / btn-outline-dark slot into the same editorial
+   pill family as our app .btn-accent / .btn-ghost — keeps any legacy
+   markup using Bootstrap classes coherent with the rest of the UI. */
 .btn-dark {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--text-primary);
+  border-color: var(--text-primary);
   color: var(--bg-primary);
   font-weight: 600;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s;
+  border-radius: 4px;
+  padding: 0.7rem 1.45rem;
+  transition: transform 0.2s ease, background 0.2s ease,
+              border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-dark:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--accent);
+  border-color: var(--accent);
   color: var(--bg-primary);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.25);
+  box-shadow: 0 12px 28px -10px rgba(var(--accent-rgb), 0.55);
 }
 
 .btn-dark:active {
@@ -1145,14 +1189,17 @@ a:hover {
 .btn-outline-dark {
   color: var(--text-primary);
   border-color: var(--border);
-  border-radius: var(--radius-sm);
-  transition: all 0.2s;
+  border-radius: 4px;
+  padding: 0.7rem 1.45rem;
+  transition: transform 0.2s ease, border-color 0.2s ease,
+              color 0.2s ease;
 }
 
 .btn-outline-dark:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  background: transparent;
+  transform: translateY(-1px);
 }
 
 /* ── Movies catalog ────────────────────────────────────── */
@@ -1172,7 +1219,7 @@ a:hover {
   color: var(--text-secondary);
   margin: 0 0 1.25rem;
   padding: 0.45rem 0.85rem;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--bg-card);
   border: 1px solid var(--border);
 }
@@ -1199,7 +1246,7 @@ a:hover {
 
 .movies-search       { grid-area: search; }
 .movies-genre-select { grid-area: select; }
-.movies-filters > .btn { grid-area: submit; }
+.movies-submit-group { grid-area: submit; display: flex; gap: 0.5rem; align-items: center; }
 .movies-show-watched { grid-area: watched; }
 
 .movies-show-watched {
@@ -1223,7 +1270,7 @@ a:hover {
 
 .movies-search,
 .movies-genre-select,
-.movies-filters > .btn {
+.movies-submit-group .btn {
   box-sizing: border-box;
   min-height: 44px;
   height: 44px;
@@ -1257,7 +1304,7 @@ a:hover {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23b5a8a7' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-.movies-filters > .btn {
+.movies-submit-group .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1294,8 +1341,11 @@ a:hover {
       "submit"
       "watched";
   }
-  .movies-filters > .btn {
+  .movies-submit-group {
     width: 100%;
+  }
+  .movies-submit-group .btn {
+    flex: 1;
   }
 }
 
@@ -1477,7 +1527,10 @@ a:hover {
   padding: 0 0 0.85rem;
   margin: -1rem 0 1.5rem;
   border-bottom: 1px solid var(--border);
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .movie-detail-back-link {
@@ -1485,7 +1538,7 @@ a:hover {
   align-items: center;
   gap: 0.45rem;
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: none;
   transition: color 0.15s;
 }
@@ -1511,32 +1564,37 @@ a:hover {
 .movie-detail-breadcrumb-current {
   color: var(--text-tertiary);
   font-weight: 500;
+  letter-spacing: 0.14em;
   max-width: 60ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* ── Backdrop: a bleeding atmospheric band, no frame ────── */
+/* ── Backdrop: a bleeding atmospheric band, no frame ──────
+   Pulls the body up so the poster + title overlap the gradient
+   fade — by then it's mostly bg-primary, so text stays legible. */
 .movie-detail-backdrop {
-  height: 280px;
+  height: 340px;
   background-size: cover;
   background-position: center 30%;
-  margin: 0 calc(50% - 50vw) 1.5rem;
+  margin: 0 calc(50% - 50vw) -140px;
   position: relative;
+  z-index: 0;
 }
 
 .movie-detail-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 40%, var(--bg-primary) 100%);
+  background: linear-gradient(180deg, transparent 25%, var(--bg-primary) 75%);
   pointer-events: none;
 }
 
 /* ── Body: poster + info as simple two-column composition ── */
 .movie-detail-body {
   position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 230px 1fr;
   gap: 2.75rem;
@@ -1582,10 +1640,11 @@ a:hover {
   margin: 0 0 1rem;
   padding: 0;
   list-style: none;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.22em;
   color: var(--text-tertiary);
 }
 
@@ -1618,19 +1677,23 @@ a:hover {
 }
 
 .movie-detail-title {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(2.2rem, 4vw, 3.2rem);
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.02;
   margin: 0 0 0.5rem;
   color: var(--text-primary);
+  font-feature-settings: 'ss01', 'liga';
 }
 
 .movie-detail-original {
+  font-family: var(--font-display);
   color: var(--text-secondary);
   font-style: italic;
-  font-size: 1.05rem;
+  font-weight: 500;
+  font-size: 1.15rem;
+  letter-spacing: -0.005em;
   margin: 0 0 1.5rem;
 }
 
@@ -1647,19 +1710,23 @@ a:hover {
 }
 
 .movie-detail-director-label {
+  font-family: var(--font-mono);
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.22em;
   color: var(--text-tertiary);
   flex-shrink: 0;
 }
 
 .movie-overview {
+  font-family: var(--font-display);
   color: var(--text-primary);
-  line-height: 1.75;
+  line-height: 1.7;
   margin: 0 0 2rem;
-  font-size: 1rem;
+  font-size: 1.08rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 /* Ledger: minimal, no vertical dividers, just a top hairline. */
@@ -1680,10 +1747,11 @@ a:hover {
 }
 
 .movie-detail-ledger dt {
+  font-family: var(--font-mono);
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.22em;
   color: var(--text-tertiary);
   margin: 0;
 }
@@ -1698,36 +1766,39 @@ a:hover {
 }
 
 .movie-detail-ledger-num {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  font-size: 2.1rem;
+  font-family: var(--font-display);
+  font-size: 2.2rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   color: var(--text-primary);
   line-height: 1;
+  font-feature-settings: 'ss01', 'liga';
 }
 
 .movie-detail-ledger-frac {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-tertiary);
-  letter-spacing: normal;
+  letter-spacing: 0.04em;
 }
 
 .movie-detail-ledger-empty {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  font-size: 2.1rem;
-  font-weight: 400;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 2.2rem;
+  font-weight: 500;
   color: var(--text-tertiary);
   line-height: 1;
 }
 
 .movie-detail-ledger-sub {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
   font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--text-secondary);
-  letter-spacing: normal;
 }
 
 /* ── Cast strip ─────────────────────────────────────────── */
@@ -1743,15 +1814,30 @@ a:hover {
 
 .movie-detail-section-head .eyebrow {
   margin: 0 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
 }
 
 .movie-detail-section-title {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  font-size: 1.6rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.4vw, 2rem);
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
   margin: 0;
   color: var(--text-primary);
+  font-feature-settings: 'ss01', 'liga';
+}
+
+.movie-detail-section-title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: -0.025em;
 }
 
 .movie-cast-grid {
@@ -1820,16 +1906,20 @@ a:hover {
 }
 
 .cast-name {
-  font-size: 0.85rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .cast-character {
-  font-size: 0.76rem;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
   color: var(--text-secondary);
   font-style: italic;
+  font-weight: 500;
   line-height: 1.25;
 }
 
@@ -1839,7 +1929,7 @@ a:hover {
   align-items: center;
   gap: 0.3rem;
   padding: 0.15rem 0.55rem;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -2406,7 +2496,7 @@ a:hover {
   min-width: 22px;
   height: 20px;
   padding: 0 0.4rem;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   font-size: 0.7rem;
@@ -2685,7 +2775,7 @@ a:hover {
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.7rem;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 0.78rem;
   font-weight: 600;
   border: 1px solid var(--border);
@@ -4717,7 +4807,7 @@ a:hover {
 .auth-page {
   display: flex;
   justify-content: center;
-  padding: 1rem 0 3rem;
+  padding: 2rem 0 4rem;
 }
 
 .auth-card {
@@ -4732,39 +4822,33 @@ a:hover {
   max-width: 960px;
 }
 
-.auth-card::before {
-  content: "";
-  display: block;
-  width: 2.5rem;
-  height: 2px;
-  background: var(--accent);
-  margin: 0 0 1.25rem;
-}
-
-.auth-eyebrow {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--accent);
-  margin: 0 0 0.6rem;
-}
-
 .auth-title {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  font-size: clamp(1.9rem, 3.2vw, 2.6rem);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.4vw, 2.85rem);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.08;
-  margin: 0 0 0.85rem;
+  letter-spacing: -0.025em;
+  line-height: 1.04;
+  margin: 0 0 1rem;
   color: var(--text-primary);
+  font-feature-settings: 'ss01', 'liga';
+}
+
+/* Italic accent word inside an .auth-title — matches .aster-hero-italic
+   without the underline highlight (auth headings stay calmer). */
+.auth-title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: -0.025em;
 }
 
 .auth-lede {
   margin: 0 0 1.75rem;
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
   line-height: 1.5;
+  font-weight: 500;
 }
 
 .auth-form {
@@ -4780,7 +4864,7 @@ a:hover {
 
 .auth-submit {
   width: 100%;
-  padding: 0.85rem 1.5rem;
+  padding: 0.9rem 1.6rem;
   font-size: 0.95rem;
   margin-top: 0.4rem;
 }
@@ -4898,10 +4982,10 @@ a:hover {
 }
 
 .auth-split-col-label {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  font-size: 1.1rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   margin: 0 0 0.2rem;
   color: var(--text-primary);
 }
@@ -4961,11 +5045,13 @@ a:hover {
 
 .app-shell .form-label {
   display: block;
-  margin: 0 0 0.45rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--text-secondary);
+  margin: 0 0 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
 }
 
 .app-shell input[type="text"]:not([class]),
@@ -4982,13 +5068,13 @@ a:hover {
 .app-shell .form-select {
   display: block;
   width: 100%;
-  padding: 0.7rem 0.9rem;
-  background: var(--bg-secondary);
+  padding: 0.85rem 1rem;
+  background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   line-height: 1.4;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   box-shadow: none;
@@ -5042,8 +5128,8 @@ a:hover {
 .app-shell .form-control:focus,
 .app-shell .form-select:focus {
   outline: none;
-  border-color: var(--accent);
-  background: var(--bg-card);
+  border-color: var(--text-primary);
+  background: transparent;
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
@@ -5142,4 +5228,922 @@ a:hover {
   background: transparent;
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ── Anonymous landing — editorial cinema-magazine ─────── */
+.aster-landing {
+  --aster-display: var(--font-display);
+  --aster-mono: var(--font-mono);
+  padding-top: 0.5rem;
+}
+
+/* Above-the-fold container: pins hero + features to one viewport so the
+   rails below land cleanly past the fold instead of peeking. The
+   subtracted constant accounts for the sticky navbar (~64px) and the
+   .app-main top padding (2rem). */
+.aster-fold {
+  min-height: calc(100dvh - 6.5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 1rem;
+}
+
+.aster-fold .aster-features {
+  padding-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .aster-fold {
+    min-height: 0;
+    justify-content: flex-start;
+  }
+}
+
+/* HERO */
+.aster-hero {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.75rem;
+  padding-bottom: 2rem;
+}
+
+.aster-hero-text {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  max-width: 32rem;
+}
+
+.aster-hero-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.aster-hero-word {
+  display: block;
+}
+
+.aster-hero-text > * {
+  animation: aster-rise 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.aster-hero-text > *:nth-child(1) { animation-delay: 0.05s; }
+.aster-hero-text > *:nth-child(2) { animation-delay: 0.15s; }
+.aster-hero-text > *:nth-child(3) { animation-delay: 0.25s; }
+.aster-hero-text > *:nth-child(4) { animation-delay: 0.35s; }
+
+@keyframes aster-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Title */
+.aster-hero-title {
+  font-family: var(--aster-display);
+  font-weight: 700;
+  font-size: clamp(2.1rem, 4.6vw, 4rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: var(--text-primary);
+  font-feature-settings: 'ss01', 'liga';
+}
+
+.aster-hero-italic {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+  font-variation-settings: 'opsz' 144, 'SOFT' 100;
+  letter-spacing: -0.025em;
+  position: relative;
+  padding: 0 0.06em;
+}
+
+.aster-hero-italic::after {
+  content: "";
+  position: absolute;
+  left: 0.06em;
+  right: 0.06em;
+  bottom: 0.08em;
+  height: 0.42em;
+  background: var(--accent-dim);
+  z-index: -1;
+  border-radius: 1px;
+  transform: skewX(-6deg);
+}
+
+.aster-hero-sub {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.aster-hero-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+/* Pill buttons — editorial */
+.aster-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.78rem 1.45rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  text-decoration: none;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: transform 0.2s ease, background 0.2s ease,
+              border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.aster-btn-primary {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+
+.aster-btn-primary:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -10px rgba(var(--accent-rgb), 0.55);
+}
+
+.aster-btn-primary i {
+  transition: transform 0.25s ease;
+}
+
+.aster-btn-primary:hover i {
+  transform: translateX(3px);
+}
+
+.aster-btn-outline {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.aster-btn-outline:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+/* Poster stack — three tilted cards */
+.aster-hero-stack {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.85rem;
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding-bottom: 1.75rem;
+  align-items: start;
+}
+
+.aster-stack-card {
+  position: relative;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  margin: 0;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 30px 60px -22px rgba(0, 0, 0, 0.45),
+    0 14px 28px -10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: aster-card-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.aster-stack-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.aster-stack-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  color: var(--text-tertiary);
+  font-size: 3rem;
+}
+
+.aster-stack-card-1 {
+  margin-top: 1.4rem;
+  transform: rotate(-7deg) translateX(0.4rem);
+  z-index: 2;
+  animation-delay: 0.40s;
+}
+
+.aster-stack-card-2 {
+  margin-top: 0.2rem;
+  transform: rotate(3deg) translateX(-0.5rem);
+  z-index: 3;
+  animation-delay: 0.50s;
+}
+
+.aster-stack-card-3 {
+  margin-top: 2rem;
+  transform: rotate(-2deg) translateX(0.2rem);
+  z-index: 1;
+  animation-delay: 0.60s;
+}
+
+.aster-stack-card-4 {
+  margin-top: 0.6rem;
+  transform: rotate(6deg) translateX(-0.3rem);
+  z-index: 2;
+  animation-delay: 0.70s;
+}
+
+.aster-stack-card-5 {
+  margin-top: 1.7rem;
+  transform: rotate(-4deg) translateX(0.5rem);
+  z-index: 3;
+  animation-delay: 0.80s;
+}
+
+@keyframes aster-card-in {
+  from { opacity: 0; transform: translateY(20px) rotate(0deg); }
+  to { opacity: 1; }
+}
+
+.aster-hero-stack:hover .aster-stack-card-1 {
+  transform: rotate(-9deg) translate(0.4rem, -10px);
+}
+.aster-hero-stack:hover .aster-stack-card-2 {
+  transform: rotate(5deg) translate(-0.5rem, -6px);
+}
+.aster-hero-stack:hover .aster-stack-card-3 {
+  transform: rotate(-1deg) translate(0.2rem, -14px);
+}
+.aster-hero-stack:hover .aster-stack-card-4 {
+  transform: rotate(8deg) translate(-0.3rem, -8px);
+}
+.aster-hero-stack:hover .aster-stack-card-5 {
+  transform: rotate(-6deg) translate(0.5rem, -12px);
+}
+
+/* Floating tag — like a film-magazine sticker */
+.aster-stack-tag {
+  position: absolute;
+  bottom: -10px;
+  right: 0;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--accent);
+  color: var(--bg-primary);
+  font-family: var(--aster-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  transform: rotate(-3deg);
+  box-shadow: 0 8px 20px -6px rgba(var(--accent-rgb), 0.45);
+  animation: aster-card-in 0.6s 0.95s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.aster-stack-tag span {
+  font-size: 0.85rem;
+  letter-spacing: 0;
+}
+
+/* Hairline rule between sections */
+.aster-rule {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0 0 1.75rem;
+}
+
+/* Editorial feature list (no boxes — magazine spread) */
+.aster-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding-bottom: 1.75rem;
+}
+
+.aster-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0 1.75rem;
+  border-left: 1px solid var(--border);
+}
+
+.aster-feature:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.aster-feature:last-child {
+  padding-right: 0;
+}
+
+.aster-feature-num {
+  margin: 0;
+  font-family: var(--aster-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.aster-feature-title {
+  margin: 0;
+  font-family: var(--aster-display);
+  font-weight: 600;
+  font-size: clamp(1.15rem, 1.3vw, 1.4rem);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+.aster-feature-title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+  font-variation-settings: 'opsz' 144, 'SOFT' 100;
+}
+
+.aster-feature-text {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  max-width: 34ch;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .aster-hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2.25rem;
+  }
+  .aster-hero-text {
+    max-width: 36rem;
+  }
+  .aster-hero-stack {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .aster-hero {
+    padding-bottom: 3rem;
+  }
+  .aster-hero-stack {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .aster-stack-card-5 { display: none; }
+  .aster-features {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+  .aster-feature {
+    padding: 0;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding-top: 2rem;
+  }
+  .aster-feature:first-child {
+    border-top: none;
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .aster-hero-stack {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .aster-stack-card-4 { display: none; }
+}
+
+@media (max-width: 420px) {
+  .aster-stack-tag {
+    font-size: 0.62rem;
+    padding: 0.35rem 0.7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aster-hero-text > *,
+  .aster-stack-card,
+  .aster-stack-tag,
+  .aster-btn,
+  .aster-btn-primary i {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Editorial rails (landing only) ─────────────────────────
+   Scoped to .aster-landing so the dashboard / movies-list /
+   profile rails (which share .section-head and .shelf) are
+   unaffected. The rails read like a film-magazine spread:
+   mono catalog eyebrow, italic-serif title, hairline rule,
+   poster shelf with a mono ranking for the top-rated table. */
+.aster-landing .rail-section {
+  margin-top: 5rem;
+}
+
+.aster-landing .rail-section + .rail-section {
+  margin-top: 4rem;
+}
+
+.aster-landing .rail-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1.5rem;
+  margin: 0 0 1.75rem;
+  padding: 0 0 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.aster-landing .rail-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.aster-landing .rail-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.aster-landing .rail-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 2.6vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  color: var(--text-primary);
+  font-feature-settings: 'ss01', 'liga';
+}
+
+.aster-landing .rail-title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: -0.025em;
+}
+
+.aster-landing .rail-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding-bottom: 0.15rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.02rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.aster-landing .rail-link i {
+  font-style: normal;
+  font-size: 0.85rem;
+  transition: transform 0.25s ease;
+}
+
+.aster-landing .rail-link:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.aster-landing .rail-link:hover i {
+  transform: translateX(4px);
+}
+
+/* Shelf overrides (landing-scoped) — quieter posters, mono meta. */
+.aster-landing .shelf {
+  gap: 1.5rem;
+  grid-auto-columns: 175px;
+}
+
+.aster-landing .shelf-card {
+  gap: 0.75rem;
+}
+
+.aster-landing .shelf-poster {
+  border: none;
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  box-shadow: 0 1px 0 rgba(43, 34, 34, 0.04);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.3s ease;
+}
+
+.aster-landing .shelf-card:hover .shelf-poster {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 30px -18px rgba(43, 34, 34, 0.35);
+  border-color: transparent;
+}
+
+.aster-landing .shelf-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
+  color: var(--text-primary);
+  transition: color 0.2s ease;
+}
+
+.aster-landing .shelf-card:hover .shelf-title {
+  color: var(--accent);
+}
+
+.aster-landing .shelf-meta {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Editorial league-table number — sits above the title as a quiet
+   catalog line, not stamped onto the artwork. Mirrors the № 01/02/03
+   feature numbering above the rails. */
+.aster-landing .shelf-card--ranked {
+  position: relative;
+}
+
+.aster-landing .shelf-rank {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  order: -1;
+}
+
+.aster-landing .shelf-card--ranked .shelf-title {
+  margin-top: -0.15rem;
+}
+
+@media (max-width: 720px) {
+  .aster-landing .rail-head {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .aster-landing .rail-link {
+    justify-self: start;
+  }
+  .aster-landing .rail-section {
+    margin-top: 3.5rem;
+  }
+}
+
+/* ── Movies catalog (editorial) ────────────────────────────
+   Scoped to .movies-section--editorial so the editorial language
+   (Fraunces + JetBrains Mono, hairline rules, italic-em accents)
+   doesn't leak into other pages that share the .section-head /
+   .shelf primitives (e.g. profile rails). */
+.movies-section--editorial .movies-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2.5rem;
+}
+
+.movies-page-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.movies-page-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 4.5vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text-primary);
+  font-feature-settings: 'ss01', 'liga';
+}
+
+.movies-page-title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+}
+
+.movies-page-lede {
+  margin: 0;
+  max-width: 56ch;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+}
+
+.movies-section--editorial .movies-filters {
+  margin-top: 0.5rem;
+}
+
+/* Search-source pill: mono "[ TMDB ]" tag instead of bootstrap icon. */
+.movies-section--editorial .search-source {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.movies-section--editorial .search-source-source {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border-accent);
+  border-radius: 2px;
+  line-height: 1;
+}
+
+.movies-section--editorial .search-source-text {
+  font-style: italic;
+  font-weight: 500;
+}
+
+.movies-section--editorial .search-source-text strong {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Rail head per shelf — same shape as the landing rails. */
+.movies-section--editorial .movies-rail-section + .movies-rail-section {
+  margin-top: 3.5rem;
+}
+
+.movies-rail-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1.5rem;
+  margin: 0 0 1.6rem;
+  padding: 0 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.movies-rail-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.movies-rail-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.movies-rail-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.4vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  color: var(--text-primary);
+  font-feature-settings: 'ss01', 'liga';
+}
+
+.movies-rail-title em {
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.movies-rail-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding-bottom: 0.15rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.movies-rail-link i {
+  font-style: normal;
+  font-size: 0.85rem;
+  transition: transform 0.25s ease;
+}
+
+.movies-rail-link:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.movies-rail-link:hover i {
+  transform: translateX(4px);
+}
+
+/* Posters within the editorial rails — quieter chrome than the
+   default catalog grid. */
+.movies-section--editorial .shelf {
+  gap: 1.5rem;
+  grid-auto-columns: 175px;
+}
+
+.movies-section--editorial .shelf-card {
+  gap: 0.75rem;
+}
+
+.movies-section--editorial .shelf-poster {
+  border: none;
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.3s ease;
+}
+
+.movies-section--editorial .shelf-card:hover .shelf-poster {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.35);
+  border-color: transparent;
+}
+
+.movies-section--editorial .shelf-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
+  color: var(--text-primary);
+  transition: color 0.2s ease;
+}
+
+.movies-section--editorial .shelf-card:hover .shelf-title {
+  color: var(--accent);
+}
+
+.movies-section--editorial .shelf-meta {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Search-results grid: tighten card typography. */
+.movies-section--editorial .movie-card {
+  gap: 0.7rem;
+}
+
+.movies-section--editorial .movie-poster {
+  border: none;
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.3s ease;
+}
+
+.movies-section--editorial .movie-card:hover .movie-poster {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.35);
+  border-color: transparent;
+}
+
+.movies-section--editorial .movie-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.movies-section--editorial .movie-card:hover .movie-title {
+  color: var(--accent);
+}
+
+.movies-section--editorial .movie-meta {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Page indicator + empty state — Fraunces + mono accents. */
+.movies-section--editorial .page-indicator {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.movies-section--editorial .movies-empty {
+  background: transparent;
+  border: 1px dashed var(--border);
+  padding: 5rem 2rem;
+}
+
+.movies-section--editorial .movies-empty h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.6rem;
+  color: var(--text-primary);
+}
+
+.movies-section--editorial .movies-empty p {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 720px) {
+  .movies-rail-head {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .movies-rail-link {
+    justify-self: start;
+  }
+  .movies-section--editorial .movies-rail-section + .movies-rail-section {
+    margin-top: 2.75rem;
+  }
 }
