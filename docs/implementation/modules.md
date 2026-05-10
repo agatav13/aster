@@ -9,7 +9,7 @@ repozytorium — tu pokazujemy wzorce i decyzje.
 ```
 config/          — settings.py, urls.py, wsgi.py
 accounts/        — User, formularze auth, e-maile aktywacyjne, profil + ustawienia
-core/            — editorial landing (feed znajomych + watchlist + community shelf)
+core/            — editorial landing dla anonimów + dashboard (community shelf + watchlist + feed znajomych)
 movies/          — katalog, oceny, komentarze, statusy, integracja TMDB, shelves
 community/       — Follow model, feed znajomych, profile publiczne
 feedback/        — widget zgłoszeń przekierowujący do GitHub Issues
