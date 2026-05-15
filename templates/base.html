@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Aster{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+    <link rel="manifest" href="{% static 'pwa/manifest.webmanifest' %}">
+    <meta name="theme-color" content="#0f0e0e">
+    <link rel="apple-touch-icon" href="{% static 'pwa/icons/icon-192.png' %}">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
@@ -185,6 +188,16 @@
           apply(next);
         });
       })();
+    </script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/service-worker.js")
+            .catch(function (error) {
+              console.warn("Service worker registration failed:", error);
+            });
+        });
+      }
     </script>
     {% block extra_js %}{% endblock %}
     {% include "feedback/_widget.html" %}
