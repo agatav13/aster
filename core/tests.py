@@ -59,6 +59,26 @@ class HomeViewTests(TestCase):
         with self.assertRaises(Exception):
             reverse("dashboard")
 
+    def test_base_template_includes_pwa_manifest_links(self):
+        response = self.client.get(reverse("home"))
+
+        self.assertContains(response, 'rel="manifest"')
+        self.assertContains(response, "/static/pwa/manifest.webmanifest")
+        self.assertContains(response, "/static/pwa/icons/icon-192.png")
+        self.assertContains(
+            response, 'navigator.serviceWorker.register("/service-worker.js")'
+        )
+
+
+class PwaViewTests(TestCase):
+    def test_service_worker_is_served_from_root_with_javascript_content_type(self):
+        response = self.client.get(reverse("service_worker"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/javascript")
+        self.assertContains(response, 'const cacheName = "aster-static-v1";')
+        self.assertContains(response, "/static/pwa/manifest.webmanifest")
+
 
 class ProfileActivityTests(TestCase):
     """The profile page surfaces each user's three activity lists derived
