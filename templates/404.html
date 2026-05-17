@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}404 · Nie znaleziono strony · Aster{% endblock %}
+
+{% block extra_head %}
+<style>
+  .not-found {
+    min-height: calc(100vh - 240px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 16px;
+  }
+  .not-found-inner {
+    max-width: 560px;
+    text-align: center;
+  }
+  .not-found-eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin: 0 0 16px;
+  }
+  .not-found-code {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(96px, 18vw, 168px);
+    line-height: 0.85;
+    letter-spacing: -0.06em;
+    margin: 0;
+    color: var(--text-primary);
+  }
+  .not-found-code em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .not-found-title {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(28px, 4vw, 36px);
+    letter-spacing: -0.03em;
+    margin: 24px 0 12px;
+    color: var(--text-primary);
+  }
+  .not-found-sub {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0 0 32px;
+    font-size: 16px;
+  }
+  .not-found-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+  .not-found-path {
+    margin-top: 28px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    word-break: break-all;
+  }
+  .not-found-path code {
+    background: var(--accent-dim);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="not-found">
+  <div class="not-found-inner">
+    <p class="not-found-eyebrow">Błąd 404</p>
+    <h1 class="not-found-code">4<em>0</em>4</h1>
+    <h2 class="not-found-title">Tej strony tu nie ma<em>.</em></h2>
+    <p class="not-found-sub">
+      Link mógł się zdezaktualizować albo zawiera literówkę.
+      Wróć na stronę główną lub przejdź do katalogu filmów.
+    </p>
+
+    <div class="not-found-actions">
+      <a href="{% url 'home' %}" class="aster-btn aster-btn-primary">
+        <i class="bi bi-house"></i>
+        Strona główna
+      </a>
+      <a href="{% url 'movies:list' %}" class="aster-btn aster-btn-outline">
+        <i class="bi bi-collection-play"></i>
+        Przeglądaj filmy
+      </a>
+    </div>
+
+    {% if request.path %}
+      <p class="not-found-path">
+        Szukałeś: <code>{{ request.path }}</code>
+      </p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

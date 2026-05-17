@@ -1,0 +1,86 @@
+{% load static %}
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>500 · Coś poszło nie tak · Aster</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,700;1,9..144,700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg: #faf9f6;
+        --text: #2b2222;
+        --muted: #6a5c5c;
+        --accent: #a26465;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #0f0e0e; --text: #ebe4e3; --muted: #b5a8a7; --accent: #ecbbba; }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+      .wrap { max-width: 520px; text-align: center; }
+      .eyebrow {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 12px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 16px;
+      }
+      .code {
+        font-family: "Fraunces", Georgia, serif;
+        font-size: clamp(96px, 18vw, 168px);
+        line-height: 0.85;
+        letter-spacing: -0.06em;
+        margin: 0;
+      }
+      .code em { font-style: italic; color: var(--accent); }
+      .title {
+        font-family: "Fraunces", Georgia, serif;
+        font-size: clamp(24px, 4vw, 32px);
+        letter-spacing: -0.03em;
+        margin: 24px 0 12px;
+        font-weight: 700;
+      }
+      .sub { color: var(--muted); line-height: 1.6; margin: 0 0 32px; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        background: var(--accent);
+        color: var(--bg);
+        text-decoration: none;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .btn:hover { opacity: 0.9; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="eyebrow">Błąd 500</p>
+      <h1 class="code">5<em>0</em>0</h1>
+      <h2 class="title">Coś u nas nie zagrało.</h2>
+      <p class="sub">
+        Wystąpił błąd po stronie serwera. Zespół już o&nbsp;tym wie.
+        Spróbuj odświeżyć stronę za chwilę.
+      </p>
+      <a href="/" class="btn">Wróć na stronę główną</a>
+    </div>
+  </body>
+</html>
