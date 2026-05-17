@@ -10,15 +10,15 @@ artefakcie.
 uv run pytest --cov --cov-report=term --cov-report=html:docs/assets/tests/coverage
 ```
 
-**Wynik z 18 kwietnia 2026:**
+**Wynik z 17 maja 2026:**
 
 ```
-============================== 135 passed, 3 deselected in 9.30s ===============================
-TOTAL                                              1270    218    83%
+====================== 170 passed, 3 deselected in 20.62s ======================
+TOTAL                                              1891    310    84%
 ```
 
-- **135 testów** zaliczonych, **0 nieudanych**
-- **83% pokrycia** kodu produkcyjnego (`accounts/`, `core/`, `movies/`, `config/`)
+- **170 testów** zaliczonych, **0 nieudanych**
+- **84% pokrycia** kodu produkcyjnego (`accounts/`, `core/`, `movies/`, `config/`, `feedback/`; `community/` jeszcze poza `tool.coverage.run.source`)
 - 3 testy E2E pominięte (uruchamiane osobnym workflow'em)
 
 Pełny raport HTML: [`docs/assets/tests/coverage/index.html`](../assets/tests/coverage/index.html).
@@ -105,13 +105,14 @@ Pełny JSON: [`docs/assets/security/bandit-report.json`](../assets/security/band
 uv run pip-audit
 ```
 
-**Wynik z 18 kwietnia 2026:**
+**Wynik z 17 maja 2026:**
 
 ```
 No known vulnerabilities found
 ```
 
 - Wcześniejsze uruchomienie znalazło 5 CVE w Django 5.2.12 → bumped do 5.2.13 (kompatybilna minor) → clean.
+- Kolejna runda (17 maja 2026): 7 CVE w Django 5.2.13 / urllib3 2.6.3 / pip 26.0.1 → bumped odpowiednio do 5.2.14 / 2.7.0 / 26.1.1 (wszystko w obrębie minor / patch, lock odświeżony `uv lock --upgrade-package …`).
 
 Pełny JSON: [`docs/assets/security/pip-audit-report.json`](../assets/security/pip-audit-report.json).
 

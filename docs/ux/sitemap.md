@@ -10,6 +10,7 @@ graph TD
     root["/<br/><i>strona główna / dashboard</i>"]
     health["/health/"]
     admin["/admin/<br/><i>panel Django</i>"]
+    sw["/service-worker.js<br/><i>service worker (PWA)</i>"]
 
     subgraph Auth["/auth/"]
       login["/auth/login/"]
@@ -70,7 +71,7 @@ graph TD
 | `/auth/...` | [`accounts/urls.py`](https://github.com/agatav13/aster/blob/main/accounts/urls.py) |
 | `/movies/...` | [`movies/urls.py`](https://github.com/agatav13/aster/blob/main/movies/urls.py) |
 | `/community/...` | [`community/urls.py`](https://github.com/agatav13/aster/blob/main/community/urls.py) |
-| `/admin/`, `/health/`, root include | [`config/urls.py`](https://github.com/agatav13/aster/blob/main/config/urls.py) |
+| `/admin/`, `/health/`, `/service-worker.js`, root include | [`config/urls.py`](https://github.com/agatav13/aster/blob/main/config/urls.py) |
 
 > **Uwaga:** sekcja `/community/` jest w pełni działająca. Feed
 > znajomych i profile publiczne są zasilane modelem
@@ -80,3 +81,11 @@ graph TD
 > który łączy ratingi i statusy „watched" obserwowanych użytkowników.
 > Akcja `POST /community/people/<user_id>/follow/` jest idempotentnym
 > toggle’em. Kuratorowane listy społecznościowe pozostają na roadmapie.
+
+> **PWA:** `GET /service-worker.js` jest renderowany przez
+> `TemplateView` z `templates/pwa/service-worker.js` i podawany z
+> `Content-Type: application/javascript`. Manifest oraz ikony znajdują
+> się pod `/static/pwa/manifest.webmanifest` i `/static/pwa/icons/`.
+> Service worker mountowany jest w roocie świadomie — przeglądarki
+> respektują jego scope względem ścieżki rejestracji, więc plik
+> serwowany z `/static/` obejmowałby tylko `/static/*`.
