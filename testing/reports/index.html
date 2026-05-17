@@ -1559,13 +1559,13 @@ artefakcie.</p>
 <h2 id="jednostkowe-integracyjne-pytest">Jednostkowe + integracyjne (pytest)<a class="headerlink" href="#jednostkowe-integracyjne-pytest" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="w"> </span>--cov-report<span class="o">=</span>term<span class="w"> </span>--cov-report<span class="o">=</span>html:docs/assets/tests/coverage
 </code></pre></div>
-<p><strong>Wynik z 18 kwietnia 2026:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>============================== 135 passed, 3 deselected in 9.30s ===============================
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>TOTAL                                              1270    218    83%
+<p><strong>Wynik z 17 maja 2026:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>====================== 170 passed, 3 deselected in 20.62s ======================
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>TOTAL                                              1891    310    84%
 </code></pre></div>
 <ul>
-<li><strong>135 testów</strong> zaliczonych, <strong>0 nieudanych</strong></li>
-<li><strong>83% pokrycia</strong> kodu produkcyjnego (<code>accounts/</code>, <code>core/</code>, <code>movies/</code>, <code>config/</code>)</li>
+<li><strong>170 testów</strong> zaliczonych, <strong>0 nieudanych</strong></li>
+<li><strong>84% pokrycia</strong> kodu produkcyjnego (<code>accounts/</code>, <code>core/</code>, <code>movies/</code>, <code>config/</code>, <code>feedback/</code>; <code>community/</code> jeszcze poza <code>tool.coverage.run.source</code>)</li>
 <li>3 testy E2E pominięte (uruchamiane osobnym workflow'em)</li>
 </ul>
 <p>Pełny raport HTML: <a href="../assets/tests/coverage/index.html"><code>docs/assets/tests/coverage/index.html</code></a>.</p>
@@ -1628,11 +1628,12 @@ zbyt zmienne dla wiarygodnych liczb.</p>
 <h3 id="pip-audit-cve-zaleznosci">pip-audit (CVE zależności)<a class="headerlink" href="#pip-audit-cve-zaleznosci" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pip-audit
 </code></pre></div>
-<p><strong>Wynik z 18 kwietnia 2026:</strong></p>
+<p><strong>Wynik z 17 maja 2026:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>No known vulnerabilities found
 </code></pre></div>
 <ul>
 <li>Wcześniejsze uruchomienie znalazło 5 CVE w Django 5.2.12 → bumped do 5.2.13 (kompatybilna minor) → clean.</li>
+<li>Kolejna runda (17 maja 2026): 7 CVE w Django 5.2.13 / urllib3 2.6.3 / pip 26.0.1 → bumped odpowiednio do 5.2.14 / 2.7.0 / 26.1.1 (wszystko w obrębie minor / patch, lock odświeżony <code>uv lock --upgrade-package …</code>).</li>
 </ul>
 <p>Pełny JSON: <a href="../../assets/security/pip-audit-report.json"><code>docs/assets/security/pip-audit-report.json</code></a>.</p>
 <h3 id="django-check-deploy">Django check --deploy<a class="headerlink" href="#django-check-deploy" title="Permanent link">&para;</a></h3>

@@ -1406,7 +1406,7 @@
 <tr>
 <td>Framework webowy</td>
 <td>Django</td>
-<td>5.2.13</td>
+<td>5.2.14</td>
 <td>Dojrzały, „batteries included" (ORM, admin, auth, formularze, migracje)</td>
 </tr>
 <tr>
@@ -1498,6 +1498,12 @@
 <td>htmx</td>
 <td>2.0.4</td>
 <td>Punktowe użycie na widoku szczegółów filmu — POST + swap fragmentu zamiast pełnego reloadu strony. Załadowane z CDN, brak buildu JS.</td>
+</tr>
+<tr>
+<td>PWA (instalowalność)</td>
+<td>Web App Manifest + Service Worker</td>
+<td>natywne API przeglądarki</td>
+<td>Manifest (<code>/static/pwa/manifest.webmanifest</code>) + minimalny service worker (<code>templates/pwa/service-worker.js</code>) podawany pod <code>/service-worker.js</code>. Cache’uje statyki wymagane do uruchomienia („install” w sensie PWA), bez offline rendera widoków.</td>
 </tr>
 <tr>
 <td>Manager pakietów</td>

@@ -1713,6 +1713,7 @@ klawiatury, struktury nagłówków.</p>
 <li><strong>Przeglądarki:</strong> Chromium, Firefox, Safari w aktualnych wersjach (testowane przez Playwright na Chromium w CI).</li>
 <li><strong>Język interfejsu:</strong> polski. Treści użytkownika (komentarze) bez ograniczeń językowych.</li>
 <li><strong>Responsywność:</strong> Bootstrap 5 + autorski CSS — siatka filmów dostosowuje się od mobilnych do desktopowych szerokości.</li>
+<li><strong>Instalowalność (PWA):</strong> Web App Manifest + minimalny service worker (<code>/service-worker.js</code>) sprawiają, że aplikację można zainstalować na ekranie głównym (Android/Chromium, iOS Safari „Dodaj do ekranu początkowego”). Service worker cache’uje wyłącznie statyki wymagane do startu (manifest, ikony, favicon) — same widoki działają online; brak trybu offline na ten moment.</li>
 <li><strong>API zewnętrzne:</strong> TMDB v3 (publiczne, bez SLA — patrz <a href="../../architecture/apis/">Architektura → API</a>).</li>
 <li><strong>Wersja Python:</strong> 3.13 (wymagana, sprawdzana w <code>.python-version</code>).</li>
 </ul>

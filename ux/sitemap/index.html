@@ -1416,6 +1416,7 @@ poziom dostępu.</p>
     root["/&lt;br/&gt;&lt;i&gt;strona główna / dashboard&lt;/i&gt;"]
     health["/health/"]
     admin["/admin/&lt;br/&gt;&lt;i&gt;panel Django&lt;/i&gt;"]
+    sw["/service-worker.js&lt;br/&gt;&lt;i&gt;service worker (PWA)&lt;/i&gt;"]
 
     subgraph Auth["/auth/"]
       login["/auth/login/"]
@@ -1492,7 +1493,7 @@ poziom dostępu.</p>
 <td><a href="https://github.com/agatav13/aster/blob/main/community/urls.py"><code>community/urls.py</code></a></td>
 </tr>
 <tr>
-<td><code>/admin/</code>, <code>/health/</code>, root include</td>
+<td><code>/admin/</code>, <code>/health/</code>, <code>/service-worker.js</code>, root include</td>
 <td><a href="https://github.com/agatav13/aster/blob/main/config/urls.py"><code>config/urls.py</code></a></td>
 </tr>
 </tbody>
@@ -1506,6 +1507,13 @@ oraz serwisem
 który łączy ratingi i statusy „watched" obserwowanych użytkowników.
 Akcja <code>POST /community/people/&lt;user_id&gt;/follow/</code> jest idempotentnym
 toggle’em. Kuratorowane listy społecznościowe pozostają na roadmapie.</p>
+<p><strong>PWA:</strong> <code>GET /service-worker.js</code> jest renderowany przez
+<code>TemplateView</code> z <code>templates/pwa/service-worker.js</code> i podawany z
+<code>Content-Type: application/javascript</code>. Manifest oraz ikony znajdują
+się pod <code>/static/pwa/manifest.webmanifest</code> i <code>/static/pwa/icons/</code>.
+Service worker mountowany jest w roocie świadomie — przeglądarki
+respektują jego scope względem ścieżki rejestracji, więc plik
+serwowany z <code>/static/</code> obejmowałby tylko <code>/static/*</code>.</p>
 </blockquote>
 
 
