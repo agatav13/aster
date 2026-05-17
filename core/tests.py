@@ -52,8 +52,9 @@ class HomeViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         # Dashboard content is rendered in place at /, no redirect.
-        self.assertContains(response, "Witaj, Ada")
-        self.assertContains(response, "Co oglądają znajomi")
+        self.assertContains(response, "Witaj,")
+        self.assertContains(response, '<em class="aster-hero-italic">Ada</em>')
+        self.assertContains(response, "Co oglądają <em>znajomi</em>")
 
     def test_no_separate_dashboard_url(self):
         with self.assertRaises(Exception):

@@ -3,11 +3,11 @@
 {% block title %}Filmy | Aster{% endblock %}
 
 {% block content %}
-<section class="movies-section movies-section--editorial">
+<section class="aster-landing movies-section movies-section--editorial">
   <header class="movies-header">
-    <p class="movies-page-eyebrow">№ Katalog</p>
-    <h1 class="movies-page-title">Przeglądaj <em>filmy</em>.</h1>
-    <p class="movies-page-lede">
+    <p class="rail-eyebrow">№ Katalog</p>
+    <h1 class="aster-hero-title">Przeglądaj <em class="aster-hero-italic">filmy</em>.</h1>
+    <p class="aster-hero-sub">
       {% if shelves_mode %}
         Popularne, polecane, najwyżej oceniane — albo wpisz tytuł poniżej.
       {% else %}
@@ -61,14 +61,14 @@
   {% if shelves_mode %}
     {% if shelves %}
       {% for shelf in shelves %}
-        <section class="dashboard-section movies-rail-section">
-          <header class="movies-rail-head">
-            <div class="movies-rail-head-text">
-              <p class="movies-rail-eyebrow">{{ shelf.eyebrow }}</p>
-              <h2 class="movies-rail-title"><em>{{ shelf.title }}</em>.</h2>
+        <section class="dashboard-section rail-section">
+          <header class="rail-head">
+            <div class="rail-head-text">
+              <p class="rail-eyebrow">{{ shelf.eyebrow }}</p>
+              <h2 class="rail-title"><em>{{ shelf.title }}</em>.</h2>
             </div>
             {% if shelf.filter_genre_id %}
-              <a href="?genre={{ shelf.filter_genre_id }}" class="movies-rail-link">
+              <a href="?genre={{ shelf.filter_genre_id }}" class="rail-link">
                 <span>Zobacz wszystkie</span>
                 <i class="bi bi-arrow-right" aria-hidden="true"></i>
               </a>
