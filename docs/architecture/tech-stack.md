@@ -3,7 +3,7 @@
 | Warstwa | Technologia | Wersja | Uzasadnienie |
 |---|---|---|---|
 | Język | Python | 3.13 | Stabilna wersja, dobre wsparcie dla type hints i async |
-| Framework webowy | Django | 5.2.13 | Dojrzały, „batteries included" (ORM, admin, auth, formularze, migracje) |
+| Framework webowy | Django | 5.2.14 | Dojrzały, „batteries included" (ORM, admin, auth, formularze, migracje) |
 | Walidacja danych | Pydantic | 2.x | Silne typy w warstwie domenowej (np. parsowanie odpowiedzi TMDB) |
 | HTTP klient | httpx | 0.28+ | Sync + async, typing-friendly, lepsze API niż `requests` |
 | Konfiguracja | python-dotenv | 1.x | `.env` w developmencie, zmienne środowiskowe w produkcji |
@@ -19,6 +19,7 @@
 | CSS framework | Bootstrap | 5 | Szybki prototyp, gotowe komponenty (modal, alerts) |
 | Ikony | Bootstrap Icons | 1.x | Spójna paleta z BS5 |
 | Frontend interactivity | htmx | 2.0.4 | Punktowe użycie na widoku szczegółów filmu — POST + swap fragmentu zamiast pełnego reloadu strony. Załadowane z CDN, brak buildu JS. |
+| PWA (instalowalność) | Web App Manifest + Service Worker | natywne API przeglądarki | Manifest (`/static/pwa/manifest.webmanifest`) + minimalny service worker (`templates/pwa/service-worker.js`) podawany pod `/service-worker.js`. Cache’uje statyki wymagane do uruchomienia („install” w sensie PWA), bez offline rendera widoków. |
 | Manager pakietów | uv | aktualna | Szybkość, lockfile, dependency groups |
 | Linter / formatter | Ruff | 0.11+ | Najszybszy w Pythonie, jeden tool zamiast Flake8+isort+Black |
 | Type checker | ty | 0.0.1a7 | Eksperymentalny, lekki sprawdzacz typów Astral |
