@@ -5674,6 +5674,51 @@ a:hover {
   margin-top: 5rem;
 }
 
+/* Dashboard re-uses the editorial rail styles but has no above-the-fold
+   hero/features block, so the first rail can sit much closer to the
+   "Witaj, …" salutation. */
+.dashboard-editorial .aster-hero {
+  padding-bottom: 0.5rem;
+}
+
+.dashboard-editorial .rail-section:first-of-type {
+  margin-top: 1.25rem;
+}
+
+/* /movies header already has its own bottom border + margin-bottom,
+   so the first rail below it doesn't need the landing's full 5rem
+   top margin. */
+.movies-section--editorial .rail-section:first-of-type {
+  margin-top: 0.5rem;
+}
+
+/* Community pages — same editorial vocabulary as the landing, but
+   the hero is compact (no aside artwork) and the sub-tabs already
+   carry the visual separator, so rails sit closer. */
+.community-editorial .aster-hero {
+  padding-bottom: 0.5rem;
+}
+
+.community-editorial .rail-section:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.community-editorial .rail-section + .rail-section {
+  margin-top: 3rem;
+}
+
+.rail-title-count {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.55em;
+  font-weight: 500;
+  font-style: normal;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  vertical-align: 0.25em;
+}
+
 .aster-landing .rail-section + .rail-section {
   margin-top: 4rem;
 }

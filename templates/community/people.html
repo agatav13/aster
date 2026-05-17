@@ -3,24 +3,28 @@
 {% block title %}Ludzie | Społeczność | Aster{% endblock %}
 
 {% block content %}
-<section class="community-section">
-  <header class="page-header">
-    <p class="eyebrow">Społeczność</p>
-    <h1 class="page-title">Ludzie</h1>
-    <p class="page-lede">
-      Zobacz, kogo obserwujesz i komu warto zacząć się przyglądać.
-    </p>
+<section class="aster-landing community-section community-editorial">
+  <header class="aster-hero aster-hero--compact community-hero">
+    <div class="aster-hero-text">
+      <p class="rail-eyebrow">Społeczność</p>
+      <h1 class="aster-hero-title">
+        <em class="aster-hero-italic">Ludzie</em>.
+      </h1>
+      <p class="aster-hero-sub">
+        Zobacz, kogo obserwujesz i&nbsp;komu warto zacząć się przyglądać.
+      </p>
+    </div>
   </header>
 
   {% include "community/_tabs.html" %}
 
-  <section class="people-group">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow mb-1">Obserwowani</p>
-        <h2 class="section-title">Znajomi ({{ friends|length }})</h2>
+  <section class="dashboard-section rail-section people-group">
+    <header class="rail-head">
+      <div class="rail-head-text">
+        <p class="rail-eyebrow">Obserwowani</p>
+        <h2 class="rail-title">Twoi <em>znajomi</em>{% if friends %} <span class="rail-title-count">({{ friends|length }})</span>{% endif %}.</h2>
       </div>
-    </div>
+    </header>
 
     {% if friends %}
       <div class="person-grid">
@@ -33,13 +37,13 @@
     {% endif %}
   </section>
 
-  <section class="people-group">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow mb-1">Odkryj</p>
-        <h2 class="section-title">Pozostali użytkownicy</h2>
+  <section class="dashboard-section rail-section people-group">
+    <header class="rail-head">
+      <div class="rail-head-text">
+        <p class="rail-eyebrow">Odkryj</p>
+        <h2 class="rail-title">Pozostali <em>użytkownicy</em>.</h2>
       </div>
-    </div>
+    </header>
 
     {% if suggestions %}
       <div class="person-grid">

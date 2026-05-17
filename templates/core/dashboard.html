@@ -1,27 +1,31 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="dashboard">
-  <header class="dashboard-hero-head">
-    <h1 class="page-title">
-      Witaj{% if request.user.display_name %}, {{ request.user.display_name }}{% endif %}.
-    </h1>
+<section class="aster-landing dashboard-editorial">
+
+  <header class="aster-hero aster-hero--compact">
+    <div class="aster-hero-text">
+      <h1 class="aster-hero-title aster-hero-title--inline">
+        Witaj,&nbsp;<em class="aster-hero-italic">{% if request.user.display_name %}{{ request.user.display_name }}{% else %}{{ request.user.username }}{% endif %}</em>.
+      </h1>
+    </div>
   </header>
 
   {% if community_shelf %}
-    <section class="dashboard-section">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow mb-1">Głosami widzów Aster</p>
-          <h2 class="section-title"><i class="bi bi-heart"></i> Najwyżej oceniane w Aster</h2>
+    <section class="dashboard-section rail-section">
+      <header class="rail-head">
+        <div class="rail-head-text">
+          <p class="rail-eyebrow">Głosami widzów Aster</p>
+          <h2 class="rail-title">Najwyżej <em>oceniane</em>.</h2>
         </div>
-        <a href="{% url 'movies:list' %}" class="section-link">
-          Odkrywaj filmy <i class="bi bi-arrow-right"></i>
+        <a href="{% url 'movies:list' %}" class="rail-link">
+          <span>Odkrywaj filmy</span>
+          <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </a>
-      </div>
+      </header>
       <div class="shelf" aria-label="Najwyżej oceniane">
         {% for item in community_shelf %}
-          <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card">
+          <a href="{% url 'movies:detail' item.tmdb_id %}" class="shelf-card shelf-card--ranked">
             <div class="shelf-poster">
               {% if item.poster_url %}
                 <img src="{{ item.poster_url }}" alt="Plakat: {{ item.title }}" loading="lazy">
@@ -29,6 +33,7 @@
                 <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
               {% endif %}
             </div>
+            <p class="shelf-rank" aria-hidden="true">№&nbsp;{{ forloop.counter|stringformat:"02d" }}</p>
             <p class="shelf-title">{{ item.title }}</p>
             {% if item.release_date %}
               <p class="shelf-meta">{{ item.release_date|date:"Y" }}</p>
@@ -40,16 +45,17 @@
   {% endif %}
 
   {% if watchlist_rail %}
-    <section class="dashboard-section">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow mb-1">Na później</p>
-          <h2 class="section-title"><i class="bi bi-bookmark"></i> Kontynuuj swoją listę</h2>
+    <section class="dashboard-section rail-section">
+      <header class="rail-head">
+        <div class="rail-head-text">
+          <p class="rail-eyebrow">Na później</p>
+          <h2 class="rail-title">Kontynuuj <em>swoją listę</em>.</h2>
         </div>
-        <a href="{% url 'accounts:profile' %}?tab=watchlist" class="section-link">
-          Zobacz wszystkie <i class="bi bi-arrow-right"></i>
+        <a href="{% url 'accounts:profile' %}?tab=watchlist" class="rail-link">
+          <span>Zobacz wszystkie</span>
+          <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </a>
-      </div>
+      </header>
       <div class="shelf" aria-label="Do obejrzenia">
         {% for movie in watchlist_rail %}
           <a href="{% url 'movies:detail' movie.tmdb_id %}" class="shelf-card">
@@ -70,16 +76,17 @@
     </section>
   {% endif %}
 
-  <section class="dashboard-section">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow mb-1">Społeczność</p>
-        <h2 class="section-title"><i class="bi bi-people"></i> Co oglądają znajomi</h2>
+  <section class="dashboard-section rail-section">
+    <header class="rail-head">
+      <div class="rail-head-text">
+        <p class="rail-eyebrow">Społeczność</p>
+        <h2 class="rail-title">Co oglądają <em>znajomi</em>.</h2>
       </div>
-      <a href="{% url 'community:feed' %}" class="section-link">
-        Cały feed <i class="bi bi-arrow-right"></i>
+      <a href="{% url 'community:feed' %}" class="rail-link">
+        <span>Cały feed</span>
+        <i class="bi bi-arrow-right" aria-hidden="true"></i>
       </a>
-    </div>
+    </header>
 
     {% if feed_groups %}
       {% include "community/_feed_groups.html" %}
