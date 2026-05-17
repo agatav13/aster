@@ -14,6 +14,34 @@ from movies.services import (
 WATCHLIST_RAIL_LIMIT = 18
 FEED_GROUPS_LIMIT = 24
 
+PROJECT_LINKS: list[dict[str, str]] = [
+    {
+        "label": "Otwórz Aster",
+        "url": "https://aster-1lf7.onrender.com/",
+        "description": "Wejdź do aplikacji",
+        "icon": "bi-film",
+    },
+    {
+        "label": "Kod źródłowy",
+        "url": "https://github.com/agatav13/aster",
+        "description": "Repozytorium na GitHubie",
+        "icon": "bi-github",
+    },
+    {
+        "label": "LinkedIn",
+        "url": "https://www.linkedin.com/in/agata-omasta-390599318",
+        "description": "Mój profil zawodowy",
+        "icon": "bi-linkedin",
+    },
+]
+
+
+class LinksView(View):
+    """Public QR landing page with the project's important links."""
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        return render(request, "core/links.html", {"links": PROJECT_LINKS})
+
 
 class HomeView(View):
     """Dual-mode entry page.

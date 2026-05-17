@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+### Added
+
+- **Branded 404 + 500 error pages** — `templates/404.html` extends `base.html`, so a missed URL now lands on an editorial "4*0*4 — Tej strony tu nie ma." card with the Aster nav, theme toggle, accent serif numerals, the requested path echoed back, and CTAs to `/` and `/movies/`. `templates/500.html` is intentionally self-contained (no `extends`, no static-tag dependencies on the manifest, inline `prefers-color-scheme`-aware styles) so it still renders if the regular template chain is the source of the 500. Both only render when `DJANGO_DEBUG=False`.
+- **QR landing page** at `/links/` — public mobile-friendly hub that collects the project's important links (live app, GitHub repo, LinkedIn) for presentation slides. Editable in one place via `PROJECT_LINKS` in `core/views.py`; template extends `base.html` so it inherits the Aster navbar, footer, dark/light theme tokens, and PWA shell. Card and link rows use the project's `--bg-primary` / `--text-primary` / `--accent-dim` tokens so contrast holds in both parchment and charcoal modes.
+
 ### Planned
 
 - Personalized recommendations based on `favorite_genres`, ratings, and watch history.

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Aster · Linki projektu{% endblock %}
+
+{% block extra_head %}
+<style>
+  .links-page {
+    min-height: calc(100vh - 220px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 48px 16px 64px;
+  }
+  .links-card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 40px 32px 32px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+  }
+  .links-eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin: 0 0 12px;
+  }
+  .links-title {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 44px;
+    letter-spacing: -0.04em;
+    margin: 0;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+  .links-title em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .links-sub {
+    margin: 12px 0 28px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    font-size: 15px;
+  }
+  .links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .links-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: transform 0.15s ease, background 0.15s ease,
+                border-color 0.15s ease;
+  }
+  .links-item:hover,
+  .links-item:focus-visible {
+    transform: translateY(-2px);
+    background: var(--accent-dim);
+    border-color: var(--border-accent);
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+  .links-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 20px;
+  }
+  .links-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .links-label {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-primary);
+  }
+  .links-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .links-chev {
+    margin-left: auto;
+    color: var(--text-tertiary);
+    font-size: 18px;
+  }
+  .links-footer {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="links-page">
+  <article class="links-card">
+    <p class="links-eyebrow">Projekt zaliczeniowy</p>
+    <h1 class="links-title">Aster<em>.</em></h1>
+    <p class="links-sub">
+      Aplikacja do oglądania, oceniania i polecania filmów.
+      Tu znajdziesz wszystkie najważniejsze linki do projektu.
+    </p>
+
+    <div class="links-list">
+      {% for link in links %}
+        <a class="links-item"
+           href="{{ link.url }}"
+           {% if not link.url|slice:":7" == "mailto:" %}target="_blank" rel="noopener noreferrer"{% endif %}>
+          <span class="links-icon" aria-hidden="true">
+            <i class="bi {{ link.icon }}"></i>
+          </span>
+          <span class="links-text">
+            <span class="links-label">{{ link.label }}</span>
+            <span class="links-desc">{{ link.description }}</span>
+          </span>
+          <i class="bi bi-arrow-up-right links-chev" aria-hidden="true"></i>
+        </a>
+      {% endfor %}
+    </div>
+
+    <p class="links-footer">
+      Stworzone przez Agatę Omastę
+    </p>
+  </article>
+</section>
+{% endblock %}
