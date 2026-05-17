@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+### Planned
+
+- Personalized recommendations based on `favorite_genres`, ratings, and watch history.
+- Automated comment moderation (toxicity score, moderator actions in admin panel).
+- Rate limiting on `/auth/login/` and `/auth/register/`.
+- Manual accessibility audit + screen-reader testing.
+- E2E tests for password reset and admin flows.
+
+## [1.0.0] — 2026-05-17
+
 ### Added
 
 - **Editorial logged-out landing page** at `/` for anonymous visitors — replaces the redirect-to-login with a discovery-first landing: Fraunces serif hero ("Oglądaj. *Oceniaj*. Polecaj.") flanked by a hand-pinned five-poster fan of the top-rated titles, three numbered editorial features (`№ 01` / `№ 02` / `№ 03`), and two rails ("Najwyżej oceniane", "Co teraz oglądają"). Driven by `templates/core/landing.html` + the `.aster-*` block in `static/css/app.css`. The navbar gains anonymous **Start** and **Filmy** tabs so first-time visitors can move between the landing and the full browse without typing the URL.
@@ -48,14 +58,6 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 - **`/community/lists/`** placeholder page (mock-data preview shipped in 0.1.0) is gone, together with the `community/_tabs.html` partial. Curated community lists move back to the roadmap; the new follow-driven `/community/u/<user_id>/` profile takes its place in the navigation.
 
-### Planned
-
-- Personalized recommendations based on `favorite_genres`, ratings, and watch history.
-- Automated comment moderation (toxicity score, moderator actions in admin panel).
-- Rate limiting on `/auth/login/` and `/auth/register/`.
-- Manual accessibility audit + screen-reader testing.
-- E2E tests for password reset and admin flows.
-
 ## [0.1.0] — 2026-04-18
 
 First public release of the documentation and the supporting test suites.
@@ -84,5 +86,6 @@ First public release of the documentation and the supporting test suites.
 - Bump Django from 5.2.12 → 5.2.13 to remediate 5 CVEs surfaced by `pip-audit`.
 - Production hardening in `config/settings.py` activated when `DEBUG=False`: `SECURE_SSL_REDIRECT`, HSTS (1 year, include subdomains, preload), secure cookies, `X_FRAME_OPTIONS=DENY`, `SECURE_REFERRER_POLICY=same-origin`, `SECURE_CONTENT_TYPE_NOSNIFF`.
 
-[Unreleased]: https://github.com/agatav13/aster/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/agatav13/aster/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/agatav13/aster/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/agatav13/aster/releases/tag/v0.1.0
