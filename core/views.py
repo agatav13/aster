@@ -11,7 +11,7 @@ from movies.services import (
     fetch_trending_shelf,
 )
 
-WATCHLIST_RAIL_LIMIT = 8
+WATCHLIST_RAIL_LIMIT = 18
 FEED_GROUPS_LIMIT = 24
 
 
