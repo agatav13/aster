@@ -13,8 +13,8 @@ core/            — editorial landing dla anonimów + dashboard (community shel
 movies/          — katalog, oceny, komentarze, statusy, integracja TMDB, shelves
 community/       — Follow model, feed znajomych, profile publiczne
 feedback/        — widget zgłoszeń przekierowujący do GitHub Issues
-templates/       — wszystkie szablony DTL (auth, movies, community, partials, e-maile)
-static/          — CSS, JS, ikony
+templates/       — wszystkie szablony DTL (auth, movies, community, partials, e-maile, pwa/service-worker.js)
+static/          — CSS, JS, ikony, pwa/ (manifest + ikony aplikacji)
 tests/           — e2e/ (Playwright), perf/ (locust)
 ```
 
@@ -28,6 +28,15 @@ tests/           — e2e/ (Playwright), perf/ (locust)
 > oraz `follow_toggle` (POST). Plik `community/mock.py` został
 > ograniczony do dataclass’ów `FeedItem` / `FeedGroup` używanych przez
 > serwis i szablony.
+
+> **Uwaga o PWA:** `config/urls.py` wystawia `GET /service-worker.js`
+> przez `TemplateView` (template `templates/pwa/service-worker.js`,
+> `content_type="application/javascript"`). `base.html` ładuje
+> manifest (`/static/pwa/manifest.webmanifest`), ustawia
+> `apple-touch-icon` oraz rejestruje service workera. Service worker
+> mountowany jest pod rootem świadomie — scope rejestracji rządzi tym,
+> jakie ścieżki pokrywa cache; plik podawany ze `/static/` ograniczałby
+> się do `/static/*` i nie spełniłby kryterium instalowalności.
 
 ## 1. Rejestracja z weryfikacją e-mail — `accounts/views.py:RegisterView`
 

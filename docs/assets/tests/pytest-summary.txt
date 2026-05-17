@@ -1,10 +1,28 @@
-config/settings.py                                   76     15    80%   16, 84, 110, 120-129, 139-140
-config/urls.py                                       10      3    70%   9-11
+accounts/__init__.py                                  0      0   100%
+accounts/admin.py                                    13      0   100%
+accounts/apps.py                                      4      0   100%
+accounts/forms.py                                    73      4    95%   38, 40, 84, 96
+accounts/models.py                                   41     11    73%   10, 23-33, 61
+accounts/urls.py                                      6      0   100%
+accounts/utils.py                                    20      0   100%
+accounts/views.py                                   175     28    84%   34, 43-44, 61, 83-85, 89-91, 100, 113-125, 132-135, 221, 223, 245
+config/__init__.py                                    0      0   100%
+config/asgi.py                                        4      4     0%   1-7
+config/settings.py                                   84     18    79%   16, 87, 93-106, 137, 147-156, 166-167
+config/urls.py                                        8      1    88%   9
 config/wsgi.py                                        4      4     0%   1-7
 core/__init__.py                                      0      0   100%
 core/apps.py                                          4      0   100%
 core/urls.py                                          3      0   100%
 core/views.py                                        18      0   100%
+feedback/__init__.py                                  0      0   100%
+feedback/admin.py                                    10      0   100%
+feedback/apps.py                                      4      0   100%
+feedback/forms.py                                    15      0   100%
+feedback/github.py                                   28      0   100%
+feedback/models.py                                   15      1    93%   25
+feedback/urls.py                                      4      0   100%
+feedback/views.py                                    30      0   100%
 movies/__init__.py                                    0      0   100%
 movies/admin.py                                      35      0   100%
 movies/apps.py                                        5      0   100%
@@ -14,12 +32,12 @@ movies/management/commands/backfill_credits.py       39     39     0%   1-65
 movies/management/commands/normalize_genres.py        7      7     0%   1-15
 movies/management/commands/sync_tmdb_genres.py       15     15     0%   1-21
 movies/management/commands/sync_tmdb_popular.py      33     33     0%   1-56
-movies/models.py                                    118      7    94%   63, 108, 164, 180, 224, 289-290
-movies/services.py                                  341     17    95%   236-238, 264-271, 424, 436, 448-450, 505, 585, 648, 657
-movies/tmdb.py                                      113     16    86%   155-157, 173-174, 189-194, 207-215, 223-227
+movies/models.py                                    118      7    94%   63, 109, 167, 183, 227, 292-293
+movies/services.py                                  702     69    90%   240-242, 268-275, 444, 456, 489-491, 539, 580, 656, 666, 723, 747, 801-812, 822, 877-881, 900-906, 913, 916, 977-979, 995-1002, 1007, 1009, 1012, 1015, 1078, 1087, 1433-1435, 1554-1555, 1563, 1565, 1575, 1579, 1582-1585, 1593-1597, 1599, 1601, 1654, 1674, 1753-1754
+movies/tmdb.py                                      154     33    79%   177-179, 201-202, 218, 242-254, 275-295, 304-305, 313-314, 318-319, 327-331
 movies/urls.py                                        4      0   100%
-movies/views.py                                     157     11    93%   93-94, 168-170, 211-216, 243-244
+movies/views.py                                     216     36    83%   149, 167, 179, 192-194, 215, 226-230, 247-248, 317-319, 346, 373-378, 390-394, 401-402, 412, 422-423, 432-439, 446, 452, 475
 -------------------------------------------------------------------------------
-TOTAL                                              1270    218    83%
+TOTAL                                              1891    310    84%
 Coverage HTML written to dir docs/assets/tests/coverage
-====================== 135 passed, 3 deselected in 9.30s =======================
+====================== 170 passed, 3 deselected in 20.62s ======================

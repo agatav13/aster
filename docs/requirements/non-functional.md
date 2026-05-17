@@ -136,5 +136,6 @@ Pełny raport: [Raporty testowe → Dostępność](../testing/reports.md#dostepn
 - **Przeglądarki:** Chromium, Firefox, Safari w aktualnych wersjach (testowane przez Playwright na Chromium w CI).
 - **Język interfejsu:** polski. Treści użytkownika (komentarze) bez ograniczeń językowych.
 - **Responsywność:** Bootstrap 5 + autorski CSS — siatka filmów dostosowuje się od mobilnych do desktopowych szerokości.
+- **Instalowalność (PWA):** Web App Manifest + minimalny service worker (`/service-worker.js`) sprawiają, że aplikację można zainstalować na ekranie głównym (Android/Chromium, iOS Safari „Dodaj do ekranu początkowego”). Service worker cache’uje wyłącznie statyki wymagane do startu (manifest, ikony, favicon) — same widoki działają online; brak trybu offline na ten moment.
 - **API zewnętrzne:** TMDB v3 (publiczne, bez SLA — patrz [Architektura → API](../architecture/apis.md)).
 - **Wersja Python:** 3.13 (wymagana, sprawdzana w `.python-version`).
