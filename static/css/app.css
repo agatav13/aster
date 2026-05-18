@@ -518,6 +518,46 @@ a:hover {
   .profile-button {
     padding: 0.3rem;
   }
+  /* Mobile navbar declutter: the hero already owns "Załóż konto" /
+     "Zaloguj się", so the duplicated header pills become noise.
+     Collapse "Logowanie" entirely and demote "Rejestracja" to a
+     tight mono-caps text link — keeps an entry point on non-home
+     pages without dominating the masthead. */
+  .nav-inner {
+    gap: 0.5rem;
+  }
+  .nav-lead {
+    gap: 0.75rem;
+  }
+  .nav-actions {
+    gap: 0.35rem;
+  }
+  .nav-actions .btn-ghost-sm {
+    display: none;
+  }
+  .nav-actions .btn-accent-sm {
+    padding: 0.4rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 500;
+    border-radius: 3px;
+  }
+  .icon-button {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
+  }
+  .nav-tab {
+    padding: 0.4rem 0.5rem;
+  }
+  .nav-tab i {
+    font-size: 1.05rem;
+  }
+  .app-brand {
+    font-size: 1.05rem;
+  }
 }
 
 /* ── Keyboard focus ring (shared) ───────────────────────── */
@@ -604,6 +644,39 @@ a:hover {
 .btn-accent-sm {
   padding: 0.4rem 1rem;
   font-size: 0.82rem;
+}
+
+/* ── Auth button typography ─────────────────────────────────
+   Shared editorial mono-caps treatment for "log in" and "create
+   account" CTAs across the navbar, landing hero, and auth-form
+   submits — so every entry point into the account flow reads as
+   one coherent visual family (JetBrains Mono, wide tracking,
+   tight border-radius). Layered on top of .btn-accent / .btn-ghost
+   / .aster-btn-* / .auth-submit so colors and padding are kept. */
+.btn-auth,
+.aster-btn.btn-auth,
+.btn-accent.btn-auth,
+.btn-ghost.btn-auth {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-radius: 3px;
+}
+
+.btn-accent-sm.btn-auth,
+.btn-ghost-sm.btn-auth {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  padding: 0.45rem 0.9rem;
+}
+
+/* The arrow glyph in the landing hero CTA — don't uppercase it,
+   keep it tight to the text. */
+.btn-auth i {
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* ── Cards ─────────────────────────────────────────────── */
@@ -5339,9 +5412,13 @@ a:hover {
 .aster-hero-sub {
   margin: 0;
   max-width: 52ch;
-  color: var(--text-muted);
-  font-size: 1rem;
-  line-height: 1.55;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.2rem;
+  line-height: 1.4;
+  font-variation-settings: 'opsz' 24;
 }
 
 .aster-hero-actions {
@@ -5594,10 +5671,12 @@ a:hover {
 
 .aster-feature-text {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
   line-height: 1.55;
-  max-width: 34ch;
+  max-width: 38ch;
+  font-variation-settings: 'opsz' 14;
 }
 
 /* Responsive */
@@ -5639,17 +5718,247 @@ a:hover {
   }
 }
 
+/* ════════════════════════════════════════════════════════════
+   Mobile landing — "Aster Quarterly" magazine cover treatment
+   Full divergence from the desktop poster-fan layout. Mobile
+   reads as a magazine: masthead strip, oversized cover type,
+   a single featured poster matted like a print, mono captions,
+   hanging marginalia numerals, ornament dividers.
+   ════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
-  .aster-hero-stack {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .aster-landing {
+    padding-top: 0;
   }
-  .aster-stack-card-4 { display: none; }
+  .aster-fold {
+    padding-bottom: 0;
+  }
+
+  /* ── HERO ─────────────────────────────────────────────── */
+  /* Hero becomes the positioning context: title text sits left,
+     poster floats absolutely in the upper-right filling the
+     whitespace next to the short Polish title words. Subtitle
+     and CTAs flow full-width below, so we cut a whole separate
+     poster section from the page and shave a screenful of scroll. */
+  .aster-hero {
+    position: relative;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.1rem;
+    padding-bottom: 0.5rem;
+  }
+  .aster-hero-text {
+    gap: 1.1rem;
+    max-width: none;
+    padding-top: 0.25rem;
+  }
+
+  /* Title — constrained to the left ~62% so the floated poster
+     has room on the right; sized to fill that left column. */
+  .aster-hero-title {
+    font-size: clamp(2.6rem, 13vw, 3.8rem);
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+    margin: 0;
+    max-width: 62%;
+    font-variation-settings: 'opsz' 144, 'SOFT' 0;
+  }
+  .aster-hero-italic {
+    font-weight: 400;
+  }
+
+  /* Subtitle flows full width below the poster cluster. */
+  .aster-hero-sub {
+    max-width: none;
+  }
+
+  /* CTAs — one commanding primary, secondary as mono text link */
+  .aster-hero-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    margin-top: 0.3rem;
+  }
+  .aster-hero-actions .aster-btn-primary {
+    justify-content: space-between;
+    padding: 1rem 1.3rem;
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 500;
+    border-radius: 3px;
+    width: 100%;
+  }
+  .aster-hero-actions .aster-btn-outline {
+    align-self: center;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    text-decoration: underline;
+    text-underline-offset: 7px;
+    text-decoration-thickness: 1px;
+    font-weight: 500;
+  }
+  .aster-hero-actions .aster-btn-outline:hover {
+    color: var(--accent);
+    border: none;
+    transform: none;
+  }
+
+  /* ── POSTER — small accent in the upper-right of the hero ── */
+  /* Floats next to the title in the space the short Polish words
+     leave empty. No eyebrow, no caption — the rails below carry
+     the "Najwyżej oceniane" label, this is purely visual ballast. */
+  .aster-hero-stack {
+    position: absolute;
+    top: 0.25rem;
+    right: 0;
+    display: block;
+    width: 34%;
+    max-width: 130px;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border-top: none;
+    overflow: visible;
+    z-index: 1;
+  }
+  .aster-hero-stack::before,
+  .aster-hero-stack::after {
+    content: none;
+  }
+  .aster-stack-card-1,
+  .aster-stack-card-3,
+  .aster-stack-card-4,
+  .aster-stack-card-5 { display: none; }
+  .aster-stack-card-2 {
+    position: relative;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    transform: rotate(-3deg);
+    border-radius: 3px;
+    box-shadow:
+      0 20px 40px -16px rgba(0, 0, 0, 0.45),
+      0 10px 20px -8px rgba(0, 0, 0, 0.3),
+      0 0 0 5px var(--bg-primary),
+      0 0 0 6px var(--border);
+    animation-delay: 0.35s;
+  }
+  .aster-hero-stack:hover .aster-stack-card-2 {
+    transform: rotate(-3deg) translateY(-3px);
+  }
+  /* Tiny "Najwyżej oceniane" sticker, anchored to the poster
+     corner — gives the floating image context without taking
+     a whole separate caption line. */
+  .aster-stack-tag {
+    display: inline-flex;
+    bottom: -8px;
+    right: -4px;
+    left: auto;
+    transform: rotate(-5deg);
+    font-size: 0.5rem;
+    padding: 0.28rem 0.55rem;
+    letter-spacing: 0.16em;
+    white-space: nowrap;
+  }
+  .aster-stack-tag span {
+    font-size: 0.6rem;
+  }
+
+  /* ── ORNAMENT DIVIDER ─────────────────────────────────── */
+  .aster-rule {
+    border: none;
+    margin: 1.5rem 0 1.25rem;
+    text-align: center;
+    position: relative;
+  }
+  .aster-rule::before {
+    content: "✱   ✱   ✱";
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    letter-spacing: 0.55em;
+    color: var(--accent);
+    opacity: 0.7;
+  }
+
+  /* ── FEATURES — numbered editorial articles ─────────── */
+  .aster-features {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding-bottom: 0;
+  }
+  .aster-feature {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding: 1.75rem 0;
+    gap: 0.7rem;
+    position: relative;
+  }
+  .aster-feature:first-child {
+    border-top: none;
+    padding-top: 0.5rem;
+  }
+  /* Numeral hangs in the right gutter — marginalia */
+  .aster-feature-num {
+    position: absolute;
+    top: 1.75rem;
+    right: 0;
+    margin: 0;
+    font-size: 0.66rem;
+    letter-spacing: 0.32em;
+  }
+  .aster-feature:first-child .aster-feature-num {
+    top: 0.5rem;
+  }
+  .aster-feature-title {
+    font-size: clamp(1.75rem, 7vw, 2.2rem);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    padding-right: 4rem;
+  }
+  /* Feature body inherits Fraunces from the base rule; just let it
+     flow to the full content width on phones. */
+  .aster-feature-text {
+    max-width: none;
+  }
+
+  /* ── RAILS ────────────────────────────────────────────── */
+  .aster-landing .rail-section {
+    margin-top: 2.5rem;
+  }
 }
 
 @media (max-width: 420px) {
-  .aster-stack-tag {
+  .aster-hero-title {
+    font-size: clamp(2.2rem, 11.5vw, 3rem);
+    max-width: 60%;
+  }
+  .aster-hero-stack {
+    width: 36%;
+    max-width: 120px;
+  }
+  .aster-feature-title {
+    font-size: 1.55rem;
+    padding-right: 3.5rem;
+  }
+  .aster-hero-actions .aster-btn-primary {
+    font-size: 0.8rem;
+    letter-spacing: 0.16em;
+    padding: 1rem 1.2rem;
+  }
+  .aster-feature-num {
     font-size: 0.62rem;
-    padding: 0.35rem 0.7rem;
+    letter-spacing: 0.28em;
   }
 }
 
@@ -6191,4 +6500,264 @@ a:hover {
   .movies-section--editorial .movies-rail-section + .movies-rail-section {
     margin-top: 2.75rem;
   }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   LOGGED-OUT LANDING — Editorial Minimal
+   Production design for `/` when the visitor is anonymous.
+   Zero hero image: big confident Fraunces type, mono-caps stat
+   strip, one primary CTA + a secondary text link, three features
+   with hanging huge italic numerals, then the existing rail-section
+   blocks below.
+   ════════════════════════════════════════════════════════════════ */
+.minimal-landing {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem 0 3rem;
+}
+
+.minimal-hero {
+  padding: 1rem 0 2rem;
+}
+.minimal-hero-issue {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.minimal-hero-issue-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.minimal-hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 16vw, 6rem);
+  line-height: 0.88;
+  letter-spacing: -0.045em;
+  font-weight: 700;
+  margin: 0 0 1.5rem;
+  color: var(--text-primary);
+}
+.minimal-hero-title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+  position: relative;
+  padding: 0 0.06em;
+}
+.minimal-hero-title em::after {
+  content: "";
+  position: absolute;
+  left: 0.06em;
+  right: 0.06em;
+  bottom: 0.08em;
+  height: 0.42em;
+  background: var(--accent-dim);
+  z-index: -1;
+  border-radius: 1px;
+  transform: skewX(-6deg);
+}
+.minimal-hero-sub {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.2rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  max-width: 36ch;
+  margin: 0 0 2rem;
+}
+
+/* Stat strip */
+.minimal-stats {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin: 0 0 2.25rem;
+  padding: 1.1rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.minimal-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0;
+}
+.minimal-stat dt {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+.minimal-stat dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 6.5vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+.minimal-stat-rule {
+  width: 1px;
+  background: var(--border);
+  margin: 0 1rem;
+}
+
+/* CTAs */
+.minimal-hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+}
+.minimal-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 1.1rem 1.4rem;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: 1px solid var(--text-primary);
+  border-radius: 3px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.minimal-cta:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.minimal-link {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+  padding: 0.4rem 0;
+  align-self: center;
+}
+.minimal-link:hover {
+  color: var(--accent);
+}
+
+/* Horizontal rule */
+.minimal-rule {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0 2.25rem;
+}
+
+/* Features — huge hanging numerals on left */
+.minimal-features {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+.minimal-feature {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 1rem 1.4rem;
+}
+.minimal-feature-num {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(2.5rem, 11vw, 4rem);
+  color: var(--accent);
+  line-height: 0.85;
+  letter-spacing: -0.03em;
+  padding-top: 0.2rem;
+}
+.minimal-feature-title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 5vw, 1.7rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--text-primary);
+}
+.minimal-feature-body p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* Bottom poster strip */
+.minimal-strip {
+  margin-top: 1rem;
+}
+.minimal-strip-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 1rem;
+}
+.minimal-strip-row {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.minimal-strip-row::-webkit-scrollbar { height: 4px; }
+.minimal-strip-row::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.minimal-strip-card {
+  flex: 0 0 90px;
+  aspect-ratio: 2 / 3;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  transition: transform 0.25s ease;
+}
+.minimal-strip-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.minimal-strip-card:hover { transform: translateY(-3px); }
+.minimal-strip-link {
+  display: inline-block;
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* Rail-section margin when used under the minimal landing. */
+.minimal-landing .rail-section {
+  margin-top: 3rem;
+}
+
+/* Landing layout swap: desktop gets the original .aster-* hero+features,
+   mobile gets the editorial-minimal .minimal-* fold. The rail sections below
+   are shared. Only toggle `display: none` — let each wrapper keep its own
+   flex/grid display (e.g. .aster-fold uses flex for vertical centering). */
+.landing-mobile-only { display: none; }
+@media (max-width: 767.98px) {
+  .landing-desktop-only { display: none; }
+  .landing-mobile-only { display: block; }
 }

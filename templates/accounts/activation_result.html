@@ -12,7 +12,7 @@
       <h1 class="auth-title">Konto zostało aktywowane</h1>
       <p class="auth-lede">Możesz teraz zalogować się do aplikacji.</p>
       <div class="auth-actions">
-        <a href="{% url 'accounts:login' %}" class="btn btn-accent">Przejdź do logowania</a>
+        <a href="{% url 'accounts:login' %}" class="btn btn-accent btn-auth">Przejdź do logowania</a>
       </div>
     {% elif already_active %}
       <span class="auth-status-icon auth-status-icon--warn" aria-hidden="true">
@@ -21,7 +21,7 @@
       <h1 class="auth-title">Konto jest już aktywne</h1>
       <p class="auth-lede">Ten link został już wykorzystany lub konto było wcześniej aktywowane.</p>
       <div class="auth-actions">
-        <a href="{% url 'accounts:login' %}" class="btn btn-accent">Zaloguj się</a>
+        <a href="{% url 'accounts:login' %}" class="btn btn-accent btn-auth">Zaloguj się</a>
       </div>
     {% else %}
       <span class="auth-status-icon auth-status-icon--error" aria-hidden="true">
@@ -31,7 +31,7 @@
       <p class="auth-lede">Link jest niepoprawny albo wygasł. Wyślij nową wiadomość aktywacyjną.</p>
       <div class="auth-actions">
         <a href="{% url 'accounts:resend_activation' %}" class="btn btn-accent">Wyślij nowy link</a>
-        <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-ghost-sm">Wróć do logowania</a>
+        <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-ghost-sm btn-auth">Wróć do logowania</a>
       </div>
     {% endif %}
   </div>
