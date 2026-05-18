@@ -2,94 +2,171 @@
 {% load static %}
 
 {% block content %}
-<section class="aster-landing">
+<section class="aster-landing landing-shell">
 
-  <div class="aster-fold">
-  <header class="aster-hero">
-    <div class="aster-hero-text">
-      <h1 class="aster-hero-title">
-        <span class="aster-hero-word">Oglądaj.</span>
-        <span class="aster-hero-word"><em class="aster-hero-italic">Oceniaj</em>.</span>
-        <span class="aster-hero-word">Polecaj.</span>
-      </h1>
-      <div class="aster-hero-meta">
-        <p class="aster-hero-sub">
-          Zapisuj filmy do&nbsp;obejrzenia, oceniaj w&nbsp;skali 1–5
-          i&nbsp;sprawdzaj, co polecają znajomi.
-        </p>
-        <div class="aster-hero-actions">
-          <a href="{% url 'accounts:register' %}" class="aster-btn aster-btn-primary">
-            Załóż konto
-            <i class="bi bi-arrow-right"></i>
-          </a>
-          <a href="{% url 'accounts:login' %}" class="aster-btn aster-btn-outline">
-            Zaloguj się
-          </a>
+  {# ---------- DESKTOP HERO + FEATURES (>= 768px) ---------- #}
+  <div class="aster-fold landing-desktop-only">
+    <header class="aster-hero">
+      <div class="aster-hero-text">
+        <h1 class="aster-hero-title">
+          <span class="aster-hero-word">Oglądaj.</span>
+          <span class="aster-hero-word"><em class="aster-hero-italic">Oceniaj</em>.</span>
+          <span class="aster-hero-word">Polecaj.</span>
+        </h1>
+        <div class="aster-hero-meta">
+          <p class="aster-hero-sub">
+            Zapisuj filmy do&nbsp;obejrzenia, oceniaj w&nbsp;skali 1–5
+            i&nbsp;sprawdzaj, co polecają znajomi.
+          </p>
+          <div class="aster-hero-actions">
+            <a href="{% url 'accounts:register' %}" class="aster-btn aster-btn-primary btn-auth">
+              Załóż konto
+              <i class="bi bi-arrow-right"></i>
+            </a>
+            <a href="{% url 'accounts:login' %}" class="aster-btn aster-btn-outline btn-auth">
+              Zaloguj się
+            </a>
+          </div>
         </div>
       </div>
-    </div>
 
-    {% if top_rated %}
-      <aside class="aster-hero-stack" aria-hidden="true">
-        {% for item in top_rated|slice:":5" %}
-          <figure class="aster-stack-card aster-stack-card-{{ forloop.counter }}">
-            {% if item.poster_url %}
-              <img src="{{ item.poster_url }}" alt="" loading="lazy">
-            {% else %}
-              <div class="aster-stack-placeholder"><i class="bi bi-film"></i></div>
-            {% endif %}
-          </figure>
-        {% endfor %}
-        <div class="aster-stack-tag" aria-hidden="true">
-          <span>★</span> Najwyżej oceniane
-        </div>
-      </aside>
-    {% endif %}
-  </header>
+      {% if top_rated %}
+        <aside class="aster-hero-stack" aria-hidden="true">
+          {% for item in top_rated|slice:":5" %}
+            <figure class="aster-stack-card aster-stack-card-{{ forloop.counter }}">
+              {% if item.poster_url %}
+                <img src="{{ item.poster_url }}" alt="" loading="lazy">
+              {% else %}
+                <div class="aster-stack-placeholder"><i class="bi bi-film"></i></div>
+              {% endif %}
+            </figure>
+          {% endfor %}
+          <div class="aster-stack-tag" aria-hidden="true">
+            <span>★</span> Najwyżej oceniane
+          </div>
+        </aside>
+      {% endif %}
+    </header>
 
-  <hr class="aster-rule" aria-hidden="true">
+    <hr class="aster-rule" aria-hidden="true">
 
-  <section class="aster-features" aria-label="Co wyróżnia Aster">
-    <article class="aster-feature">
-      <p class="aster-feature-num">№ 01</p>
-      <h2 class="aster-feature-title">
-        Twoja kinoteka.<br>
-        <em>Tylko Twoja</em>.
-      </h2>
-      <p class="aster-feature-text">
-        Zapisuj filmy „do obejrzenia”, oznaczaj obejrzane
-        i&nbsp;oceniaj w&nbsp;skali 1–5. Cała Twoja historia
-        oglądania w&nbsp;jednym miejscu.
-      </p>
-    </article>
+    <section class="aster-features" aria-label="Co wyróżnia Aster">
+      <article class="aster-feature">
+        <p class="aster-feature-num">№ 01</p>
+        <h2 class="aster-feature-title">
+          Twoja kinoteka.<br>
+          <em>Tylko Twoja</em>.
+        </h2>
+        <p class="aster-feature-text">
+          Zapisuj filmy „do obejrzenia”, oznaczaj obejrzane
+          i&nbsp;oceniaj w&nbsp;skali 1–5. Cała Twoja historia
+          oglądania w&nbsp;jednym miejscu.
+        </p>
+      </article>
 
-    <article class="aster-feature">
-      <p class="aster-feature-num">№ 02</p>
-      <h2 class="aster-feature-title">
-        Co oglądają<br>
-        <em>Twoi znajomi</em>.
-      </h2>
-      <p class="aster-feature-text">
-        Obserwuj znajomych i&nbsp;sprawdzaj, co oglądają i&nbsp;jak
-        oceniają. Rankingi powstają z&nbsp;głosów widzów.
-      </p>
-    </article>
+      <article class="aster-feature">
+        <p class="aster-feature-num">№ 02</p>
+        <h2 class="aster-feature-title">
+          Co oglądają<br>
+          <em>Twoi znajomi</em>.
+        </h2>
+        <p class="aster-feature-text">
+          Obserwuj znajomych i&nbsp;sprawdzaj, co oglądają i&nbsp;jak
+          oceniają. Rankingi powstają z&nbsp;głosów widzów.
+        </p>
+      </article>
 
-    <article class="aster-feature">
-      <p class="aster-feature-num">№ 03</p>
-      <h2 class="aster-feature-title">
-        <em>Im więcej oceniasz</em>,<br>
-        tym lepiej.
-      </h2>
-      <p class="aster-feature-text">
-        Rekomendacje na&nbsp;podstawie Twoich gatunków, reżyserów
-        i&nbsp;ocen. Każdy nowy film w&nbsp;bibliotece doprecyzowuje
-        propozycje.
-      </p>
-    </article>
-  </section>
+      <article class="aster-feature">
+        <p class="aster-feature-num">№ 03</p>
+        <h2 class="aster-feature-title">
+          <em>Im więcej oceniasz</em>,<br>
+          tym lepiej.
+        </h2>
+        <p class="aster-feature-text">
+          Rekomendacje na&nbsp;podstawie Twoich gatunków, reżyserów
+          i&nbsp;ocen. Każdy nowy film w&nbsp;bibliotece doprecyzowuje
+          propozycje.
+        </p>
+      </article>
+    </section>
   </div>
 
+  {# ---------- MOBILE HERO + FEATURES (< 768px) ---------- #}
+  <div class="minimal-landing landing-mobile-only">
+    <header class="minimal-hero">
+      <h1 class="minimal-hero-title">
+        Oglądaj.<br>
+        <em>Oceniaj</em>.<br>
+        Polecaj.
+      </h1>
+
+      <p class="minimal-hero-sub">
+        Zapisuj filmy do&nbsp;obejrzenia, oceniaj w&nbsp;skali 1–5
+        i&nbsp;sprawdzaj, co polecają znajomi.
+      </p>
+
+      <dl class="minimal-stats">
+        <div class="minimal-stat">
+          <dt>Filmów</dt>
+          <dd>10.000+</dd>
+        </div>
+        <div class="minimal-stat-rule" aria-hidden="true"></div>
+        <div class="minimal-stat">
+          <dt>Skala</dt>
+          <dd>5★</dd>
+        </div>
+      </dl>
+
+      <div class="minimal-hero-actions">
+        <a href="{% url 'accounts:register' %}" class="minimal-cta btn-auth">
+          Załóż konto
+          <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        </a>
+        <a href="{% url 'accounts:login' %}" class="minimal-link btn-auth">
+          — albo zaloguj się
+        </a>
+      </div>
+    </header>
+
+    <hr class="minimal-rule" aria-hidden="true">
+
+    <section class="minimal-features">
+      <article class="minimal-feature">
+        <span class="minimal-feature-num">01</span>
+        <div class="minimal-feature-body">
+          <h2 class="minimal-feature-title">Twoja kinoteka. <em>Tylko Twoja</em>.</h2>
+          <p>
+            Zapisuj filmy „do&nbsp;obejrzenia", oznaczaj obejrzane
+            i&nbsp;oceniaj w&nbsp;skali 1–5. Cała Twoja historia
+            oglądania w&nbsp;jednym miejscu.
+          </p>
+        </div>
+      </article>
+      <article class="minimal-feature">
+        <span class="minimal-feature-num">02</span>
+        <div class="minimal-feature-body">
+          <h2 class="minimal-feature-title">Co oglądają <em>Twoi znajomi</em>.</h2>
+          <p>
+            Obserwuj znajomych i&nbsp;sprawdzaj, co oglądają i&nbsp;jak
+            oceniają. Rankingi powstają z&nbsp;głosów widzów.
+          </p>
+        </div>
+      </article>
+      <article class="minimal-feature">
+        <span class="minimal-feature-num">03</span>
+        <div class="minimal-feature-body">
+          <h2 class="minimal-feature-title"><em>Im więcej oceniasz</em>, tym lepiej.</h2>
+          <p>
+            Rekomendacje na&nbsp;podstawie Twoich gatunków, reżyserów
+            i&nbsp;ocen. Każdy nowy film w&nbsp;bibliotece doprecyzowuje
+            propozycje.
+          </p>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  {# ---------- SHARED RAILS ---------- #}
   {% if top_rated %}
     <section class="dashboard-section rail-section">
       <header class="rail-head">

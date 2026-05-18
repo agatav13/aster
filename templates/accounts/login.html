@@ -11,7 +11,7 @@
     <form method="post" novalidate class="auth-form">
       {% csrf_token %}
       {% include "partials/form_fields.html" with form=form %}
-      <button type="submit" class="btn btn-accent auth-submit">Zaloguj się</button>
+      <button type="submit" class="btn btn-accent auth-submit btn-auth">Zaloguj się</button>
     </form>
 
     <nav class="auth-aux" aria-label="Pomoc z kontem">
