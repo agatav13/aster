@@ -83,11 +83,32 @@ def test_valid_submission_creates_report_and_github_issue(auth_client, user, git
     title, body = github_ok[0]
     assert title == "Coś nie działa"
     # GitHub issues are public — the reporter's private email must NOT leak
-    # into the issue body. The safe public display name is used instead.
+    # into the issue body. The safe display name and opaque @u<pk> handle
+    # are used instead so maintainers can still triage the report.
     assert "reporter@example.com" not in body
     assert "Reporter" in body
-    assert f"user id={user.pk}" in body
+    assert f"@u{user.pk}" in body
     assert "https://example.com/page" in body
+
+
+def test_issue_body_uses_handle_only_when_no_display_name(db, github_ok):
+    User = get_user_model()
+    user = User.objects.create_user(
+        email="anon-reporter@example.com",
+        password="ZaqWsx!23456",
+        display_name="",
+        is_active=True,
+        is_email_verified=True,
+    )
+    client = Client()
+    client.force_login(user)
+
+    _post(client)
+
+    _title, body = github_ok[0]
+    assert "anon-reporter@example.com" not in body
+    assert "anon-reporter" not in body
+    assert f"@u{user.pk}" in body
 
 
 def test_github_failure_still_persists_report(auth_client, github_fail):

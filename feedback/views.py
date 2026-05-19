@@ -15,10 +15,15 @@ logger = logging.getLogger(__name__)
 
 def _build_issue_body(report: BugReport) -> str:
     # GitHub issues are public — never embed the reporter's email in the body.
-    if report.user:
-        reporter = f"{report.user.public_name} (user id={report.user.pk})"
-    else:
+    # Use the display name when set, plus an opaque @u<pk> handle that lets
+    # maintainers cross-reference the BugReport row without exposing PII.
+    user = report.user
+    if user is None:
         reporter = "(anonim)"
+    elif user.display_name:
+        reporter = f"{user.display_name} (@u{user.pk})"
+    else:
+        reporter = f"@u{user.pk}"
     lines: list[str] = [
         f"**Zgłaszający:** {reporter}",
         f"**Strona:** {report.page_url or '(nie podano)'}",
