@@ -82,7 +82,11 @@ def test_valid_submission_creates_report_and_github_issue(auth_client, user, git
     assert len(github_ok) == 1
     title, body = github_ok[0]
     assert title == "Coś nie działa"
-    assert "reporter@example.com" in body
+    # GitHub issues are public — the reporter's private email must NOT leak
+    # into the issue body. The safe public display name is used instead.
+    assert "reporter@example.com" not in body
+    assert "Reporter" in body
+    assert f"user id={user.pk}" in body
     assert "https://example.com/page" in body
 
 

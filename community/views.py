@@ -52,7 +52,7 @@ class PeopleView(_CommunityBaseView):
             User.objects.exclude(pk=me.pk)
             .filter(is_active=True)
             .annotate(is_following=Exists(is_following))
-            .order_by("-is_following", "display_name", "email")
+            .order_by("-is_following", "display_name", "pk")
         )
 
         friends: list[Any] = []

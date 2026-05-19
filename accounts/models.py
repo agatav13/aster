@@ -58,4 +58,10 @@ class User(AbstractUser):
         ordering = ["email"]
 
     def __str__(self) -> str:
-        return self.display_name or self.email
+        return self.public_name
+
+    @property
+    def public_name(self) -> str:
+        if self.display_name:
+            return self.display_name
+        return f"Użytkownik {self.pk}"

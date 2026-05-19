@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ### Added
 
+- **`.env.example`** at the repository root with placeholder credentials (`your-tmdb-v3-key`, `your-email@example.com`, `noreply@aster.example`, …) so contributors can bootstrap a local environment without copying real secrets. `.env` remains gitignored.
 - **Branded 404 + 500 error pages** — `templates/404.html` extends `base.html`, so a missed URL now lands on an editorial "4*0*4 — Tej strony tu nie ma." card with the Aster nav, theme toggle, accent serif numerals, the requested path echoed back, and CTAs to `/` and `/movies/`. `templates/500.html` is intentionally self-contained (no `extends`, no static-tag dependencies on the manifest, inline `prefers-color-scheme`-aware styles) so it still renders if the regular template chain is the source of the 500. Both only render when `DJANGO_DEBUG=False`.
 - **QR landing page** at `/links/` — public mobile-friendly hub that collects the project's important links (live app, GitHub repo, LinkedIn) for presentation slides. Editable in one place via `PROJECT_LINKS` in `core/views.py`; template extends `base.html` so it inherits the Aster navbar, footer, dark/light theme tokens, and PWA shell. Card and link rows use the project's `--bg-primary` / `--text-primary` / `--accent-dim` tokens so contrast holds in both parchment and charcoal modes.
 
@@ -57,6 +58,10 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 - **Health check** (`/health/`) no longer executes `SELECT 1` against the database, so external uptime pings stop holding the managed Postgres compute awake.
 - **Rating modal flash on htmx save**: stopped out-of-band swapping the rating dialog during a save in `movies/views.py`, so the modal no longer flickers or reopens after a successful rating.
 - **Profile library scope and sort** (`accounts.ProfileView`): the *Biblioteka* tab is now strictly limited to movies with `UserMovieStatus.status=WATCHED` (previously also included `WATCHLIST` rows). The "ocena" sort now compares on `Rating.score` and falls back to the most recent of `Rating.updated_at` / `UserMovieStatus.updated_at`, so re-rating a movie pushes it to the top of the list as expected.
+
+### Security
+
+- **Stopped exposing user email addresses in public UI**. Added a `User.public_name` property in `accounts/models.py` that returns `display_name` if set and falls back to `Użytkownik {pk}` (never the email). Public-facing renderings of `user.email` / `display_name|default:user.email` were replaced with `public_name` in `templates/movies/_comments_section.html` (comment author), `templates/base.html` (account-menu button label), `templates/core/dashboard.html` (greeting), and `accounts.ProfileView`'s `profile_display_name` context. `community.services.name_for` / `handle_for` no longer derive a public handle from the email local-part — `name_for` delegates to `public_name` and `handle_for` returns the opaque `@u{pk}`. `community.PeopleView` ordering tiebreaker switched from `email` to `pk`. The `feedback.views._build_issue_body` bug-report bridge no longer embeds the reporter's email in the public GitHub issue body — it writes `public_name (user id=…)` instead. `accounts.ProfileView` profile initials fall back to `"U"` rather than the first two characters of the email local-part.
 
 ### Removed
 

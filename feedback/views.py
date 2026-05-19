@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 def _build_issue_body(report: BugReport) -> str:
-    reporter = report.user.email if report.user else "(anonim)"
+    # GitHub issues are public — never embed the reporter's email in the body.
+    if report.user:
+        reporter = f"{report.user.public_name} (user id={report.user.pk})"
+    else:
+        reporter = "(anonim)"
     lines: list[str] = [
         f"**Zgłaszający:** {reporter}",
         f"**Strona:** {report.page_url or '(nie podano)'}",

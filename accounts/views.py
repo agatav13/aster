@@ -222,7 +222,7 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         elif name_parts:
             initials = name_parts[0][:2].upper()
         else:
-            initials = user.email.split("@", 1)[0][:2].upper()
+            initials = "U"
 
         avg_rating: Decimal | None = None
         if rated_rows.exists():
@@ -268,7 +268,7 @@ class ProfileView(LoginRequiredMixin, TemplateView):
                 "top_genres": top_genres,
                 "top_decade": top_decade,
                 "profile_initials": initials,
-                "profile_display_name": display_name or user.email,
+                "profile_display_name": user.public_name,
                 "profile_email": user.email,
                 "profile_joined": user.date_joined,
             }

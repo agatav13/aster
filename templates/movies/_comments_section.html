@@ -59,7 +59,7 @@
         <div class="comment-item-head">
           <span class="comment-author">
             <i class="bi bi-person-circle"></i>
-            {{ comment.user.display_name|default:comment.user.email }}
+            {{ comment.user.public_name }}
           </span>
           <span class="comment-date" title="{{ comment.created_at|date:'Y-m-d H:i' }}">
             {{ comment.created_at|date:"j N Y, H:i" }}
