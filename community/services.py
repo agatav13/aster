@@ -18,11 +18,12 @@ from .models import Follow
 
 
 def name_for(user) -> str:
-    return user.display_name or user.email.split("@")[0]
+    return user.public_name
 
 
 def handle_for(user) -> str:
-    return f"@{user.email.split('@')[0]}"
+    # Public, opaque handle — never derived from the private email address.
+    return f"@u{user.pk}"
 
 
 def relative_when(dt) -> str:

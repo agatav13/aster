@@ -6,7 +6,7 @@
   <header class="aster-hero aster-hero--compact">
     <div class="aster-hero-text">
       <h1 class="aster-hero-title aster-hero-title--inline">
-        Witaj,&nbsp;<em class="aster-hero-italic">{% if request.user.display_name %}{{ request.user.display_name }}{% else %}{{ request.user.username }}{% endif %}</em>.
+        Witaj,&nbsp;<em class="aster-hero-italic">{{ request.user.public_name }}</em>.
       </h1>
     </div>
   </header>
