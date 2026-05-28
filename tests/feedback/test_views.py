@@ -82,16 +82,18 @@ def test_valid_submission_creates_report_and_github_issue(auth_client, user, git
     assert len(github_ok) == 1
     title, body = github_ok[0]
     assert title == "Coś nie działa"
-    # GitHub issues are public — the reporter's private email must NOT leak
-    # into the issue body. The safe display name and opaque @u<pk> handle
-    # are used instead so maintainers can still triage the report.
+    # GitHub issues are public — the body carries only the reporter's chosen
+    # public name, never the email or the internal user id, and never the
+    # user agent (those stay on the private BugReport row for triage).
     assert "reporter@example.com" not in body
     assert "Reporter" in body
-    assert f"@u{user.pk}" in body
+    assert f"@u{user.pk}" not in body
+    assert str(user.pk) not in body
+    assert "User agent" not in body
     assert "https://example.com/page" in body
 
 
-def test_issue_body_uses_handle_only_when_no_display_name(db, github_ok):
+def test_issue_body_uses_public_name_without_display_name(db, github_ok):
     User = get_user_model()
     user = User.objects.create_user(
         email="anon-reporter@example.com",
@@ -108,7 +110,18 @@ def test_issue_body_uses_handle_only_when_no_display_name(db, github_ok):
     _title, body = github_ok[0]
     assert "anon-reporter@example.com" not in body
     assert "anon-reporter" not in body
-    assert f"@u{user.pk}" in body
+    assert user.public_name in body
+
+
+def test_issue_body_strips_url_query_string(auth_client, github_ok):
+    _post(auth_client, page_url="https://example.com/page?token=secret&x=1")
+
+    _title, body = github_ok[0]
+    assert "token=secret" not in body
+    assert "https://example.com/page" in body
+    # The full URL (with query) is still kept privately on the row.
+    report = BugReport.objects.get()
+    assert report.page_url == "https://example.com/page?token=secret&x=1"
 
 
 def test_github_failure_still_persists_report(auth_client, github_fail):
