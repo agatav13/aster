@@ -115,6 +115,13 @@
                 <button type="submit" class="btn btn-ghost btn-ghost-sm">
                   Wyślij zgłoszenie
                 </button>
+                <button
+                  type="button"
+                  class="comment-report-cancel"
+                  onclick="this.closest('details').removeAttribute('open')"
+                >
+                  Anuluj
+                </button>
               </form>
             </details>
           {% endif %}
