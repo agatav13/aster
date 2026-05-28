@@ -15,7 +15,16 @@ from django.db import transaction
 from django.db.models import Avg, Count, Q, QuerySet
 from django.utils import timezone
 
-from .models import Comment, Genre, Movie, MovieCredit, Person, Rating, UserMovieStatus
+from .models import (
+    Comment,
+    CommentReport,
+    Genre,
+    Movie,
+    MovieCredit,
+    Person,
+    Rating,
+    UserMovieStatus,
+)
 from .tmdb import (
     TmdbApiError,
     TmdbClient,
@@ -1282,6 +1291,63 @@ def delete_own_comment(*, user, comment: Comment) -> bool:
         user.pk,
         comment_id,
         movie_tmdb_id,
+    )
+    return True
+
+
+def reported_comment_ids(user, movie: Movie) -> set[int]:
+    """IDs of comments on `movie` the given user has already reported."""
+    if not user.is_authenticated:
+        return set()
+    return set(
+        CommentReport.objects.filter(reporter=user, comment__movie=movie).values_list(
+            "comment_id", flat=True
+        )
+    )
+
+
+@transaction.atomic
+def report_comment(
+    *, user, comment: Comment, reason: str = CommentReport.OTHER
+) -> bool:
+    """File a report against another user's comment.
+
+    Idempotent per user: a second report from the same user is a no-op. Once
+    `Comment.REPORTS_TO_FLAG` distinct users have reported a still-VISIBLE
+    comment, it auto-flips to FLAGGED so `visible_comments_for` drops it from
+    the public list pending moderator review. Returns True when a new report
+    row was created.
+    """
+    if comment.user_id == user.pk:
+        return False
+    if reason not in dict(CommentReport.REASON_CHOICES):
+        reason = CommentReport.OTHER
+
+    _, created = CommentReport.objects.get_or_create(
+        comment=comment,
+        reporter=user,
+        defaults={"reason": reason},
+    )
+    if not created:
+        return False
+
+    # One row per reporter (unique constraint), so a plain count is the
+    # distinct-reporter count.
+    report_count = CommentReport.objects.filter(comment=comment).count()
+    if comment.status == Comment.VISIBLE and report_count >= Comment.REPORTS_TO_FLAG:
+        comment.status = Comment.FLAGGED
+        comment.moderated_at = timezone.now()
+        comment.save(update_fields=["status", "moderated_at", "updated_at"])
+        logger.info(
+            "Comment id=%s auto-flagged after %s reports", comment.pk, report_count
+        )
+
+    logger.info(
+        "User id=%s reported comment id=%s (reason=%s, total=%s)",
+        user.pk,
+        comment.pk,
+        reason,
+        report_count,
     )
     return True
 

@@ -5,6 +5,7 @@ from .views import (
     create_movie_comment,
     delete_movie_comment,
     movie_detail,
+    report_movie_comment,
     update_movie_rating,
     update_movie_status,
 )
@@ -33,5 +34,10 @@ urlpatterns = [
         "<int:tmdb_id>/comments/<int:comment_id>/delete/",
         delete_movie_comment,
         name="delete_comment",
+    ),
+    path(
+        "<int:tmdb_id>/comments/<int:comment_id>/report/",
+        report_movie_comment,
+        name="report_comment",
     ),
 ]

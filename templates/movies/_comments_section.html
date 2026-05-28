@@ -80,6 +80,44 @@
               <i class="bi bi-trash"></i> Usuń
             </button>
           </form>
+        {% elif request.user.is_authenticated %}
+          {% if comment.pk in reported_comment_ids %}
+            <span class="comment-reported text-secondary small">
+              <i class="bi bi-flag-fill"></i> Zgłoszono
+            </span>
+          {% else %}
+            <details class="comment-report">
+              <summary class="btn btn-ghost btn-ghost-sm">
+                <i class="bi bi-flag"></i> Zgłoś
+              </summary>
+              <form
+                method="post"
+                action="{% url 'movies:report_comment' movie.tmdb_id comment.pk %}"
+                class="comment-report-form"
+                hx-post="{% url 'movies:report_comment' movie.tmdb_id comment.pk %}"
+                hx-target="#comments-section"
+                hx-swap="outerHTML"
+              >
+                {% csrf_token %}
+                <label class="visually-hidden" for="report-reason-{{ comment.pk }}">
+                  Powód zgłoszenia
+                </label>
+                <select
+                  id="report-reason-{{ comment.pk }}"
+                  name="reason"
+                  class="form-select form-select-sm"
+                >
+                  <option value="spam">Spam</option>
+                  <option value="offensive">Treść obraźliwa</option>
+                  <option value="spoiler">Spoiler</option>
+                  <option value="other" selected>Inne</option>
+                </select>
+                <button type="submit" class="btn btn-ghost btn-ghost-sm">
+                  Wyślij zgłoszenie
+                </button>
+              </form>
+            </details>
+          {% endif %}
         {% endif %}
       </li>
     {% empty %}
