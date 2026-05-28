@@ -249,6 +249,10 @@ class Comment(models.Model):
 
     MAX_LENGTH = 2000
 
+    # Distinct users who must report a VISIBLE comment before it auto-flips to
+    # FLAGGED and drops out of the public list pending moderator review.
+    REPORTS_TO_FLAG = 3
+
     movie = models.ForeignKey(
         Movie,
         on_delete=models.CASCADE,
@@ -291,3 +295,59 @@ class Comment(models.Model):
     def __str__(self) -> str:
         preview = self.content[:40] + ("…" if len(self.content) > 40 else "")
         return f"{self.user} → {self.movie}: {preview}"
+
+
+class CommentReport(models.Model):
+    """A single user's report that a comment breaks community guidelines.
+
+    Reports accumulate, one row per (comment, reporter). Once
+    `Comment.REPORTS_TO_FLAG` distinct users report a VISIBLE comment it
+    auto-flips to FLAGGED and drops out of the public list pending moderator
+    review. The unique constraint stops one user from inflating the count.
+    """
+
+    SPAM = "spam"
+    OFFENSIVE = "offensive"
+    SPOILER = "spoiler"
+    OTHER = "other"
+    REASON_CHOICES = [
+        (SPAM, "Spam"),
+        (OFFENSIVE, "Treść obraźliwa"),
+        (SPOILER, "Spoiler"),
+        (OTHER, "Inne"),
+    ]
+
+    comment = models.ForeignKey(
+        Comment,
+        on_delete=models.CASCADE,
+        related_name="reports",
+    )
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comment_reports",
+    )
+    reason: str = models.CharField(
+        "Powód",
+        max_length=20,
+        choices=REASON_CHOICES,
+        default=OTHER,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "reporter"],
+                name="uq_comment_report_pair",
+            ),
+        ]
+        verbose_name = "comment report"
+        verbose_name_plural = "comment reports"
+
+    def __str__(self) -> str:
+        return (
+            f"{self.reporter} → comment id={self.comment_id} "
+            f"({self.get_reason_display()})"
+        )

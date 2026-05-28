@@ -29,6 +29,8 @@ from .services import (
     fetch_trending_shelf,
     remove_movie_status,
     remove_rating,
+    report_comment,
+    reported_comment_ids,
     search_tmdb_movies,
     set_movie_status,
     upsert_rating,
@@ -360,6 +362,7 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
             "comments": comments,
             "comments_count": len(comments),
             "comment_max_length": Comment.MAX_LENGTH,
+            "reported_comment_ids": reported_comment_ids(request.user, movie),
             "backdrop_hires_url": backdrop_hires_url,
             "watched_count": watched_count,
         },
@@ -435,6 +438,7 @@ def _htmx_comments_response(request: HttpRequest, movie) -> HttpResponse:
         "comments": comments,
         "comments_count": len(comments),
         "comment_max_length": Comment.MAX_LENGTH,
+        "reported_comment_ids": reported_comment_ids(request.user, movie),
     }
     return _htmx_response(
         render_to_string("movies/_comments_section.html", ctx, request=request),
@@ -531,4 +535,22 @@ def delete_movie_comment(
     movie = comment.movie
     if not delete_own_comment(user=request.user, comment=comment):
         raise Http404("Nie można usunąć tego komentarza.")
+    return _comments_response(request, movie, tmdb_id)
+
+
+@login_required
+@require_POST
+def report_movie_comment(
+    request: HttpRequest, tmdb_id: int, comment_id: int
+) -> HttpResponse:
+    """File a report against another user's comment.
+
+    Reporting your own comment or re-reporting is silently a no-op — the
+    section just re-renders. Once enough distinct users report it, the comment
+    auto-flips to FLAGGED and drops out of the re-rendered list.
+    """
+    comment = get_object_or_404(Comment, pk=comment_id, movie__tmdb_id=tmdb_id)
+    movie = comment.movie
+    reason = request.POST.get("reason", "").strip()
+    report_comment(user=request.user, comment=comment, reason=reason)
     return _comments_response(request, movie, tmdb_id)

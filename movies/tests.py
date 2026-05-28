@@ -6,7 +6,16 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import Comment, Genre, Movie, MovieCredit, Person, Rating, UserMovieStatus
+from .models import (
+    Comment,
+    CommentReport,
+    Genre,
+    Movie,
+    MovieCredit,
+    Person,
+    Rating,
+    UserMovieStatus,
+)
 from .services import (
     DEFAULT_PAGE_SIZE,
     TMDB_GENRE_PL_NAMES,
@@ -21,6 +30,8 @@ from .services import (
     normalize_all_genres,
     remove_movie_status,
     remove_rating,
+    report_comment,
+    reported_comment_ids,
     set_movie_status,
     sync_all_genres,
     sync_movie_credits,
@@ -1317,6 +1328,132 @@ class MovieDetailCommentContextTests(TestCase):
         self.assertContains(response, "widoczny")
         self.assertNotContains(response, "ukryty")
         self.assertEqual(response.context["comments_count"], 1)
+
+
+class CommentReportServiceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.author = cls.User.objects.create_user(
+            email="report-author@example.com", password="StrongPass123!"
+        )
+        cls.reporter = cls.User.objects.create_user(
+            email="report-reporter@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=2000, title="Reportable")
+
+    def _comment(self) -> Comment:
+        return create_comment(
+            user=self.author, movie=self.movie, content="kontrowersyjne"
+        )
+
+    def test_report_creates_row_with_reason(self) -> None:
+        comment = self._comment()
+        created = report_comment(
+            user=self.reporter, comment=comment, reason=CommentReport.SPAM
+        )
+        self.assertTrue(created)
+        report = CommentReport.objects.get()
+        self.assertEqual(report.comment, comment)
+        self.assertEqual(report.reporter, self.reporter)
+        self.assertEqual(report.reason, CommentReport.SPAM)
+
+    def test_report_is_idempotent_per_user(self) -> None:
+        comment = self._comment()
+        self.assertTrue(report_comment(user=self.reporter, comment=comment))
+        self.assertFalse(report_comment(user=self.reporter, comment=comment))
+        self.assertEqual(CommentReport.objects.filter(comment=comment).count(), 1)
+
+    def test_unknown_reason_falls_back_to_other(self) -> None:
+        comment = self._comment()
+        report_comment(user=self.reporter, comment=comment, reason="bogus")
+        self.assertEqual(CommentReport.objects.get().reason, CommentReport.OTHER)
+
+    def test_cannot_report_own_comment(self) -> None:
+        comment = self._comment()
+        self.assertFalse(report_comment(user=self.author, comment=comment))
+        self.assertFalse(CommentReport.objects.exists())
+
+    def test_comment_auto_flags_at_threshold(self) -> None:
+        comment = self._comment()
+        reporters = [
+            self.User.objects.create_user(
+                email=f"r{i}@example.com", password="StrongPass123!"
+            )
+            for i in range(Comment.REPORTS_TO_FLAG)
+        ]
+        for r in reporters[:-1]:
+            report_comment(user=r, comment=comment)
+            comment.refresh_from_db()
+            self.assertEqual(comment.status, Comment.VISIBLE)
+
+        report_comment(user=reporters[-1], comment=comment)
+        comment.refresh_from_db()
+        self.assertEqual(comment.status, Comment.FLAGGED)
+        self.assertIsNotNone(comment.moderated_at)
+        self.assertEqual(list(visible_comments_for(self.movie)), [])
+
+    def test_reported_comment_ids_scopes_to_user_and_movie(self) -> None:
+        comment = self._comment()
+        other_movie = make_movie(tmdb_id=2001, title="Other")
+        other_comment = create_comment(
+            user=self.author, movie=other_movie, content="gdzie indziej"
+        )
+        report_comment(user=self.reporter, comment=comment)
+        report_comment(user=self.reporter, comment=other_comment)
+
+        ids = reported_comment_ids(self.reporter, self.movie)
+        self.assertEqual(ids, {comment.pk})
+
+
+class CommentReportViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.author = cls.User.objects.create_user(
+            email="rv-author@example.com", password="StrongPass123!"
+        )
+        cls.reporter = cls.User.objects.create_user(
+            email="rv-reporter@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=2100, title="Report View")
+
+    def test_report_requires_login(self) -> None:
+        comment = create_comment(user=self.author, movie=self.movie, content="hej")
+        url = reverse("movies:report_comment", args=[self.movie.tmdb_id, comment.pk])
+        response = self.client.post(url, {"reason": "spam"})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login", response["Location"])
+        self.assertFalse(CommentReport.objects.exists())
+
+    def test_report_files_row_and_redirects(self) -> None:
+        comment = create_comment(user=self.author, movie=self.movie, content="hej")
+        self.client.force_login(self.reporter)
+        url = reverse("movies:report_comment", args=[self.movie.tmdb_id, comment.pk])
+        response = self.client.post(url, {"reason": "offensive"})
+        self.assertRedirects(
+            response, reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        report = CommentReport.objects.get()
+        self.assertEqual(report.reporter, self.reporter)
+        self.assertEqual(report.reason, CommentReport.OFFENSIVE)
+
+    def test_report_htmx_rerenders_section_with_reported_marker(self) -> None:
+        comment = create_comment(user=self.author, movie=self.movie, content="hej")
+        self.client.force_login(self.reporter)
+        url = reverse("movies:report_comment", args=[self.movie.tmdb_id, comment.pk])
+        response = self.client.post(url, {"reason": "spam"}, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Zgłoszono")
+
+    def test_report_returns_404_for_mismatched_movie(self) -> None:
+        other_movie = make_movie(tmdb_id=2101, title="Elsewhere")
+        comment = create_comment(user=self.author, movie=other_movie, content="hej")
+        self.client.force_login(self.reporter)
+        url = reverse("movies:report_comment", args=[self.movie.tmdb_id, comment.pk])
+        response = self.client.post(url, {"reason": "spam"})
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(CommentReport.objects.exists())
 
 
 class CreditSyncTests(TestCase):

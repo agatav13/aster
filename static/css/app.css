@@ -2494,6 +2494,58 @@ a:hover {
   background: transparent;
 }
 
+.comment-report {
+  margin: 0.6rem 0 0;
+}
+
+.comment-report > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  padding: 0.25rem 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.comment-report > summary::-webkit-details-marker {
+  display: none;
+}
+
+.comment-report > summary:hover {
+  color: #d98a8a;
+  border-bottom-color: #d98a8a;
+}
+
+.comment-report-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.comment-report-form .form-select {
+  width: auto;
+  max-width: 12rem;
+}
+
+.comment-reported {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .comment-empty {
   text-align: left;
   padding: 1.75rem 0;
