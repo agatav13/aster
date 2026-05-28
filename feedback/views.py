@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlsplit, urlunsplit
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, JsonResponse
@@ -13,21 +14,26 @@ from .models import BugReport
 logger = logging.getLogger(__name__)
 
 
+def _public_page_url(raw: str) -> str:
+    # Query strings can carry tokens (password-reset links, session ids).
+    # The public issue keeps only scheme/host/path; the full URL stays on the
+    # private BugReport row.
+    if not raw:
+        return "(nie podano)"
+    parts = urlsplit(raw)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+
 def _build_issue_body(report: BugReport) -> str:
-    # GitHub issues are public — never embed the reporter's email in the body.
-    # Use the display name when set, plus an opaque @u<pk> handle that lets
-    # maintainers cross-reference the BugReport row without exposing PII.
+    # GitHub issues are public. Keep the body minimal: only the reporter's
+    # chosen public name (never email or internal id) and the page path.
+    # The full URL and user agent stay on the private BugReport row, which
+    # maintainers cross-reference via the GitHub issue number in admin.
     user = report.user
-    if user is None:
-        reporter = "(anonim)"
-    elif user.display_name:
-        reporter = f"{user.display_name} (@u{user.pk})"
-    else:
-        reporter = f"@u{user.pk}"
+    reporter = user.public_name if user is not None else "(anonim)"
     lines: list[str] = [
         f"**Zgłaszający:** {reporter}",
-        f"**Strona:** {report.page_url or '(nie podano)'}",
-        f"**User agent:** {report.user_agent or '(nie podano)'}",
+        f"**Strona:** {_public_page_url(report.page_url)}",
         "",
         "---",
         "",
