@@ -217,3 +217,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .DS_Store
+
+# Claude Code: commit shared config (settings.json, hooks/, skills/, agents/),
+# but keep personal/ephemeral pieces out of version control.
+.claude/settings.local.json
+.claude/CLAUDE.local.md
+.claude/worktrees/
