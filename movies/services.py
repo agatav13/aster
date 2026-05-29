@@ -21,6 +21,7 @@ from .models import (
     Genre,
     Movie,
     MovieCredit,
+    MovieNote,
     Person,
     Rating,
     UserMovieStatus,
@@ -1350,6 +1351,85 @@ def report_comment(
         report_count,
     )
     return True
+
+
+# ── Private notes (diary) ────────────────────────────────────────────────────
+# The private mirror of the comments helpers above. Notes never appear in any
+# public list, so these functions always scope by `user` — there is no
+# "visible to everyone" query for notes by design.
+
+
+def notes_for(user, movie: Movie) -> QuerySet[MovieNote]:
+    """The current user's diary entries for a movie, newest first.
+
+    Returns an empty queryset for anonymous users so callers can iterate
+    unconditionally without an auth branch.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return MovieNote.objects.none()
+    return MovieNote.objects.filter(user=user, movie=movie)
+
+
+@transaction.atomic
+def create_note(*, user, movie: Movie, content: str) -> MovieNote:
+    """Persist a new private diary entry after trimming whitespace.
+
+    Mirrors `create_comment`: the model field caps length, but we trim here
+    so a whitespace-only body can't be saved.
+    """
+    trimmed = (content or "").strip()
+    if not trimmed:
+        raise ValueError("Note content must not be empty.")
+    if len(trimmed) > MovieNote.MAX_LENGTH:
+        raise ValueError(
+            f"Note content must not exceed {MovieNote.MAX_LENGTH} characters."
+        )
+    note = MovieNote.objects.create(
+        user=user,
+        movie=movie,
+        content=trimmed,
+    )
+    logger.info(
+        "User id=%s added note id=%s on movie tmdb_id=%s",
+        user.pk,
+        note.pk,
+        movie.tmdb_id,
+    )
+    return note
+
+
+@transaction.atomic
+def delete_own_note(*, user, note: MovieNote) -> bool:
+    """Hard-delete a note if it belongs to the given user.
+
+    Returns True when a row was removed. Ownership check lives here so the
+    view layer doesn't repeat the permission logic. A note is private to its
+    author, so a foreign note is simply never deletable (and never visible).
+    """
+    if note.user_id != user.pk:
+        return False
+    note_id = note.pk
+    movie_tmdb_id = note.movie.tmdb_id
+    note.delete()
+    logger.info(
+        "User id=%s deleted own note id=%s on movie tmdb_id=%s",
+        user.pk,
+        note_id,
+        movie_tmdb_id,
+    )
+    return True
+
+
+def journal_entries(user) -> QuerySet[MovieNote]:
+    """Every diary entry the user has written, newest first, across all films.
+
+    Backs the profile-level journal page. Joins the movie so the template can
+    render posters/links without an N+1. Ordering follows the model default
+    (`-created_at`), so entries read in the order they were written.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return MovieNote.objects.none()
+    return MovieNote.objects.filter(user=user).select_related("movie")
 
 
 # ── Recommendations ────────────────────────────────────────────────────────

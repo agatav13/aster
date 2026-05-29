@@ -276,6 +276,41 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
+class JournalView(LoginRequiredMixin, TemplateView):
+    """Chronological view of the user's private movie diary across all films.
+
+    Aggregates every MovieNote the user has written. Entries are grouped by
+    the day they were written (created_at) so the page reads like a journal —
+    the private counterpart to the public friends-activity feed.
+    """
+
+    template_name = "accounts/journal.html"
+
+    def get_context_data(self, **kwargs):
+        # Local import keeps the accounts → movies dependency out of the
+        # module import graph, matching ProfileView above.
+        from itertools import groupby
+
+        from movies.services import journal_entries
+
+        ctx = super().get_context_data(**kwargs)
+        entries = list(journal_entries(self.request.user))
+
+        groups = [
+            {"date": day, "entries": list(items)}
+            for day, items in groupby(entries, key=lambda note: note.created_at.date())
+        ]
+
+        ctx.update(
+            {
+                "groups": groups,
+                "notes_total": len(entries),
+                "movies_count": len({note.movie_id for note in entries}),
+            }
+        )
+        return ctx
+
+
 class SettingsView(LoginRequiredMixin, TemplateView):
     template_name = "accounts/settings.html"
 

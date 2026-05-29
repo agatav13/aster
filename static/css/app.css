@@ -2593,6 +2593,394 @@ a:hover {
   font-style: italic;
 }
 
+/* ── Private notes (diary) ─────────────────────────────── */
+/* Shares the editorial comment language but reads as a separate, personal
+   space: a tinted panel with a left accent rule signals "this is just for
+   you" without competing visually with the public comment thread above. */
+.notes-section {
+  margin: 2.5rem 0 0;
+  padding: 1.75rem 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+}
+
+.notes-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.notes-header h2 {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.notes-header h2 i {
+  color: var(--accent);
+  font-size: 1.1rem;
+  align-self: center;
+}
+
+.notes-count {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.notes-count::before {
+  content: "— ";
+  color: var(--text-tertiary);
+}
+
+.notes-subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.note-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.note-composer textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0.4rem 0 0.7rem;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  resize: vertical;
+  min-height: 3.5rem;
+  transition: border-color 0.18s;
+}
+
+.note-composer textarea::placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.note-composer textarea:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+  box-shadow: none;
+}
+
+.note-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+
+.note-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.note-item {
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.note-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.note-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+  font-size: 0.85rem;
+}
+
+.note-date {
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.note-body {
+  color: var(--text-primary);
+  line-height: 1.65;
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.98rem;
+  max-width: 70ch;
+}
+
+.note-delete-form {
+  margin: 0.6rem 0 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.note-delete-form .btn {
+  padding: 0.25rem 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.note-delete-form .btn:hover {
+  color: #d98a8a;
+  border-bottom-color: #d98a8a;
+  background: transparent;
+}
+
+.note-empty {
+  text-align: left;
+  padding: 1.5rem 0 0.5rem;
+  color: var(--text-secondary);
+  list-style: none;
+}
+
+.note-empty i {
+  display: inline-block;
+  font-size: 1rem;
+  color: var(--accent);
+  margin: 0 0.4rem 0 0;
+}
+
+.note-empty p {
+  display: inline;
+  margin: 0;
+  font-style: italic;
+}
+
+/* ── Journal page (private diary timeline) ─────────────── */
+.journal-page {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1rem 0 3rem;
+}
+
+.journal-hero {
+  padding: 1rem 0 2rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2rem;
+}
+
+.journal-hero .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.journal-hero-title {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0.35rem 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.journal-hero-lead {
+  max-width: 46ch;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.journal-hero-ledger {
+  display: flex;
+  gap: 2.5rem;
+  margin: 1.5rem 0 0;
+}
+
+.journal-hero-ledger-entry dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  margin-bottom: 0.2rem;
+}
+
+.journal-hero-ledger-entry dd {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.journal-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.journal-day-heading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+}
+
+.journal-day-date {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.journal-day-heading::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.journal-entry-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.journal-entry {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.journal-entry-poster {
+  flex: 0 0 auto;
+  width: 64px;
+  border-radius: 6px;
+  overflow: hidden;
+  display: block;
+  background: var(--bg-secondary);
+  transition: transform 0.18s ease;
+}
+
+.journal-entry-poster:hover {
+  transform: translateY(-2px);
+}
+
+.journal-entry-poster img {
+  width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+
+.journal-entry-poster .movie-poster-placeholder {
+  aspect-ratio: 2 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
+.journal-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.journal-entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.journal-entry-movie {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.journal-entry-movie:hover {
+  color: var(--accent);
+}
+
+.journal-entry-text {
+  color: var(--text-primary);
+  line-height: 1.65;
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.98rem;
+}
+
+/* Echoes the tinted left-accent diary panel on the movie detail page so the
+   empty journal reads as the same "private space", left-aligned in the
+   editorial column rather than floating centered in a void. */
+.journal-empty {
+  text-align: left;
+  padding: 2.25rem 2rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+}
+
+.journal-empty i {
+  font-size: 1.75rem;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 0.85rem;
+}
+
+.journal-empty h2 {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 1.4rem;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.journal-empty p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+  max-width: 48ch;
+}
+
 /* ── Profile activity tabs ─────────────────────────────── */
 .profile-tabs {
   display: flex;

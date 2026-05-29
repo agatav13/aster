@@ -12,12 +12,14 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 
-from .models import Comment, Genre, MovieCredit, Rating, UserMovieStatus
+from .models import Comment, Genre, MovieCredit, MovieNote, Rating, UserMovieStatus
 from .services import (
     MovieListPage,
     browse_local_movies,
     create_comment,
+    create_note,
     delete_own_comment,
+    delete_own_note,
     discover_tmdb_movies,
     exclude_watched,
     fetch_and_cache_movie,
@@ -27,6 +29,7 @@ from .services import (
     fetch_recently_watched_recommendations_shelf,
     fetch_seeded_recommendations_shelf,
     fetch_trending_shelf,
+    notes_for,
     remove_movie_status,
     remove_rating,
     report_comment,
@@ -331,6 +334,7 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
         user_rating = rating_row.score if rating_row else None
 
     comments = list(visible_comments_for(movie))
+    notes = list(notes_for(request.user, movie))
 
     watched_count = UserMovieStatus.objects.filter(
         movie=movie, status=UserMovieStatus.WATCHED
@@ -363,6 +367,9 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
             "comments_count": len(comments),
             "comment_max_length": Comment.MAX_LENGTH,
             "reported_comment_ids": reported_comment_ids(request.user, movie),
+            "notes": notes,
+            "notes_count": len(notes),
+            "note_max_length": MovieNote.MAX_LENGTH,
             "backdrop_hires_url": backdrop_hires_url,
             "watched_count": watched_count,
         },
@@ -454,6 +461,25 @@ def _actions_response(request: HttpRequest, movie, tmdb_id: int) -> HttpResponse
 def _comments_response(request: HttpRequest, movie, tmdb_id: int) -> HttpResponse:
     if _is_htmx(request):
         return _htmx_comments_response(request, movie)
+    return _detail_redirect(tmdb_id)
+
+
+def _htmx_notes_response(request: HttpRequest, movie) -> HttpResponse:
+    notes = list(notes_for(request.user, movie))
+    ctx = {
+        "movie": movie,
+        "notes": notes,
+        "notes_count": len(notes),
+        "note_max_length": MovieNote.MAX_LENGTH,
+    }
+    return _htmx_response(
+        render_to_string("movies/_notes_section.html", ctx, request=request),
+    )
+
+
+def _notes_response(request: HttpRequest, movie, tmdb_id: int) -> HttpResponse:
+    if _is_htmx(request):
+        return _htmx_notes_response(request, movie)
     return _detail_redirect(tmdb_id)
 
 
@@ -554,3 +580,30 @@ def report_movie_comment(
     reason = request.POST.get("reason", "").strip()
     report_comment(user=request.user, comment=comment, reason=reason)
     return _comments_response(request, movie, tmdb_id)
+
+
+@login_required
+@require_POST
+def create_movie_note(request: HttpRequest, tmdb_id: int) -> HttpResponse:
+    """Add a private diary entry to the movie for the current user.
+
+    Empty/over-long content is silently dropped — the notes section just
+    re-renders unchanged, mirroring the comment-composer behaviour."""
+    movie = _resolve_movie_or_404(tmdb_id)
+    content = request.POST.get("content", "")
+    try:
+        create_note(user=request.user, movie=movie, content=content)
+    except ValueError:
+        pass
+    return _notes_response(request, movie, tmdb_id)
+
+
+@login_required
+@require_POST
+def delete_movie_note(request: HttpRequest, tmdb_id: int, note_id: int) -> HttpResponse:
+    """Delete a private note the current user owns; 404 for anything else."""
+    note = get_object_or_404(MovieNote, pk=note_id, movie__tmdb_id=tmdb_id)
+    movie = note.movie
+    if not delete_own_note(user=request.user, note=note):
+        raise Http404("Nie można usunąć tej notatki.")
+    return _notes_response(request, movie, tmdb_id)

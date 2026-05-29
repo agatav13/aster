@@ -351,3 +351,51 @@ class CommentReport(models.Model):
             f"{self.reporter} → comment id={self.comment_id} "
             f"({self.get_reason_display()})"
         )
+
+
+class MovieNote(models.Model):
+    """A private, per-user diary entry about a movie.
+
+    The private counterpart to `Comment`: notes are visible only to their
+    author and never surface in any public list. Unlike `Rating` and
+    `UserMovieStatus` there is intentionally NO unique (user, movie)
+    constraint — a user can keep multiple entries per film, so the feature
+    reads like a journal ("here's what I thought"; "rewatched months later,
+    here's how it landed") rather than a single editable text box. Entries
+    are ordered by `created_at` (newest first).
+    """
+
+    MAX_LENGTH = 2000
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="movie_notes",
+    )
+    movie = models.ForeignKey(
+        Movie,
+        on_delete=models.CASCADE,
+        related_name="notes",
+    )
+    content: str = models.TextField("Treść", max_length=MAX_LENGTH)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["user", "movie", "-created_at"],
+                name="ix_notes_user_movie",
+            ),
+            models.Index(
+                fields=["user", "-created_at"],
+                name="ix_notes_user_recent",
+            ),
+        ]
+        verbose_name = "movie note"
+        verbose_name_plural = "movie notes"
+
+    def __str__(self) -> str:
+        preview = self.content[:40] + ("…" if len(self.content) > 40 else "")
+        return f"{self.user} → {self.movie}: {preview}"

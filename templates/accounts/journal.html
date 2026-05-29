@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Mój dziennik · Aster{% endblock %}
+
+{% block content %}
+<section class="journal-page">
+
+  <header class="journal-hero">
+    <p class="eyebrow"><i class="bi bi-lock"></i> Tylko dla Ciebie</p>
+    <h1 class="journal-hero-title">Mój dziennik</h1>
+    <p class="journal-hero-lead">
+      Prywatne notatki o filmach — Twoje myśli i wrażenia,
+      których nie widzi nikt poza Tobą.
+    </p>
+    {% if notes_total %}
+      <dl class="journal-hero-ledger">
+        <div class="journal-hero-ledger-entry">
+          <dt>Wpisy</dt>
+          <dd>{{ notes_total }}</dd>
+        </div>
+        <div class="journal-hero-ledger-entry">
+          <dt>Filmy</dt>
+          <dd>{{ movies_count }}</dd>
+        </div>
+      </dl>
+    {% endif %}
+  </header>
+
+  {% if groups %}
+    <div class="journal-timeline">
+      {% for group in groups %}
+        <section class="journal-day" aria-label="Wpisy z {{ group.date|date:'j N Y' }}">
+          <h2 class="journal-day-heading">
+            <span class="journal-day-date">{{ group.date|date:"j N Y" }}</span>
+          </h2>
+          <ul class="journal-entry-list">
+            {% for note in group.entries %}
+              <li class="journal-entry">
+                <a href="{% url 'movies:detail' note.movie.tmdb_id %}"
+                   class="journal-entry-poster"
+                   aria-label="Przejdź do filmu {{ note.movie.title }}">
+                  {% if note.movie.poster_url %}
+                    <img src="{{ note.movie.poster_url }}"
+                         alt="Plakat: {{ note.movie.title }}" loading="lazy">
+                  {% else %}
+                    <div class="movie-poster-placeholder"><i class="bi bi-film"></i></div>
+                  {% endif %}
+                </a>
+                <div class="journal-entry-body">
+                  <div class="journal-entry-head">
+                    <a href="{% url 'movies:detail' note.movie.tmdb_id %}"
+                       class="journal-entry-movie">{{ note.movie.title }}</a>
+                  </div>
+                  <p class="journal-entry-text">{{ note.content|linebreaksbr }}</p>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="journal-empty">
+      <i class="bi bi-journal-plus"></i>
+      <h2>Twój dziennik jest pusty</h2>
+      <p>
+        Otwórz dowolny film i zapisz pierwszą prywatną notatkę —
+        pojawi się tutaj jako wpis w dzienniku.
+      </p>
+      <a href="{% url 'movies:list' %}" class="btn btn-accent">
+        <i class="bi bi-film"></i> Przeglądaj filmy
+      </a>
+    </div>
+  {% endif %}
+
+</section>
+{% endblock %}
