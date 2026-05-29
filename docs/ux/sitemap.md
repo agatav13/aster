@@ -23,6 +23,7 @@ graph TD
       settings["/auth/settings/"]
       display_name["/auth/display-name/"]
       genres["/auth/genres/"]
+      journal["/auth/journal/<br/><i>prywatny dziennik</i>"]
       pwreset["/auth/password-reset/"]
       pwreset_done["/auth/password-reset/done/"]
       pwreset_confirm["/auth/reset/&lt;uid&gt;/&lt;token&gt;/"]
@@ -36,6 +37,9 @@ graph TD
       rating_act["/movies/&lt;id&gt;/rating/<br/><i>POST</i>"]
       comment_create["/movies/&lt;id&gt;/comments/<br/><i>POST</i>"]
       comment_del["/movies/&lt;id&gt;/comments/&lt;cid&gt;/delete/<br/><i>POST</i>"]
+      comment_report["/movies/&lt;id&gt;/comments/&lt;cid&gt;/report/<br/><i>POST</i>"]
+      note_create["/movies/&lt;id&gt;/notes/<br/><i>POST (prywatne)</i>"]
+      note_del["/movies/&lt;id&gt;/notes/&lt;nid&gt;/delete/<br/><i>POST</i>"]
     end
 
     subgraph Community["/community/"]
@@ -52,6 +56,10 @@ graph TD
     detail --> rating_act
     detail --> comment_create
     detail --> comment_del
+    detail --> comment_report
+    detail --> note_create
+    detail --> note_del
+    profile --> journal
     people --> follow_act
     people --> profile_pub
 
@@ -60,6 +68,9 @@ graph TD
     style rating_act fill:#fff5d6,stroke:#b08800
     style comment_create fill:#fff5d6,stroke:#b08800
     style comment_del fill:#fff5d6,stroke:#b08800
+    style comment_report fill:#fff5d6,stroke:#b08800
+    style note_create fill:#fff5d6,stroke:#b08800
+    style note_del fill:#fff5d6,stroke:#b08800
     style follow_act fill:#fff5d6,stroke:#b08800
 ```
 
