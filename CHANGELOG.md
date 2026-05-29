@@ -23,6 +23,10 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 - **Bumped `idna` 3.11 → 3.15** in `uv.lock` to remediate `CVE-2026-45409` flagged by `pip-audit`.
 - **Landing hero standfirst and feature body text** (`.aster-hero-sub`, `.aster-feature-text` in `static/css/app.css`) switched from the body sans to Fraunces — the standfirst as 1.2rem italic with `opsz` 24, the feature copy as 1.05rem upright with `opsz` 14 — so the landing page reads as one consistent Fraunces editorial column on both desktop and mobile instead of mixing system sans into the body slots.
 
+### Fixed
+
+- **Resync stale movie rating aggregates** — data migration `movies/0012_recompute_rating_aggregates.py` rebuilds every `Movie.average_rating` / `ratings_count` from the `ratings` table. These cached aggregates are only refreshed inside `upsert_rating` / `remove_rating`, so deleting `Rating` rows by any other path (e.g. cascading from a `User` deletion in the Django admin) left the cached values stale. The migration is idempotent and runs automatically on deploy via `build.sh`, so no shell access is needed to apply the fixup.
+
 ### Security
 
 - **Minimised the public bug-report GitHub-issue body** (`feedback/views.py` `_build_issue_body`) — dropped the `User agent` line and the internal `@u<pk>` reporter handle, and stripped the query string from the reported page URL (new `_public_page_url` helper keeps only scheme/host/path). The reporter line now renders only `User.public_name`. The full user agent and full page URL are still captured on the private `BugReport` row (visible in Django admin and cross-referenced by the GitHub issue number), so triage data is preserved without exposing user-agent fingerprints, internal user ids, or URL-borne tokens in public GitHub Issues.
