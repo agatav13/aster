@@ -3,6 +3,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -12,6 +13,7 @@ from .models import (
     Genre,
     Movie,
     MovieCredit,
+    MovieNote,
     Person,
     Rating,
     UserMovieStatus,
@@ -20,14 +22,18 @@ from .services import (
     DEFAULT_PAGE_SIZE,
     TMDB_GENRE_PL_NAMES,
     create_comment,
+    create_note,
     delete_own_comment,
+    delete_own_note,
     fetch_and_cache_movie,
     fetch_community_top_rated_shelf,
     fetch_continue_exploring_shelf,
     fetch_polish_cinema_shelf,
     fetch_recently_watched_recommendations_shelf,
     fetch_seeded_recommendations_shelf,
+    journal_entries,
     normalize_all_genres,
+    notes_for,
     remove_movie_status,
     remove_rating,
     report_comment,
@@ -1997,3 +2003,197 @@ class CuratedShelvesTests(TestCase):
         """Missing TMDB_API_KEY must not break the shelf — it should just
         return an empty list so the rail hides itself."""
         self.assertEqual(fetch_polish_cinema_shelf(), [])
+
+
+class MovieNoteServiceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="note-svc@example.com", password="StrongPass123!"
+        )
+        cls.other = cls.User.objects.create_user(
+            email="note-other-svc@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=2000, title="Note Flick")
+
+    def test_create_note_persists(self) -> None:
+        note = create_note(
+            user=self.user, movie=self.movie, content="Mój prywatny zapis."
+        )
+        self.assertEqual(note.content, "Mój prywatny zapis.")
+        self.assertEqual(note.movie, self.movie)
+        self.assertEqual(note.user, self.user)
+
+    def test_create_note_trims_whitespace(self) -> None:
+        note = create_note(
+            user=self.user, movie=self.movie, content="   Świetny film!  "
+        )
+        self.assertEqual(note.content, "Świetny film!")
+
+    def test_create_note_rejects_empty_content(self) -> None:
+        for bad in ("", "   ", "\n\t  "):
+            with self.assertRaises(ValueError):
+                create_note(user=self.user, movie=self.movie, content=bad)
+        self.assertFalse(MovieNote.objects.exists())
+
+    def test_create_note_rejects_too_long_content(self) -> None:
+        with self.assertRaises(ValueError):
+            create_note(
+                user=self.user,
+                movie=self.movie,
+                content="x" * (MovieNote.MAX_LENGTH + 1),
+            )
+
+    def test_notes_allow_multiple_entries_per_movie(self) -> None:
+        """Diary semantics: unlike Rating/UserMovieStatus there is no unique
+        (user, movie) constraint, so a user can keep many entries."""
+        create_note(user=self.user, movie=self.movie, content="pierwszy seans")
+        create_note(user=self.user, movie=self.movie, content="powtórka")
+        self.assertEqual(notes_for(self.user, self.movie).count(), 2)
+
+    def test_notes_for_scopes_to_owner(self) -> None:
+        create_note(user=self.user, movie=self.movie, content="moja notatka")
+        create_note(user=self.other, movie=self.movie, content="cudza notatka")
+        rows = list(notes_for(self.user, self.movie))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].content, "moja notatka")
+
+    def test_notes_for_anonymous_user_is_empty(self) -> None:
+        create_note(user=self.user, movie=self.movie, content="cokolwiek")
+        anon = AnonymousUser()
+        self.assertEqual(notes_for(anon, self.movie).count(), 0)
+
+    def test_notes_for_orders_newest_first(self) -> None:
+        first = create_note(user=self.user, movie=self.movie, content="stary")
+        second = create_note(user=self.user, movie=self.movie, content="nowy")
+        rows = list(notes_for(self.user, self.movie))
+        self.assertEqual([r.pk for r in rows], [second.pk, first.pk])
+
+    def test_delete_own_note_succeeds(self) -> None:
+        note = create_note(user=self.user, movie=self.movie, content="usuwalna")
+        self.assertTrue(delete_own_note(user=self.user, note=note))
+        self.assertFalse(MovieNote.objects.filter(pk=note.pk).exists())
+
+    def test_delete_own_note_refuses_other_users_row(self) -> None:
+        note = create_note(user=self.other, movie=self.movie, content="cudza")
+        self.assertFalse(delete_own_note(user=self.user, note=note))
+        self.assertTrue(MovieNote.objects.filter(pk=note.pk).exists())
+
+    def test_journal_entries_collects_all_user_notes(self) -> None:
+        other_movie = make_movie(tmdb_id=2001, title="Second Flick")
+        create_note(user=self.user, movie=self.movie, content="a")
+        create_note(user=self.user, movie=other_movie, content="b")
+        create_note(user=self.other, movie=self.movie, content="nie moje")
+        entries = list(journal_entries(self.user))
+        self.assertEqual(len(entries), 2)
+        self.assertTrue(all(e.user_id == self.user.pk for e in entries))
+
+
+class MovieNoteViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="note-view@example.com", password="StrongPass123!"
+        )
+        cls.other = cls.User.objects.create_user(
+            email="note-other-view@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=2100, title="Note View")
+
+    def test_create_note_requires_login(self) -> None:
+        url = reverse("movies:create_note", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"content": "hej"})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login", response["Location"])
+        self.assertFalse(MovieNote.objects.exists())
+
+    def test_create_note_persists_and_redirects_to_detail(self) -> None:
+        self.client.force_login(self.user)
+        url = reverse("movies:create_note", args=[self.movie.tmdb_id])
+        response = self.client.post(url, {"content": "Mój wpis."})
+        self.assertRedirects(
+            response, reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        note = MovieNote.objects.get()
+        self.assertEqual(note.content, "Mój wpis.")
+        self.assertEqual(note.user, self.user)
+
+    def test_empty_note_does_not_persist(self) -> None:
+        self.client.force_login(self.user)
+        url = reverse("movies:create_note", args=[self.movie.tmdb_id])
+        self.client.post(url, {"content": "   "})
+        self.assertFalse(MovieNote.objects.exists())
+
+    def test_delete_own_note_removes_row(self) -> None:
+        note = create_note(user=self.user, movie=self.movie, content="moja")
+        self.client.force_login(self.user)
+        url = reverse("movies:delete_note", args=[self.movie.tmdb_id, note.pk])
+        response = self.client.post(url)
+        self.assertRedirects(
+            response, reverse("movies:detail", args=[self.movie.tmdb_id])
+        )
+        self.assertFalse(MovieNote.objects.filter(pk=note.pk).exists())
+
+    def test_cannot_delete_someone_elses_note(self) -> None:
+        note = create_note(user=self.other, movie=self.movie, content="cudza")
+        self.client.force_login(self.user)
+        url = reverse("movies:delete_note", args=[self.movie.tmdb_id, note.pk])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(MovieNote.objects.filter(pk=note.pk).exists())
+
+    def test_delete_returns_404_when_note_belongs_to_other_movie(self) -> None:
+        """URL scoping: a note id from movie B must not be deletable via
+        movie A's delete URL."""
+        other_movie = make_movie(tmdb_id=2101, title="Other Note Movie")
+        note = create_note(user=self.user, movie=other_movie, content="na innym")
+        self.client.force_login(self.user)
+        url = reverse("movies:delete_note", args=[self.movie.tmdb_id, note.pk])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(MovieNote.objects.filter(pk=note.pk).exists())
+
+    def test_detail_page_shows_only_own_notes(self) -> None:
+        create_note(user=self.user, movie=self.movie, content="moja-prywatna")
+        create_note(user=self.other, movie=self.movie, content="cudza-prywatna")
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
+        self.assertContains(response, "moja-prywatna")
+        self.assertNotContains(response, "cudza-prywatna")
+
+    def test_detail_page_hides_notes_section_for_anonymous(self) -> None:
+        create_note(user=self.user, movie=self.movie, content="prywatna")
+        response = self.client.get(reverse("movies:detail", args=[self.movie.tmdb_id]))
+        self.assertNotContains(response, "prywatna")
+        self.assertNotContains(response, 'id="notes-section"')
+
+
+class JournalViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.User = get_user_model()
+        cls.user = cls.User.objects.create_user(
+            email="journal-view@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=2200, title="Journal Flick")
+
+    def test_journal_requires_login(self) -> None:
+        response = self.client.get(reverse("accounts:journal"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login", response["Location"])
+
+    def test_journal_lists_user_notes(self) -> None:
+        create_note(user=self.user, movie=self.movie, content="wpis-do-dziennika")
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("accounts:journal"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "wpis-do-dziennika")
+        self.assertContains(response, self.movie.title)
+
+    def test_journal_empty_state(self) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("accounts:journal"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Twój dziennik jest pusty")

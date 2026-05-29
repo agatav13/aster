@@ -124,6 +124,10 @@
   {% endif %}
 
   {% include "movies/_comments_section.html" %}
+
+  {% if request.user.is_authenticated %}
+    {% include "movies/_notes_section.html" %}
+  {% endif %}
 </article>
 
 {% if request.user.is_authenticated %}

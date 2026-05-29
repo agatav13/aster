@@ -3,7 +3,15 @@ from django.db.models import Count, QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 
-from .models import Comment, CommentReport, Genre, Movie, Rating, UserMovieStatus
+from .models import (
+    Comment,
+    CommentReport,
+    Genre,
+    Movie,
+    MovieNote,
+    Rating,
+    UserMovieStatus,
+)
 
 
 @admin.register(Genre)
@@ -95,3 +103,12 @@ class CommentReportAdmin(admin.ModelAdmin):
     search_fields = ("reporter__email", "comment__content")
     autocomplete_fields = ("comment", "reporter")
     readonly_fields = ("created_at",)
+
+
+@admin.register(MovieNote)
+class MovieNoteAdmin(admin.ModelAdmin):
+    list_display = ("user", "movie", "created_at")
+    list_filter = ("created_at",)
+    search_fields = ("user__email", "movie__title", "content")
+    autocomplete_fields = ("user", "movie")
+    readonly_fields = ("created_at", "updated_at")

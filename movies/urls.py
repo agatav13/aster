@@ -3,7 +3,9 @@ from django.urls import path
 from .views import (
     MovieListView,
     create_movie_comment,
+    create_movie_note,
     delete_movie_comment,
+    delete_movie_note,
     movie_detail,
     report_movie_comment,
     update_movie_rating,
@@ -39,5 +41,15 @@ urlpatterns = [
         "<int:tmdb_id>/comments/<int:comment_id>/report/",
         report_movie_comment,
         name="report_comment",
+    ),
+    path(
+        "<int:tmdb_id>/notes/",
+        create_movie_note,
+        name="create_note",
+    ),
+    path(
+        "<int:tmdb_id>/notes/<int:note_id>/delete/",
+        delete_movie_note,
+        name="delete_note",
     ),
 ]

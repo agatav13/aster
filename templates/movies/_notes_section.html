@@ -1,0 +1,74 @@
+{% comment %}
+  Private diary section. The per-user counterpart to the comments section:
+  rendered only for the authenticated owner and never shown to anyone else.
+  Lists the current user's MovieNote entries for this film newest-first and
+  lets them add a dated entry or delete their own.
+{% endcomment %}
+<section class="notes-section" id="notes-section" aria-labelledby="notes-heading">
+  <header class="notes-header">
+    <h2 id="notes-heading">
+      <i class="bi bi-journal-text"></i> Prywatny dziennik
+      <span class="notes-count">{{ notes_count }}</span>
+    </h2>
+    <p class="notes-subtitle text-secondary small">
+      <i class="bi bi-lock"></i>
+      Te notatki widzisz tylko Ty.
+    </p>
+  </header>
+
+  <form
+    class="note-composer"
+    method="post"
+    action="{% url 'movies:create_note' movie.tmdb_id %}"
+    hx-post="{% url 'movies:create_note' movie.tmdb_id %}"
+    hx-target="#notes-section"
+    hx-swap="outerHTML"
+  >
+    {% csrf_token %}
+    <label for="noteBody" class="visually-hidden">Twoja notatka</label>
+    <textarea
+      id="noteBody"
+      name="content"
+      rows="3"
+      maxlength="{{ note_max_length }}"
+      placeholder="Co myślisz o tym filmie? Zapisz to dla siebie..."
+      required
+    ></textarea>
+    <div class="note-composer-footer">
+      <button type="submit" class="btn btn-accent">
+        <i class="bi bi-journal-plus"></i> Zapisz wpis
+      </button>
+    </div>
+  </form>
+
+  <ul class="note-list" aria-live="polite">
+    {% for note in notes %}
+      <li class="note-item">
+        <div class="note-item-head">
+          <span class="note-date" title="{{ note.created_at|date:'Y-m-d H:i' }}">
+            {{ note.created_at|date:"j N Y, H:i" }}
+          </span>
+        </div>
+        <p class="note-body">{{ note.content|linebreaksbr }}</p>
+        <form
+          method="post"
+          action="{% url 'movies:delete_note' movie.tmdb_id note.pk %}"
+          class="note-delete-form"
+          hx-post="{% url 'movies:delete_note' movie.tmdb_id note.pk %}"
+          hx-target="#notes-section"
+          hx-swap="outerHTML"
+        >
+          {% csrf_token %}
+          <button type="submit" class="btn btn-ghost btn-ghost-sm">
+            <i class="bi bi-trash"></i> Usuń
+          </button>
+        </form>
+      </li>
+    {% empty %}
+      <li class="note-empty">
+        <i class="bi bi-journal"></i>
+        <p>Brak wpisów. Zapisz pierwszą myśl o tym filmie.</p>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
