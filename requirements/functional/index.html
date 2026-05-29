@@ -702,6 +702,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#uc-11-zglaszanie-komentarza" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UC-11 Zgłaszanie komentarza
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uc-12-prywatny-dziennik-filmowy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UC-12 Prywatny dziennik filmowy
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1637,6 +1659,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#uc-11-zglaszanie-komentarza" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UC-11 Zgłaszanie komentarza
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uc-12-prywatny-dziennik-filmowy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UC-12 Prywatny dziennik filmowy
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1760,8 +1804,9 @@ znajdują się w sekcji <a href="../../implementation/modules/">Implementacja</a
 <h3 id="uc-08-komentowanie-filmu">UC-08 Komentowanie filmu<a class="headerlink" href="#uc-08-komentowanie-filmu" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Aktor:</strong> Użytkownik</li>
-<li><strong>Przebieg:</strong> formularz pod sekcją „Komentarze". Treść zapisywana z <code>status=visible</code>. Tylko autor komentarza może go usunąć.</li>
-<li><strong>Roadmapa:</strong> moderacja z polem <code>toxicity_score</code> i statusami <code>flagged</code>/<code>hidden</code>.</li>
+<li><strong>Przebieg:</strong> formularz pod sekcją „Komentarze". Treść (≤ 2000 znaków) zapisywana z <code>status=visible</code>. Tylko autor komentarza może go usunąć.</li>
+<li><strong>Moderacja społecznościowa:</strong> każdy zalogowany użytkownik może zgłosić cudzy komentarz — zob. <a href="#uc-11-zglaszanie-komentarza">UC-11</a>. Po przekroczeniu progu zgłoszeń komentarz automatycznie zmienia status na <code>flagged</code> i znika z listy publicznej (filtr <code>visible_comments_for</code>) do czasu decyzji moderatora (zob. <a href="#uc-10-administracja-danymi">UC-10</a>).</li>
+<li><strong>Roadmapa:</strong> automatyczne ocenianie toksyczności (<code>toxicity_score</code>) — pole istnieje w modelu, ale nie jest jeszcze zasilane przez klasyfikator; obecnie zgłoszenia są w pełni społecznościowe.</li>
 </ul>
 <h3 id="uc-09-edycja-profilu">UC-09 Edycja profilu<a class="headerlink" href="#uc-09-edycja-profilu" title="Permanent link">&para;</a></h3>
 <ul>
@@ -1771,12 +1816,39 @@ znajdują się w sekcji <a href="../../implementation/modules/">Implementacja</a
 <h3 id="uc-10-administracja-danymi">UC-10 Administracja danymi<a class="headerlink" href="#uc-10-administracja-danymi" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Aktor:</strong> Administrator</li>
-<li><strong>Przebieg:</strong> logowanie do panelu Django pod <code>&lt;DJANGO_ADMIN_URL&gt;</code> (domyślnie <code>/admin/</code>). Możliwe operacje: dezaktywacja użytkowników, moderacja komentarzy (zmiana statusu na <code>hidden</code>), edycja gatunków, ręczna synchronizacja z TMDB.</li>
+<li><strong>Przebieg:</strong> logowanie do panelu Django pod <code>&lt;DJANGO_ADMIN_URL&gt;</code> (domyślnie <code>/admin/</code>). Możliwe operacje: dezaktywacja użytkowników, moderacja komentarzy, edycja gatunków, ręczna synchronizacja z TMDB.</li>
+<li><strong>Moderacja komentarzy:</strong> lista komentarzy pokazuje licznik zgłoszeń i inline ze zgłoszeniami (<code>CommentReport</code>). Komentarze automatycznie oznaczone jako <code>flagged</code> (zob. <a href="#uc-11-zglaszanie-komentarza">UC-11</a>) czekają na decyzję. Dwie akcje masowe: <strong>Ukryj</strong> (→ <code>hidden</code>) i <strong>Przywróć</strong> (→ <code>visible</code>, czyści zgłoszenia komentarza). Osobny widok <code>CommentReport</code> pozwala przeglądać same zgłoszenia.</li>
+</ul>
+<h3 id="uc-11-zglaszanie-komentarza">UC-11 Zgłaszanie komentarza<a class="headerlink" href="#uc-11-zglaszanie-komentarza" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Aktor:</strong> Użytkownik</li>
+<li><strong>Cel:</strong> Zgłosić cudzy komentarz łamiący zasady społeczności.</li>
+<li><strong>Przebieg główny:</strong><ol>
+<li>Przy komentarzu innego użytkownika rozwija kontrolkę <strong>„Zgłoś"</strong>.</li>
+<li>Wybiera powód: spam / treść obraźliwa / spoiler / inne (albo <strong>„Anuluj"</strong>, by zwinąć formularz).</li>
+<li>System zapisuje wiersz <code>CommentReport</code> — jedno zgłoszenie na parę <code>(komentarz, zgłaszający)</code> (<code>uq_comment_report_pair</code>) — i pokazuje marker <strong>„Zgłoszono"</strong>, by uniemożliwić ponowne zgłoszenie.</li>
+</ol>
+</li>
+<li><strong>Reguła automatyczna:</strong> gdy <code>Comment.REPORTS_TO_FLAG</code> (domyślnie <strong>3</strong>) różnych użytkowników zgłosi wciąż widoczny komentarz, jego status zmienia się automatycznie z <code>visible</code> na <code>flagged</code> i komentarz znika z listy publicznej do czasu przeglądu przez moderatora.</li>
+<li><strong>Warunki brzegowe:</strong> nie można zgłosić własnego komentarza; pojedyncze zgłoszenie nie ukrywa komentarza natychmiast — dopiero przekroczenie progu.</li>
+</ul>
+<h3 id="uc-12-prywatny-dziennik-filmowy">UC-12 Prywatny dziennik filmowy<a class="headerlink" href="#uc-12-prywatny-dziennik-filmowy" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Aktor:</strong> Użytkownik</li>
+<li><strong>Cel:</strong> Prowadzić prywatne, widoczne tylko dla siebie notatki o filmach — prywatny odpowiednik publicznych komentarzy.</li>
+<li><strong>Przebieg główny:</strong><ol>
+<li>Na stronie filmu, w sekcji <strong>„Prywatny dziennik"</strong> (renderowanej wyłącznie dla zalogowanych), wpisuje notatkę (≤ 2000 znaków) i zapisuje.</li>
+<li>Własne notatki do tego filmu wyświetlają się od najnowszej; autor może każdą usunąć.</li>
+<li>Pod <code>/auth/journal/</code> (<strong>„Mój dziennik"</strong>, link w menu konta) widzi wszystkie swoje notatki ze wszystkich filmów jako chronologiczną oś czasu z miniaturami plakatów.</li>
+</ol>
+</li>
+<li><strong>Reguła:</strong> <code>MovieNote</code> celowo <strong>nie</strong> ma ograniczenia unikalności <code>(user, movie)</code> — użytkownik może mieć wiele wpisów na ten sam film (dziennik, nie pojedyncze edytowalne pole). Notatki nigdy nie są widoczne publicznie ani dla innych użytkowników.</li>
 </ul>
 <h2 id="historie-uzytkownika-user-stories">Historie użytkownika (user stories)<a class="headerlink" href="#historie-uzytkownika-user-stories" title="Permanent link">&para;</a></h2>
 <p>Historie odpowiadają ścieżkom opisanym szczegółowo w
 <a href="../../ux/user-journeys/">Ścieżkach użytkownika</a> — każda historia kończy się
-linkiem do testu E2E, który ją weryfikuje.</p>
+linkiem do testu, który ją weryfikuje (E2E tam, gdzie istnieje pełna ścieżka
+przeglądarkowa, w pozostałych przypadkach test jednostkowy/integracyjny).</p>
 <table>
 <thead>
 <tr>
@@ -1784,7 +1856,7 @@ linkiem do testu E2E, który ją weryfikuje.</p>
 <th>Jako…</th>
 <th>chcę…</th>
 <th>aby…</th>
-<th>Test E2E</th>
+<th>Test</th>
 </tr>
 </thead>
 <tbody>
@@ -1814,14 +1886,28 @@ linkiem do testu E2E, który ją weryfikuje.</p>
 <td>użytkownik</td>
 <td>zresetować hasło przez link e-mail</td>
 <td>odzyskać dostęp do konta</td>
-<td>(ręczne — patrz UC-03)</td>
+<td><code>accounts/tests.py::test_password_reset_sends_email</code>, <code>…::test_password_reset_confirm_changes_password</code></td>
 </tr>
 <tr>
 <td>US-05</td>
-<td>administrator</td>
-<td>ukryć obraźliwy komentarz</td>
+<td>użytkownik</td>
+<td>zgłosić obraźliwy komentarz</td>
 <td>utrzymać higienę dyskusji</td>
-<td>(panel Django)</td>
+<td><code>movies/tests.py::test_report_creates_row_with_reason</code>, <code>…::test_comment_auto_flags_at_threshold</code></td>
+</tr>
+<tr>
+<td>US-06</td>
+<td>administrator</td>
+<td>ukryć / przywrócić zgłoszony komentarz</td>
+<td>egzekwować decyzje moderacyjne</td>
+<td><code>movies/tests.py::test_visible_comments_filters_out_non_visible</code> (+ panel Django)</td>
+</tr>
+<tr>
+<td>US-07</td>
+<td>użytkownik</td>
+<td>prowadzić prywatny dziennik filmowy</td>
+<td>notować przemyślenia tylko dla siebie</td>
+<td><code>movies/tests.py::test_journal_lists_user_notes</code>, <code>…::test_detail_page_shows_only_own_notes</code></td>
 </tr>
 </tbody>
 </table>
@@ -1831,6 +1917,8 @@ linkiem do testu E2E, który ją weryfikuje.</p>
 <li>Konto bez aktywacji nie może się zalogować (<code>is_active=False</code>).</li>
 <li>Każdy użytkownik wystawia <strong>co najwyżej jedną</strong> ocenę na film (<code>UniqueConstraint</code> <code>uq_user_movie_rating</code>).</li>
 <li>Każdy użytkownik ma <strong>co najwyżej jeden</strong> wpis statusu na film (<code>uq_user_movie_status</code>); zmiana z „watchlist" na „watched" to UPDATE tego samego wiersza.</li>
+<li>Każdy użytkownik może zgłosić dany komentarz <strong>co najwyżej raz</strong> (<code>uq_comment_report_pair</code>); po <code>Comment.REPORTS_TO_FLAG</code> (domyślnie 3) zgłoszeniach od różnych użytkowników komentarz automatycznie przechodzi w status <code>flagged</code>.</li>
+<li><code>MovieNote</code> <strong>nie</strong> ma ograniczenia unikalności <code>(user, movie)</code> — użytkownik może mieć wiele notatek na ten sam film; notatki są prywatne (zawsze filtrowane po właścicielu, brak zapytań „widoczne publicznie").</li>
 </ul>
 
 

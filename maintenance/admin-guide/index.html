@@ -1789,13 +1789,38 @@ produkcji warto użyć trudniejszej do zgadnięcia ścieżki przez zmienną
 </ol>
 <p>Skutek: użytkownik nie może się zalogować, jego treści (oceny, komentarze, statusy) zostają w bazie.</p>
 <h3 id="moderacja-komentarza">Moderacja komentarza<a class="headerlink" href="#moderacja-komentarza" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Panel → <strong>Comments</strong></li>
-<li>Wybierz komentarz</li>
-<li>Zmień <strong>Status</strong> na <code>hidden</code> (ukryty z widoku publicznego, zostaje w bazie do audytu) lub <code>deleted</code> (oznaczony do usunięcia w przyszłej operacji czyszczącej)</li>
-<li><strong>Save</strong></li>
-</ol>
-<p>Lista publiczna automatycznie filtruje na <code>status='visible'</code>, więc zmiana zadziała natychmiast po refreshu.</p>
+<p>Komentarze moderuje się <strong>społecznościowo + ręcznie</strong>:</p>
+<ul>
+<li><strong>Zgłoszenia społeczności.</strong> Zalogowani użytkownicy zgłaszają cudze komentarze (powód: spam / treść obraźliwa / spoiler / inne). Gdy <strong>3 różnych</strong> użytkowników (<code>Comment.REPORTS_TO_FLAG</code>) zgłosi wciąż widoczny komentarz, jego status automatycznie zmienia się z <code>visible</code> na <code>flagged</code> i komentarz <strong>znika z listy publicznej</strong> do czasu Twojej decyzji.</li>
+<li><strong>Panel → Comments.</strong> Lista pokazuje kolumnę z <strong>licznikiem zgłoszeń</strong> i inline <code>CommentReport</code> (kto, kiedy, z jakiego powodu zgłosił). Filtruj po statusie <code>flagged</code>, by zobaczyć kolejkę do przeglądu.</li>
+</ul>
+<p>Decyzję podejmujesz jedną z dwóch akcji masowych (zaznacz komentarze → menu <strong>Action</strong>):</p>
+<table>
+<thead>
+<tr>
+<th>Akcja</th>
+<th>Skutek</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ukryj</strong></td>
+<td>status → <code>hidden</code> — trwale poza widokiem publicznym, zostaje w bazie do audytu</td>
+</tr>
+<tr>
+<td><strong>Przywróć</strong></td>
+<td>status → <code>visible</code> <strong>i czyści zgłoszenia</strong> komentarza, więc nie wpadnie ponownie w próg</td>
+</tr>
+</tbody>
+</table>
+<p>Ręcznie status zmienisz też w formularzu pojedynczego komentarza (<code>visible</code> / <code>flagged</code> / <code>hidden</code> / <code>deleted</code>).</p>
+<blockquote>
+<p><strong>Surowe zgłoszenia.</strong> Osobny widok <strong>Comment reports</strong> pozwala przeglądać same zgłoszenia (np. by ocenić, czy ktoś nadużywa przycisku „Zgłoś").</p>
+</blockquote>
+<p>Lista publiczna automatycznie filtruje na <code>status='visible'</code>, więc każda zmiana zadziała natychmiast po refreshu.</p>
+<blockquote>
+<p><strong>Notatki w prywatnym dzienniku</strong> (<code>MovieNote</code>, zob. UC-12) są <strong>prywatne</strong> — widoczne wyłącznie dla autora, nigdy publicznie. Nie podlegają moderacji ani zgłaszaniu; w panelu są dostępne tylko do wglądu administracyjnego.</p>
+</blockquote>
 <h3 id="bulk-import-filmow">Bulk-import filmów<a class="headerlink" href="#bulk-import-filmow" title="Permanent link">&para;</a></h3>
 <p>Zob. <a href="#synchronizacja-z-tmdb">Synchronizacja z TMDB</a>.</p>
 <h3 id="zmiana-nazwy-gatunku">Zmiana nazwy gatunku<a class="headerlink" href="#zmiana-nazwy-gatunku" title="Permanent link">&para;</a></h3>

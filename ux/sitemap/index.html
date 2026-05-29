@@ -1429,6 +1429,7 @@ poziom dostępu.</p>
       settings["/auth/settings/"]
       display_name["/auth/display-name/"]
       genres["/auth/genres/"]
+      journal["/auth/journal/&lt;br/&gt;&lt;i&gt;prywatny dziennik&lt;/i&gt;"]
       pwreset["/auth/password-reset/"]
       pwreset_done["/auth/password-reset/done/"]
       pwreset_confirm["/auth/reset/&amp;lt;uid&amp;gt;/&amp;lt;token&amp;gt;/"]
@@ -1442,6 +1443,9 @@ poziom dostępu.</p>
       rating_act["/movies/&amp;lt;id&amp;gt;/rating/&lt;br/&gt;&lt;i&gt;POST&lt;/i&gt;"]
       comment_create["/movies/&amp;lt;id&amp;gt;/comments/&lt;br/&gt;&lt;i&gt;POST&lt;/i&gt;"]
       comment_del["/movies/&amp;lt;id&amp;gt;/comments/&amp;lt;cid&amp;gt;/delete/&lt;br/&gt;&lt;i&gt;POST&lt;/i&gt;"]
+      comment_report["/movies/&amp;lt;id&amp;gt;/comments/&amp;lt;cid&amp;gt;/report/&lt;br/&gt;&lt;i&gt;POST&lt;/i&gt;"]
+      note_create["/movies/&amp;lt;id&amp;gt;/notes/&lt;br/&gt;&lt;i&gt;POST (prywatne)&lt;/i&gt;"]
+      note_del["/movies/&amp;lt;id&amp;gt;/notes/&amp;lt;nid&amp;gt;/delete/&lt;br/&gt;&lt;i&gt;POST&lt;/i&gt;"]
     end
 
     subgraph Community["/community/"]
@@ -1458,6 +1462,10 @@ poziom dostępu.</p>
     detail --&gt; rating_act
     detail --&gt; comment_create
     detail --&gt; comment_del
+    detail --&gt; comment_report
+    detail --&gt; note_create
+    detail --&gt; note_del
+    profile --&gt; journal
     people --&gt; follow_act
     people --&gt; profile_pub
 
@@ -1466,6 +1474,9 @@ poziom dostępu.</p>
     style rating_act fill:#fff5d6,stroke:#b08800
     style comment_create fill:#fff5d6,stroke:#b08800
     style comment_del fill:#fff5d6,stroke:#b08800
+    style comment_report fill:#fff5d6,stroke:#b08800
+    style note_create fill:#fff5d6,stroke:#b08800
+    style note_del fill:#fff5d6,stroke:#b08800
     style follow_act fill:#fff5d6,stroke:#b08800</code></pre>
 <h2 id="mapowanie-do-plikow">Mapowanie do plików<a class="headerlink" href="#mapowanie-do-plikow" title="Permanent link">&para;</a></h2>
 <table>
