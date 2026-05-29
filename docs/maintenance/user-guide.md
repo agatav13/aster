@@ -59,6 +59,37 @@ Komentarz pojawi się na liście jako pierwszy.
 Możesz **usunąć własny komentarz** klikając **Usuń** pod jego treścią.
 Cudzych komentarzy nie da się usuwać.
 
+## Jak zgłosić nieodpowiedni komentarz?
+
+Pod cudzym komentarzem kliknij **Zgłoś**, wybierz powód
+(*spam* / *treść obraźliwa* / *spoiler* / *inne*) i potwierdź. Przy
+komentarzu pojawi się znacznik **„Zgłoszono"** — jeden komentarz możesz
+zgłosić tylko raz, a własnych komentarzy zgłaszać nie można.
+
+!!! info "Co się dzieje po zgłoszeniu?"
+    Pojedyncze zgłoszenie nie ukrywa komentarza od razu. Dopiero gdy
+    **3 różne osoby** zgłoszą ten sam komentarz, znika on z listy
+    publicznej i czeka na decyzję moderatora.
+
+## Jak prowadzić prywatny dziennik filmowy?
+
+Na stronie każdego filmu, pod komentarzami, znajdziesz sekcję
+**„Prywatny dziennik"** — widoczną tylko dla Ciebie po zalogowaniu.
+
+1. Wpisz notatkę (np. wrażenia po seansie) i kliknij zapisz.
+2. Możesz dodać **wiele notatek** do jednego filmu (np. po ponownym
+   obejrzeniu po latach) — czytają się jak dziennik.
+3. Każdą notatkę możesz usunąć.
+
+Wszystkie swoje notatki ze wszystkich filmów przejrzysz w jednym miejscu
+w menu konta → **„Mój dziennik"** (`/auth/journal/`): chronologiczna oś
+czasu z miniaturami plakatów linkującymi z powrotem do filmów.
+
+!!! note "To jest prywatne"
+    Notatek w dzienniku **nikt inny nie widzi** — ani inni użytkownicy,
+    ani osoby, które Cię obserwują. To prywatny odpowiednik publicznych
+    komentarzy.
+
 ## Jak zmienić dane konta?
 
 Po zalogowaniu otwórz **Profil** (prawy górny róg) i kliknij

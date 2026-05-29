@@ -36,12 +36,25 @@ Skutek: użytkownik nie może się zalogować, jego treści (oceny, komentarze, 
 
 ### Moderacja komentarza
 
-1. Panel → **Comments**
-2. Wybierz komentarz
-3. Zmień **Status** na `hidden` (ukryty z widoku publicznego, zostaje w bazie do audytu) lub `deleted` (oznaczony do usunięcia w przyszłej operacji czyszczącej)
-4. **Save**
+Komentarze moderuje się **społecznościowo + ręcznie**:
 
-Lista publiczna automatycznie filtruje na `status='visible'`, więc zmiana zadziała natychmiast po refreshu.
+- **Zgłoszenia społeczności.** Zalogowani użytkownicy zgłaszają cudze komentarze (powód: spam / treść obraźliwa / spoiler / inne). Gdy **3 różnych** użytkowników (`Comment.REPORTS_TO_FLAG`) zgłosi wciąż widoczny komentarz, jego status automatycznie zmienia się z `visible` na `flagged` i komentarz **znika z listy publicznej** do czasu Twojej decyzji.
+- **Panel → Comments.** Lista pokazuje kolumnę z **licznikiem zgłoszeń** i inline `CommentReport` (kto, kiedy, z jakiego powodu zgłosił). Filtruj po statusie `flagged`, by zobaczyć kolejkę do przeglądu.
+
+Decyzję podejmujesz jedną z dwóch akcji masowych (zaznacz komentarze → menu **Action**):
+
+| Akcja | Skutek |
+|---|---|
+| **Ukryj** | status → `hidden` — trwale poza widokiem publicznym, zostaje w bazie do audytu |
+| **Przywróć** | status → `visible` **i czyści zgłoszenia** komentarza, więc nie wpadnie ponownie w próg |
+
+Ręcznie status zmienisz też w formularzu pojedynczego komentarza (`visible` / `flagged` / `hidden` / `deleted`).
+
+> **Surowe zgłoszenia.** Osobny widok **Comment reports** pozwala przeglądać same zgłoszenia (np. by ocenić, czy ktoś nadużywa przycisku „Zgłoś").
+
+Lista publiczna automatycznie filtruje na `status='visible'`, więc każda zmiana zadziała natychmiast po refreshu.
+
+> **Notatki w prywatnym dzienniku** (`MovieNote`, zob. UC-12) są **prywatne** — widoczne wyłącznie dla autora, nigdy publicznie. Nie podlegają moderacji ani zgłaszaniu; w panelu są dostępne tylko do wglądu administracyjnego.
 
 ### Bulk-import filmów
 
