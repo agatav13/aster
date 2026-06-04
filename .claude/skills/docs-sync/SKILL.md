@@ -1,7 +1,7 @@
 ---
 name: docs-sync
 description: After a behavior, URL, model, template, management-command, deployment, or dependency change in Aster, propose coordinated edits to README.md and the MkDocs pages under docs/ so the documentation stays in sync with the code. Use this skill whenever the user says "update the docs", "docs sync", "do the docs match", "what docs need to change", or whenever they finish a change that touches app code, routing, models, or deployment. Aster's docs encode implementation detail (ERDs, URL tables, management-command lists, module layout), so drift is fast and silent — this skill makes the update a single coordinated pass instead of piecemeal edits spread across files.
-allowed-tools: Read, Edit, Bash, Glob, Grep
+allowed-tools: Read, Edit, Bash, Glob, Grep, Agent
 ---
 
 # Docs Sync Skill
@@ -68,6 +68,15 @@ Walk the diff and decide which doc files each change touches. Use this mapping �
 
 If a code change doesn't map to any row above, it probably doesn't need a docs edit. That's fine — say so in the summary.
 
+## When to fan out to subagents
+
+This skill's whole value is **cross-file consistency** — its most common bug is updating a list in one doc and missing the copy in another. Subagents working in isolation can't see each other's files, so the *editing and reconciliation always stays in the main thread*. Only the read-heavy phases fan out, and only when the diff is big enough to pay for the overhead:
+
+- **Fan out** when the diff touches **more than 3** of the coupled app dirs (`accounts/ movies/ core/ community/ feedback/ config/ templates/`) **or** the change matrix will span **more than 3 doc files**.
+- **Stay inline** (the default, common case) for anything smaller — a one-app, one-or-two-doc change is faster done directly than dispatched.
+
+When the threshold is hit, two phases delegate: **discovery** (step 1) and **post-edit verification** (step 6). Both use read-only agents that return *conclusions, not file dumps*. Prefer the `Explore` agent type for these — it's read-only by construction, so an agent can't accidentally edit a doc out from under the reconciliation pass.
+
 ## Steps
 
 ### 1. Gather the diff
@@ -99,6 +108,14 @@ This prints which of the three modes applies and the right stat view. If the scr
 
 Read the full diff for anything in `accounts/`, `movies/`, `core/`, `community/`, `feedback/`, `config/`, or `templates/` — these are the directories most tightly coupled to the docs.
 
+**Large diff (> 3 touched app dirs)? Fan out discovery.** Spawn one read-only `Explore` agent per touched app dir, in a single message so they run concurrently. Give each agent: the path to scan, the change-set mode (so it diffs the same way), and a pointer to read this skill's **Change → docs mapping** table. Ask each to return a structured list — one row per meaningful code change — of:
+
+```
+code change (file:symbol) → candidate doc file(s) → what specifically changed → additive | corrective
+```
+
+Tell them explicitly: **read-only, do not edit any file**; return the list only, not the diffs themselves. Merge their lists into the change matrix in step 3 — and still skim the raw diff yourself for the one or two dirs most central to this change, since the agents see their slice in isolation and can miss a cross-app link (e.g. a new `config/urls.py` include that points at a new app's routes).
+
 ### 2. Read the current docs state
 
 Before editing, read every doc file that appears in the mapping rows triggered by the diff. Don't guess contents — the existing phrasing and structure must be preserved. Pay particular attention to:
@@ -116,7 +133,7 @@ If the scope is large (>3 files or >10 total edits), present the matrix to the u
 
 ### 4. Make the edits
 
-Use `Edit` to apply each change. Preserve style:
+Apply every edit **yourself, in the main thread** — even on a large pass. This is the one phase that does not fan out: a doc list that also appears in another file has to be reconciled against the whole set at once, and isolated edit-agents can't do that. Use `Edit` and preserve style:
 
 - **Polish under `docs/`**: match the voice of the surrounding paragraphs. Keep Polish column headers in tables (`Pole`, `Typ`, `Wartości`, `Opis`). Keep Polish labels inside mermaid diagrams (`wystawia`, `komentowany`, `klasyfikacja`).
 - **English in `README.md`**: keep the existing section order and the shields badge lines untouched unless the change is specifically about one of them.
@@ -136,12 +153,23 @@ uv run mkdocs build --strict
 
 If `mkdocs` isn't installed in the environment or the build is too slow for the current iteration, say so explicitly in the summary rather than skipping silently.
 
-### 6. Summarize
+### 6. Verify the edits against the code
+
+`mkdocs build` only proves the site *compiles* — not that the prose is *correct*. On a large pass (the same > 3-doc-file threshold), fan out one read-only `Explore` agent per edited doc file, in a single concurrent message. Give each agent the doc file it owns plus the code surface it documents (the relevant `models.py` / `urls.py` / `settings.py` / `pyproject.toml`), and ask it to verify, adversarially — default to reporting drift, not to passing:
+
+- Does every field / endpoint / env var / dependency in the doc still exist in the code, with the right name, type, and values?
+- Did the edit miss anything the code added (a new field, a new URL, a renamed constant)?
+- Does any list here that also appears in another doc still agree? Name the other doc if you suspect a mismatch.
+
+Each agent returns `PASS` or a list of concrete discrepancies (`file:line → what's wrong`). **Read-only — agents do not fix anything.** Apply any fixes yourself in the main thread, then re-run `mkdocs build --strict`. For a small pass, do this verification inline by re-reading the edited files against the code yourself.
+
+### 7. Summarize
 
 Report:
 - Files edited, with a one-line reason each.
 - Anything deliberately **not** touched (e.g. `docs/testing/strategy.md` — no test-tooling changes in the diff) so the user can disagree.
 - Whether `mkdocs build --strict` passed.
+- Whether the pass ran inline or fanned out to subagents (and what the verification agents flagged, if anything).
 - Any judgment calls resolved (phrasing choices, where to place a new section), so the user can overrule.
 
 ## What not to do
@@ -154,3 +182,5 @@ Report:
 - Don't hand-edit anything under `site/` — it's generated by mkdocs.
 - Don't invent features. If a feature is half-wired, say so.
 - Don't add emojis or marketing language to match neighboring files' tone.
+- Don't delegate the editing to subagents. Discovery and verification fan out; the edits and cross-file reconciliation stay in the main thread (see "When to fan out to subagents").
+- Don't fan out for a small change. A one-app, one-or-two-doc pass is faster and safer done inline — subagent overhead isn't free.
