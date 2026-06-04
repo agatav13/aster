@@ -9,6 +9,11 @@
             "type": "command",
             "command": ".claude/hooks/require-changelog.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/require-docs.sh",
+            "timeout": 10
           }
         ]
       }
