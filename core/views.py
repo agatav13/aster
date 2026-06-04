@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views import View
@@ -13,6 +14,7 @@ from movies.services import (
 
 WATCHLIST_RAIL_LIMIT = 18
 FEED_GROUPS_LIMIT = 24
+LANDING_CACHE_TTL = 60 * 15  # seconds; anonymous landing shelves
 
 PROJECT_LINKS: list[dict[str, str]] = [
     {
@@ -56,14 +58,19 @@ class HomeView(View):
 
     def get(self, request: HttpRequest) -> HttpResponse:
         if not request.user.is_authenticated:
-            return render(
-                request,
-                "core/landing.html",
-                {
+            # The landing page is identical for every anonymous visitor, so we
+            # cache the assembled shelves rather than recomputing them per
+            # request. The underlying TMDB calls are already cached; this also
+            # skips the shelf-assembly and any local DB work behind them.
+            landing_ctx = cache.get_or_set(
+                "home:landing",
+                lambda: {
                     "top_rated": fetch_community_top_rated_shelf(),
                     "trending": fetch_trending_shelf(),
                 },
+                LANDING_CACHE_TTL,
             )
+            return render(request, "core/landing.html", landing_ctx)
 
         user = request.user
 
