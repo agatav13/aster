@@ -65,12 +65,24 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 
+_TEMPLATE_LOADERS = [
+    "django.template.loaders.filesystem.Loader",
+    "django.template.loaders.app_directories.Loader",
+]
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [BASE_DIR / "templates"],
-        "APP_DIRS": True,
+        # No APP_DIRS: an explicit "loaders" list is incompatible with it.
+        # In production we wrap the loaders in cached.Loader so templates are
+        # parsed once per worker instead of on every render; DEBUG keeps the
+        # plain loaders for auto-reload on edit.
         "OPTIONS": {
+            "loaders": (
+                _TEMPLATE_LOADERS
+                if DEBUG
+                else [("django.template.loaders.cached.Loader", _TEMPLATE_LOADERS)]
+            ),
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
@@ -89,7 +101,14 @@ _SQLITE = {
 if "test" in sys.argv or "pytest" in sys.modules:
     DATABASES = {"default": _SQLITE}
 else:
-    DATABASES = {"default": dj_database_url.config(default=None) or _SQLITE}
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=None,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+        or _SQLITE
+    }
 
 if "test" in sys.argv or "pytest" in sys.modules:
     CACHES = {
