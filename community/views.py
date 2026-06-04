@@ -9,6 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Exists, OuterRef
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 
@@ -204,7 +205,11 @@ def follow_toggle(request: HttpRequest, user_id: int) -> HttpResponse:
     else:
         Follow.objects.create(follower=request.user, followee=target)
 
-    next_url = request.POST.get("next") or "community:people"
-    if next_url.startswith("/"):
+    next_url = request.POST.get("next") or ""
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
         return redirect(next_url)
-    return redirect(next_url)
+    return redirect("community:people")

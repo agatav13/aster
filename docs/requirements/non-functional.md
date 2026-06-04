@@ -52,6 +52,9 @@ trzech automatycznych skanerów uruchamianych na każdym PR
 | Cookies | `SESSION_COOKIE_SECURE=True`, `CSRF_COOKIE_SECURE=True` w produkcji |
 | Klikjacking | `X_FRAME_OPTIONS = "DENY"` |
 | Ochrona przed XSS | Auto-escape w szablonach Django + `SECURE_CONTENT_TYPE_NOSNIFF` |
+| Rate limiting | `django-ratelimit` na logowaniu (10/min/IP), rejestracji i ponownej aktywacji (5/h/IP) oraz zgłoszeniach błędów (10/h/użytkownik); licznik w cache (Redis na produkcji) |
+| Open redirect | Walidacja parametru `next` przez `url_has_allowed_host_and_scheme` (tylko hosty aplikacji) |
+| Ochrona SECRET_KEY | Start aplikacji przerywany (`ImproperlyConfigured`), gdy `DEBUG=False` a `SECRET_KEY` pozostaje domyślny |
 | Static analysis (kod) | `bandit -ll` (medium+ severity) na każdym PR |
 | Vulnerable deps | `pip-audit` na każdym PR |
 | Audyt konfiguracji | `manage.py check --deploy --fail-level WARNING` |
@@ -70,9 +73,6 @@ Pełne raporty: [Raporty testowe → Bezpieczeństwo](../testing/reports.md#bezp
 
 ### Zaakceptowane ryzyka (ver_1)
 
-- **Brak rate limiting** na endpointach logowania i rejestracji — do
-  wdrożenia. Ryzyko: brute-force
-  haseł, spam rejestracji.
 - **Brak 2FA** — kompromis między prostotą onboardingu a poziomem
   bezpieczeństwa kont. Akceptowalny dla aplikacji o niskim zagrożeniu
   (brak danych płatniczych, brak danych wrażliwych).

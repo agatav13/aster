@@ -6,6 +6,7 @@ from django.http import HttpRequest, JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.http import require_POST
+from django_ratelimit.decorators import ratelimit
 
 from .forms import BugReportForm
 from .github import create_github_issue
@@ -43,10 +44,22 @@ def _build_issue_body(report: BugReport) -> str:
 
 
 @method_decorator(require_POST, name="dispatch")
+@method_decorator(
+    ratelimit(key="user", rate="10/h", method="POST", block=False), name="dispatch"
+)
 class SubmitBugReportView(LoginRequiredMixin, View):
     raise_exception = False
 
     def post(self, request: HttpRequest) -> JsonResponse:
+        if getattr(request, "limited", False):
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "errors": {"__all__": ["Za dużo zgłoszeń. Spróbuj później."]},
+                },
+                status=429,
+            )
+
         form = BugReportForm(request.POST)
         if not form.is_valid():
             return JsonResponse({"ok": False, "errors": form.errors}, status=400)

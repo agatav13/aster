@@ -6,10 +6,12 @@ from django.contrib.auth.tokens import default_token_generator
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views import View
 from django.views.generic import FormView, TemplateView, UpdateView
+from django_ratelimit.decorators import ratelimit
 
 from .forms import (
     DisplayNameForm,
@@ -24,10 +26,28 @@ from .utils import send_activation_email
 logger = logging.getLogger(__name__)
 
 
-class RegisterView(FormView):
+class _RateLimitedFormView(FormView):
+    """FormView that turns a tripped django-ratelimit (block=False) into a
+    non-field form error instead of an abrupt 403, keeping the normal page."""
+
+    ratelimit_message = "Za dużo prób. Spróbuj ponownie za chwilę."
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        if getattr(request, "limited", False):
+            form = self.get_form()
+            form.add_error(None, self.ratelimit_message)
+            return self.form_invalid(form)
+        return super().post(request, *args, **kwargs)
+
+
+@method_decorator(
+    ratelimit(key="ip", rate="5/h", method="POST", block=False), name="dispatch"
+)
+class RegisterView(_RateLimitedFormView):
     template_name = "accounts/register.html"
     form_class = RegisterForm
     success_url = reverse_lazy("accounts:activation_sent")
+    ratelimit_message = "Za dużo prób rejestracji. Spróbuj ponownie później."
 
     def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         if request.user.is_authenticated:
@@ -51,10 +71,14 @@ class ActivationSentView(TemplateView):
     template_name = "accounts/activation_sent.html"
 
 
-class LoginView(FormView):
+@method_decorator(
+    ratelimit(key="ip", rate="10/m", method="POST", block=False), name="dispatch"
+)
+class LoginView(_RateLimitedFormView):
     template_name = "accounts/login.html"
     form_class = LoginForm
     success_url = reverse_lazy("home")
+    ratelimit_message = "Za dużo prób logowania. Spróbuj ponownie za chwilę."
 
     def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         if request.user.is_authenticated:
@@ -104,10 +128,14 @@ class ActivateAccountView(View):
         return render(request, self.template_name, context)
 
 
-class ResendActivationView(FormView):
+@method_decorator(
+    ratelimit(key="ip", rate="5/h", method="POST", block=False), name="dispatch"
+)
+class ResendActivationView(_RateLimitedFormView):
     template_name = "accounts/resend_activation.html"
     form_class = ResendActivationForm
     success_url = reverse_lazy("accounts:activation_sent")
+    ratelimit_message = "Za dużo prób. Spróbuj ponownie później."
 
     def form_valid(self, form):
         email = form.cleaned_data["email"]
