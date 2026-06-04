@@ -1663,7 +1663,7 @@ issue trackerach obu pluginów.</p>
 <tr>
 <td><code>DJANGO_SECRET_KEY</code></td>
 <td>losowy 64+ znaków</td>
-<td>sekret sesji i tokenów</td>
+<td>sekret sesji i tokenów; <strong>wymagany</strong> przy <code>DEBUG=False</code> — start aplikacji przerywa <code>ImproperlyConfigured</code>, gdy zmienna jest pusta lub zostaje placeholderem <code>change-me</code></td>
 </tr>
 <tr>
 <td><code>DJANGO_DEBUG</code></td>
@@ -1729,6 +1729,11 @@ issue trackerach obu pluginów.</p>
 <td><code>CSRF_TRUSTED_ORIGINS</code></td>
 <td><code>https://aster-1lf7.onrender.com</code></td>
 <td>wymagane dla POST z innego subdomenu</td>
+</tr>
+<tr>
+<td><code>RATELIMIT_ENABLE</code></td>
+<td><code>True</code> (domyślnie)</td>
+<td>włącza limity (django-ratelimit) na logowaniu, rejestracji, ponownej aktywacji i zgłaszaniu błędów; liczniki w cache (Redis)</td>
 </tr>
 </tbody>
 </table>

@@ -937,6 +937,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#movies_commentreport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        movies_commentreport
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#movies_movienote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        movies_movienote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#movies_person-i-movies_moviecredit" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1550,6 +1572,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#movies_commentreport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        movies_commentreport
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#movies_movienote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        movies_movienote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#movies_person-i-movies_moviecredit" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1603,6 +1647,8 @@
 <pre class="mermaid"><code>erDiagram
     USER ||--o{ RATING : wystawia
     USER ||--o{ COMMENT : pisze
+    USER ||--o{ COMMENT_REPORT : zgłasza
+    USER ||--o{ MOVIE_NOTE : "notuje (prywatnie)"
     USER ||--o{ USER_MOVIE_STATUS : oznacza
     USER }o--o{ GENRE : "ulubione (m2m)"
     USER ||--o{ FOLLOW : "obserwuje (jako follower)"
@@ -1610,10 +1656,12 @@
 
     MOVIE ||--o{ RATING : ocena
     MOVIE ||--o{ COMMENT : komentowany
+    MOVIE ||--o{ MOVIE_NOTE : "dziennik"
     MOVIE ||--o{ USER_MOVIE_STATUS : status
     MOVIE }o--o{ GENRE : klasyfikacja
     MOVIE ||--o{ MOVIE_CREDIT : "obsada/reżyseria"
     PERSON ||--o{ MOVIE_CREDIT : występuje
+    COMMENT ||--o{ COMMENT_REPORT : zgłoszony
 
     USER {
         bigint id PK
@@ -1677,6 +1725,21 @@
         datetime created_at
         datetime updated_at
         datetime moderated_at
+    }
+    COMMENT_REPORT {
+        bigint id PK
+        bigint comment_id FK
+        bigint reporter_id FK
+        string reason "spam | offensive | spoiler | other"
+        datetime created_at
+    }
+    MOVIE_NOTE {
+        bigint id PK
+        bigint user_id FK
+        bigint movie_id FK
+        text content
+        datetime created_at
+        datetime updated_at
     }
     PERSON {
         bigint id PK
@@ -1942,8 +2005,12 @@ przełącza stan.</p>
 <li><strong><code>UniqueConstraint(user, movie)</code></strong> — jeden status na film na użytkownika; przejście <code>watchlist</code> → <code>watched</code> to UPDATE.</li>
 </ul>
 <h3 id="movies_comment"><code>movies_comment</code><a class="headerlink" href="#movies_comment" title="Permanent link">&para;</a></h3>
-<p>Komentarze pod filmem. Pola <code>toxicity_score</code> i statusy
-<code>flagged</code>/<code>hidden</code> są przygotowane na przyszłą wersję.</p>
+<p>Komentarze pod filmem. Status <code>flagged</code> jest już aktywny — komentarz
+przechodzi w ten stan automatycznie po zgłoszeniu przez
+<code>Comment.REPORTS_TO_FLAG</code> (domyślnie 3) różnych użytkowników (patrz
+<code>movies_commentreport</code> niżej) i wypada z publicznej listy do czasu
+przeglądu. <code>hidden</code> ustawia moderator z akcji adminowej. Pole
+<code>toxicity_score</code> pozostaje rezerwacją na automoderację.</p>
 <table>
 <thead>
 <tr>
@@ -1981,7 +2048,7 @@ przełącza stan.</p>
 <tr>
 <td><code>toxicity_score</code></td>
 <td>decimal(5,4)</td>
-<td>nullable (rezerwacja na ver_2)</td>
+<td>nullable (rezerwacja na automoderację)</td>
 </tr>
 <tr>
 <td><code>created_at</code>, <code>updated_at</code></td>
@@ -1995,6 +2062,97 @@ przełącza stan.</p>
 </tr>
 </tbody>
 </table>
+<ul>
+<li>Indeks <code>(movie, status, -created_at)</code> (<code>ix_comments_movie_status</code>) — wspiera filtr publicznej listy po <code>status='visible'</code>.</li>
+</ul>
+<h3 id="movies_commentreport"><code>movies_commentreport</code><a class="headerlink" href="#movies_commentreport" title="Permanent link">&para;</a></h3>
+<p>Zgłoszenie komentarza łamiącego zasady społeczności. Zgłoszenia
+kumulują się, jeden wiersz na parę <code>(comment, reporter)</code>. Po
+przekroczeniu progu <code>Comment.REPORTS_TO_FLAG</code> komentarz auto-flipuje na
+<code>flagged</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Kolumna</th>
+<th>Typ</th>
+<th>Uwagi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>bigint PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>comment_id</code></td>
+<td>bigint FK → comment</td>
+<td>ON DELETE CASCADE</td>
+</tr>
+<tr>
+<td><code>reporter_id</code></td>
+<td>bigint FK → user</td>
+<td>ON DELETE CASCADE</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td>varchar(20)</td>
+<td><code>spam</code> / <code>offensive</code> / <code>spoiler</code> / <code>other</code></td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>datetime</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong><code>UniqueConstraint(comment, reporter)</code></strong> (<code>uq_comment_report_pair</code>) — jeden użytkownik nie zawyża licznika dla tego samego komentarza.</li>
+</ul>
+<h3 id="movies_movienote"><code>movies_movienote</code><a class="headerlink" href="#movies_movienote" title="Permanent link">&para;</a></h3>
+<p>Prywatny dziennik — wpis o filmie widoczny <strong>wyłącznie</strong> dla autora,
+nigdy nie trafia na żadną publiczną listę. Prywatny odpowiednik
+<code>movies_comment</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Kolumna</th>
+<th>Typ</th>
+<th>Uwagi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>bigint PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>user_id</code></td>
+<td>bigint FK → user</td>
+<td>ON DELETE CASCADE</td>
+</tr>
+<tr>
+<td><code>movie_id</code></td>
+<td>bigint FK → movie</td>
+<td>ON DELETE CASCADE</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td>text(2000)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>created_at</code>, <code>updated_at</code></td>
+<td>datetime</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Brak</strong> <code>UniqueConstraint(user, movie)</code> — świadoma decyzja: użytkownik prowadzi <em>wiele</em> wpisów na film, więc funkcja czyta się jak dziennik, a nie pojedyncze edytowalne pole.</li>
+<li>Indeksy <code>(user, movie, -created_at)</code> (<code>ix_notes_user_movie</code>) i <code>(user, -created_at)</code> (<code>ix_notes_user_recent</code>) — wspierają sekcję dziennika na stronie filmu oraz zbiorczy timeline pod <code>/auth/journal/</code>.</li>
+</ul>
 <h3 id="movies_person-i-movies_moviecredit"><code>movies_person</code> i <code>movies_moviecredit</code><a class="headerlink" href="#movies_person-i-movies_moviecredit" title="Permanent link">&para;</a></h3>
 <p>Obsada i reżyseria z TMDB.</p>
 <p><code>movies_person</code> — jedna osoba (aktor lub reżyser).</p>

@@ -1458,6 +1458,12 @@
 <td>Współdzielony cache między workerami Gunicorna; w dev fallback do <code>LocMemCache</code>, w testach <code>DummyCache</code></td>
 </tr>
 <tr>
+<td>Rate limiting</td>
+<td>django-ratelimit</td>
+<td>4.1+</td>
+<td>Limity na endpointach auth i zgłaszania błędów; liczniki w skonfigurowanym cache (Redis w prod). Wyłączalne przez <code>RATELIMIT_ENABLE</code></td>
+</tr>
+<tr>
 <td>Serwer aplikacyjny</td>
 <td>Gunicorn</td>
 <td>23.x</td>

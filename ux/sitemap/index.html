@@ -1417,6 +1417,7 @@ poziom dostępu.</p>
     health["/health/"]
     admin["/admin/&lt;br/&gt;&lt;i&gt;panel Django&lt;/i&gt;"]
     sw["/service-worker.js&lt;br/&gt;&lt;i&gt;service worker (PWA)&lt;/i&gt;"]
+    links["/links/&lt;br/&gt;&lt;i&gt;publiczny hub linków (QR)&lt;/i&gt;"]
 
     subgraph Auth["/auth/"]
       login["/auth/login/"]
@@ -1458,6 +1459,7 @@ poziom dostępu.</p>
     root --&gt; Movies
     root --&gt; Auth
     root --&gt; Community
+    root --&gt; links
     detail --&gt; status_act
     detail --&gt; rating_act
     detail --&gt; comment_create

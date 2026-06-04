@@ -932,6 +932,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#post-moviestmdb_idcommentscomment_idreport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /movies/&lt;tmdb_id&gt;/comments/&lt;comment_id&gt;/report/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-moviestmdb_idnotes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /movies/&lt;tmdb_id&gt;/notes/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-moviestmdb_idnotesnote_iddelete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /movies/&lt;tmdb_id&gt;/notes/&lt;note_id&gt;/delete/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#post-communitypeopleuser_idfollow" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1523,6 +1556,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#post-moviestmdb_idcommentscomment_idreport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /movies/&lt;tmdb_id&gt;/comments/&lt;comment_id&gt;/report/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-moviestmdb_idnotes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /movies/&lt;tmdb_id&gt;/notes/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-moviestmdb_idnotesnote_iddelete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /movies/&lt;tmdb_id&gt;/notes/&lt;note_id&gt;/delete/
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#post-communitypeopleuser_idfollow" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1687,6 +1753,46 @@ przegląd kontraktu wybranych endpointów modyfikujących stan.</p>
 </table>
 <h3 id="post-moviestmdb_idcommentscomment_iddelete"><code>POST /movies/&lt;tmdb_id&gt;/comments/&lt;comment_id&gt;/delete/</code><a class="headerlink" href="#post-moviestmdb_idcommentscomment_iddelete" title="Permanent link">&para;</a></h3>
 <p>Usuwa komentarz. Tylko autor (sprawdzane w <code>services.delete_own_comment</code>).</p>
+<h3 id="post-moviestmdb_idcommentscomment_idreport"><code>POST /movies/&lt;tmdb_id&gt;/comments/&lt;comment_id&gt;/report/</code><a class="headerlink" href="#post-moviestmdb_idcommentscomment_idreport" title="Permanent link">&para;</a></h3>
+<p>Zgłasza cudzy komentarz. Jeden wiersz na parę <code>(comment, reporter)</code>
+(<code>services.report_comment</code>); ponowne zgłoszenie jest no-opem. Po
+zgłoszeniu przez <code>Comment.REPORTS_TO_FLAG</code> (domyślnie 3) różnych
+użytkowników komentarz auto-flipuje na <code>flagged</code> i wypada z publicznej
+listy.</p>
+<table>
+<thead>
+<tr>
+<th>Pole</th>
+<th>Wartości</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reason</code></td>
+<td><code>spam</code> / <code>offensive</code> / <code>spoiler</code> / <code>other</code></td>
+<td>powód zgłoszenia</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-moviestmdb_idnotes"><code>POST /movies/&lt;tmdb_id&gt;/notes/</code><a class="headerlink" href="#post-moviestmdb_idnotes" title="Permanent link">&para;</a></h3>
+<p>Tworzy prywatny wpis dziennika (widoczny tylko dla autora).</p>
+<table>
+<thead>
+<tr>
+<th>Pole</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>content</code></td>
+<td>text, max 2000 znaków</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-moviestmdb_idnotesnote_iddelete"><code>POST /movies/&lt;tmdb_id&gt;/notes/&lt;note_id&gt;/delete/</code><a class="headerlink" href="#post-moviestmdb_idnotesnote_iddelete" title="Permanent link">&para;</a></h3>
+<p>Usuwa wpis dziennika. Tylko autor (sprawdzane w <code>services.delete_own_note</code>).</p>
 <h3 id="post-communitypeopleuser_idfollow"><code>POST /community/people/&lt;user_id&gt;/follow/</code><a class="headerlink" href="#post-communitypeopleuser_idfollow" title="Permanent link">&para;</a></h3>
 <p>Toggle obserwowania innego użytkownika. Idempotentny: jeśli relacja
 istnieje — usuwa, w przeciwnym razie tworzy <code>community.Follow</code>.</p>
