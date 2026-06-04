@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -18,6 +19,10 @@ def env_bool(name: str, default: bool) -> bool:
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me")
 DEBUG = env_bool("DJANGO_DEBUG", True)
+if not DEBUG and SECRET_KEY in {"", "change-me"}:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be set to a unique, secret value when DEBUG is off."
+    )
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
@@ -159,6 +164,11 @@ LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "home"
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+
+# Rate limiting (django-ratelimit). Counters live in the configured cache
+# backend (Redis across workers in production). The test suite's DummyCache
+# makes every request look fresh, so limits never fire under pytest.
+RATELIMIT_ENABLE = env_bool("RATELIMIT_ENABLE", True)
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")

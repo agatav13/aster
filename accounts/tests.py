@@ -334,3 +334,38 @@ class AuthFlowTests(TestCase):
             {"email": user.email, "password": "NoweHaslo123!"},
         )
         self.assertRedirects(login_response, reverse("home"))
+
+
+@override_settings(
+    RATELIMIT_ENABLE=True,
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "ratelimit-tests",
+        }
+    },
+)
+class RateLimitTests(TestCase):
+    """The global test cache is a DummyCache that never counts, so these tests
+    swap in a real LocMemCache to exercise the django-ratelimit decorators."""
+
+    def setUp(self):
+        from django.core.cache import caches
+
+        caches["default"].clear()
+
+    def test_login_attempts_are_rate_limited_per_ip(self):
+        url = reverse("accounts:login")
+        creds = {"email": "nobody@example.com", "password": "wrong-password"}
+        for _ in range(10):  # rate is 10/m; all of these are allowed
+            self.client.post(url, creds)
+        response = self.client.post(url, creds)  # the 11th trips the limiter
+        self.assertContains(response, "Za dużo prób logowania")
+
+    def test_registration_attempts_are_rate_limited_per_ip(self):
+        url = reverse("accounts:register")
+        payload = {"email": "x@example.com"}  # invalid form, but still counts
+        for _ in range(5):  # rate is 5/h
+            self.client.post(url, payload)
+        response = self.client.post(url, payload)
+        self.assertContains(response, "Za dużo prób rejestracji")

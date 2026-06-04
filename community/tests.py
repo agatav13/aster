@@ -201,6 +201,15 @@ class FollowToggleViewTests(TestCase):
         response = self.client.post(self.url, {"next": profile_url})
         self.assertRedirects(response, profile_url)
 
+    def test_rejects_offsite_next_redirect(self) -> None:
+        self.client.force_login(self.me)
+        people_url = reverse("community:people")
+        for hostile in ("https://evil.example/phish", "//evil.example/phish"):
+            with self.subTest(next=hostile):
+                response = self.client.post(self.url, {"next": hostile})
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.url, people_url)
+
 
 class FolloweeIdsTests(TestCase):
     def test_returns_only_users_i_follow_directionally(self) -> None:
