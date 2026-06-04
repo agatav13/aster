@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-06-04
+
 ### Added
 
 - **Private movie diary (notatki / dziennik)** — logged-in users can keep private, per-movie diary entries that nobody else can see, the private counterpart to the public comment thread. New `movies.MovieNote` model (`user`, `movie`, `content` ≤ 2000 chars, timestamps) — deliberately **without** a unique `(user, movie)` constraint (unlike `Rating` / `UserMovieStatus`), so a user keeps *multiple entries* per film and the feature reads like a journal rather than a single editable box. A new **"Prywatny dziennik"** section on the movie detail page (`templates/movies/_notes_section.html`, rendered authenticated-only) carries a composer and lists the user's own entries newest-first, styled as a tinted left-accent panel so it reads as visually separate from the public comments above it. New service helpers `notes_for` / `create_note` / `delete_own_note` / `journal_entries` in `movies/services.py` (ownership and trim/length validation live in the service), the `movies:create_note` / `movies:delete_note` views + URLs (htmx fragment + plain-redirect fallback, mirroring the comment create/delete flow). A dedicated journal page at `/auth/journal/` (`accounts.JournalView`, linked from the account dropdown as **"Mój dziennik"**) aggregates every entry across all films into a day-grouped chronological timeline with poster thumbnails linking back to each movie — the private mirror of the public friends-activity feed — with a header stat strip (entries / films) and an empty state. `MovieNote` registered in the Django admin. Migration `movies/0011_movienote.py`.
@@ -113,6 +115,7 @@ First public release of the documentation and the supporting test suites.
 - Bump Django from 5.2.12 → 5.2.13 to remediate 5 CVEs surfaced by `pip-audit`.
 - Production hardening in `config/settings.py` activated when `DEBUG=False`: `SECURE_SSL_REDIRECT`, HSTS (1 year, include subdomains, preload), secure cookies, `X_FRAME_OPTIONS=DENY`, `SECURE_REFERRER_POLICY=same-origin`, `SECURE_CONTENT_TYPE_NOSNIFF`.
 
-[Unreleased]: https://github.com/agatav13/aster/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/agatav13/aster/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/agatav13/aster/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/agatav13/aster/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/agatav13/aster/releases/tag/v0.1.0
