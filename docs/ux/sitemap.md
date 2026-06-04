@@ -11,6 +11,7 @@ graph TD
     health["/health/"]
     admin["/admin/<br/><i>panel Django</i>"]
     sw["/service-worker.js<br/><i>service worker (PWA)</i>"]
+    links["/links/<br/><i>publiczny hub linków (QR)</i>"]
 
     subgraph Auth["/auth/"]
       login["/auth/login/"]
@@ -52,6 +53,7 @@ graph TD
     root --> Movies
     root --> Auth
     root --> Community
+    root --> links
     detail --> status_act
     detail --> rating_act
     detail --> comment_create

@@ -12,6 +12,7 @@
 | Sterownik DB | psycopg | 3.2+ (binary) | Najnowsza generacja sterownika postgres |
 | Konfiguracja URL bazy | dj-database-url | 2.3+ | Parsuje `DATABASE_URL` |
 | Cache | Redis (prod) / LocMem (dev) | redis 5.x | Współdzielony cache między workerami Gunicorna; w dev fallback do `LocMemCache`, w testach `DummyCache` |
+| Rate limiting | django-ratelimit | 4.1+ | Limity na endpointach auth i zgłaszania błędów; liczniki w skonfigurowanym cache (Redis w prod). Wyłączalne przez `RATELIMIT_ENABLE` |
 | Serwer aplikacyjny | Gunicorn | 23.x | Stabilny WSGI |
 | Kompresja HTTP | `django.middleware.gzip.GZipMiddleware` | wbudowane | GZip dla dynamicznych odpowiedzi (statyki obsługuje WhiteNoise) |
 | Statyki | WhiteNoise | 6.x | Eliminuje potrzebę osobnego CDN, kompresja Brotli/gzip + manifest |
