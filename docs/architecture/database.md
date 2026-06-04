@@ -9,6 +9,8 @@ Aster używa **SQLite** w środowisku developerskim oraz
 erDiagram
     USER ||--o{ RATING : wystawia
     USER ||--o{ COMMENT : pisze
+    USER ||--o{ COMMENT_REPORT : zgłasza
+    USER ||--o{ MOVIE_NOTE : "notuje (prywatnie)"
     USER ||--o{ USER_MOVIE_STATUS : oznacza
     USER }o--o{ GENRE : "ulubione (m2m)"
     USER ||--o{ FOLLOW : "obserwuje (jako follower)"
@@ -16,10 +18,12 @@ erDiagram
 
     MOVIE ||--o{ RATING : ocena
     MOVIE ||--o{ COMMENT : komentowany
+    MOVIE ||--o{ MOVIE_NOTE : "dziennik"
     MOVIE ||--o{ USER_MOVIE_STATUS : status
     MOVIE }o--o{ GENRE : klasyfikacja
     MOVIE ||--o{ MOVIE_CREDIT : "obsada/reżyseria"
     PERSON ||--o{ MOVIE_CREDIT : występuje
+    COMMENT ||--o{ COMMENT_REPORT : zgłoszony
 
     USER {
         bigint id PK
@@ -83,6 +87,21 @@ erDiagram
         datetime created_at
         datetime updated_at
         datetime moderated_at
+    }
+    COMMENT_REPORT {
+        bigint id PK
+        bigint comment_id FK
+        bigint reporter_id FK
+        string reason "spam | offensive | spoiler | other"
+        datetime created_at
+    }
+    MOVIE_NOTE {
+        bigint id PK
+        bigint user_id FK
+        bigint movie_id FK
+        text content
+        datetime created_at
+        datetime updated_at
     }
     PERSON {
         bigint id PK
@@ -185,8 +204,12 @@ przełącza stan.
 
 ### `movies_comment`
 
-Komentarze pod filmem. Pola `toxicity_score` i statusy
-`flagged`/`hidden` są przygotowane na przyszłą wersję.
+Komentarze pod filmem. Status `flagged` jest już aktywny — komentarz
+przechodzi w ten stan automatycznie po zgłoszeniu przez
+`Comment.REPORTS_TO_FLAG` (domyślnie 3) różnych użytkowników (patrz
+`movies_commentreport` niżej) i wypada z publicznej listy do czasu
+przeglądu. `hidden` ustawia moderator z akcji adminowej. Pole
+`toxicity_score` pozostaje rezerwacją na automoderację.
 
 | Kolumna | Typ | Uwagi |
 |---|---|---|
@@ -195,9 +218,45 @@ Komentarze pod filmem. Pola `toxicity_score` i statusy
 | `movie_id` | bigint FK → movie | |
 | `content` | text(2000) | |
 | `status` | varchar(20) | `visible` / `flagged` / `hidden` / `deleted` |
-| `toxicity_score` | decimal(5,4) | nullable (rezerwacja na ver_2) |
+| `toxicity_score` | decimal(5,4) | nullable (rezerwacja na automoderację) |
 | `created_at`, `updated_at` | datetime | |
 | `moderated_at` | datetime | nullable |
+
+- Indeks `(movie, status, -created_at)` (`ix_comments_movie_status`) — wspiera filtr publicznej listy po `status='visible'`.
+
+### `movies_commentreport`
+
+Zgłoszenie komentarza łamiącego zasady społeczności. Zgłoszenia
+kumulują się, jeden wiersz na parę `(comment, reporter)`. Po
+przekroczeniu progu `Comment.REPORTS_TO_FLAG` komentarz auto-flipuje na
+`flagged`.
+
+| Kolumna | Typ | Uwagi |
+|---|---|---|
+| `id` | bigint PK | |
+| `comment_id` | bigint FK → comment | ON DELETE CASCADE |
+| `reporter_id` | bigint FK → user | ON DELETE CASCADE |
+| `reason` | varchar(20) | `spam` / `offensive` / `spoiler` / `other` |
+| `created_at` | datetime | |
+
+- **`UniqueConstraint(comment, reporter)`** (`uq_comment_report_pair`) — jeden użytkownik nie zawyża licznika dla tego samego komentarza.
+
+### `movies_movienote`
+
+Prywatny dziennik — wpis o filmie widoczny **wyłącznie** dla autora,
+nigdy nie trafia na żadną publiczną listę. Prywatny odpowiednik
+`movies_comment`.
+
+| Kolumna | Typ | Uwagi |
+|---|---|---|
+| `id` | bigint PK | |
+| `user_id` | bigint FK → user | ON DELETE CASCADE |
+| `movie_id` | bigint FK → movie | ON DELETE CASCADE |
+| `content` | text(2000) | |
+| `created_at`, `updated_at` | datetime | |
+
+- **Brak** `UniqueConstraint(user, movie)` — świadoma decyzja: użytkownik prowadzi *wiele* wpisów na film, więc funkcja czyta się jak dziennik, a nie pojedyncze edytowalne pole.
+- Indeksy `(user, movie, -created_at)` (`ix_notes_user_movie`) i `(user, -created_at)` (`ix_notes_user_recent`) — wspierają sekcję dziennika na stronie filmu oraz zbiorczy timeline pod `/auth/journal/`.
 
 ### `movies_person` i `movies_moviecredit`
 

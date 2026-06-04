@@ -44,6 +44,30 @@ Tworzy komentarz.
 
 Usuwa komentarz. Tylko autor (sprawdzane w `services.delete_own_comment`).
 
+### `POST /movies/<tmdb_id>/comments/<comment_id>/report/`
+
+Zgłasza cudzy komentarz. Jeden wiersz na parę `(comment, reporter)`
+(`services.report_comment`); ponowne zgłoszenie jest no-opem. Po
+zgłoszeniu przez `Comment.REPORTS_TO_FLAG` (domyślnie 3) różnych
+użytkowników komentarz auto-flipuje na `flagged` i wypada z publicznej
+listy.
+
+| Pole | Wartości | Opis |
+|---|---|---|
+| `reason` | `spam` / `offensive` / `spoiler` / `other` | powód zgłoszenia |
+
+### `POST /movies/<tmdb_id>/notes/`
+
+Tworzy prywatny wpis dziennika (widoczny tylko dla autora).
+
+| Pole | Opis |
+|---|---|
+| `content` | text, max 2000 znaków |
+
+### `POST /movies/<tmdb_id>/notes/<note_id>/delete/`
+
+Usuwa wpis dziennika. Tylko autor (sprawdzane w `services.delete_own_note`).
+
 ### `POST /community/people/<user_id>/follow/`
 
 Toggle obserwowania innego użytkownika. Idempotentny: jeśli relacja

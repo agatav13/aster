@@ -85,7 +85,7 @@ Render uruchamia: `uv run gunicorn config.wsgi:application` (parametry serwowani
 
 | Zmienna | Wartość przykładowa | Opis |
 |---|---|---|
-| `DJANGO_SECRET_KEY` | losowy 64+ znaków | sekret sesji i tokenów |
+| `DJANGO_SECRET_KEY` | losowy 64+ znaków | sekret sesji i tokenów; **wymagany** przy `DEBUG=False` — start aplikacji przerywa `ImproperlyConfigured`, gdy zmienna jest pusta lub zostaje placeholderem `change-me` |
 | `DJANGO_DEBUG` | `False` | wyłącza tryb dev |
 | `DJANGO_ALLOWED_HOSTS` | `aster-1lf7.onrender.com` | jak w hoście Render |
 | `DATABASE_URL` | `postgresql://...` | z Render Managed DB |
@@ -99,6 +99,7 @@ Render uruchamia: `uv run gunicorn config.wsgi:application` (parametry serwowani
 | `APP_BASE_URL` | `https://aster-1lf7.onrender.com` | bazowy URL dla linków w mailach |
 | `DJANGO_ADMIN_URL` | np. `secret-admin/` | utrudnia automatyczne skanowanie |
 | `CSRF_TRUSTED_ORIGINS` | `https://aster-1lf7.onrender.com` | wymagane dla POST z innego subdomenu |
+| `RATELIMIT_ENABLE` | `True` (domyślnie) | włącza limity (django-ratelimit) na logowaniu, rejestracji, ponownej aktywacji i zgłaszaniu błędów; liczniki w cache (Redis) |
 
 ### Hardening produkcyjny (włączane gdy `DEBUG=False`)
 
