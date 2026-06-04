@@ -1609,6 +1609,18 @@ trzech automatycznych skanerów uruchamianych na każdym PR
 <td>Auto-escape w szablonach Django + <code>SECURE_CONTENT_TYPE_NOSNIFF</code></td>
 </tr>
 <tr>
+<td>Rate limiting</td>
+<td><code>django-ratelimit</code> na logowaniu (10/min/IP), rejestracji i ponownej aktywacji (5/h/IP) oraz zgłoszeniach błędów (10/h/użytkownik); licznik w cache (Redis na produkcji)</td>
+</tr>
+<tr>
+<td>Open redirect</td>
+<td>Walidacja parametru <code>next</code> przez <code>url_has_allowed_host_and_scheme</code> (tylko hosty aplikacji)</td>
+</tr>
+<tr>
+<td>Ochrona SECRET_KEY</td>
+<td>Start aplikacji przerywany (<code>ImproperlyConfigured</code>), gdy <code>DEBUG=False</code> a <code>SECRET_KEY</code> pozostaje domyślny</td>
+</tr>
+<tr>
 <td>Static analysis (kod)</td>
 <td><code>bandit -ll</code> (medium+ severity) na każdym PR</td>
 </tr>
@@ -1635,9 +1647,6 @@ trzech automatycznych skanerów uruchamianych na każdym PR
 <p>Pełne raporty: <a href="../../testing/reports/#bezpieczenstwo">Raporty testowe → Bezpieczeństwo</a>.</p>
 <h3 id="zaakceptowane-ryzyka-ver_1">Zaakceptowane ryzyka (ver_1)<a class="headerlink" href="#zaakceptowane-ryzyka-ver_1" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Brak rate limiting</strong> na endpointach logowania i rejestracji — do
-  wdrożenia. Ryzyko: brute-force
-  haseł, spam rejestracji.</li>
 <li><strong>Brak 2FA</strong> — kompromis między prostotą onboardingu a poziomem
   bezpieczeństwa kont. Akceptowalny dla aplikacji o niskim zagrożeniu
   (brak danych płatniczych, brak danych wrażliwych).</li>
