@@ -2234,11 +2234,13 @@ class CommentRateLimitTests(TestCase):
 
     def test_comment_creation_is_rate_limited_per_user(self) -> None:
         url = reverse("movies:create_comment", args=[self.movie.tmdb_id])
-        for i in range(30):  # rate is 30/h
-            self.client.post(url, {"content": f"komentarz {i}"})
-        self.assertEqual(Comment.objects.filter(user=self.user).count(), 30)
+        # Pin the limiter clock so the requests can't straddle a window edge.
+        with patch("django_ratelimit.core.time.time", return_value=1_700_000_000.0):
+            for i in range(30):  # rate is 30/h
+                self.client.post(url, {"content": f"komentarz {i}"})
+            self.assertEqual(Comment.objects.filter(user=self.user).count(), 30)
 
-        response = self.client.post(url, {"content": "ponad limit"})
+            response = self.client.post(url, {"content": "ponad limit"})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Comment.objects.filter(user=self.user).count(), 30)
 
