@@ -2204,3 +2204,40 @@ class JournalViewTests(TestCase):
         response = self.client.get(reverse("accounts:journal"))
         groups = response.context["groups"]
         self.assertEqual(groups[0]["date"], date(2026, 1, 11))
+
+
+@override_settings(
+    RATELIMIT_ENABLE=True,
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "movie-comment-ratelimit-tests",
+        }
+    },
+)
+class CommentRateLimitTests(TestCase):
+    """Comments are public content, so creation is throttled per user (30/h).
+    Uses a real LocMemCache because the global test DummyCache never counts."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.user = get_user_model().objects.create_user(
+            email="comment-limit@example.com", password="StrongPass123!"
+        )
+        cls.movie = make_movie(tmdb_id=9400, title="Limit Flick")
+
+    def setUp(self) -> None:
+        from django.core.cache import caches
+
+        caches["default"].clear()
+        self.client.force_login(self.user)
+
+    def test_comment_creation_is_rate_limited_per_user(self) -> None:
+        url = reverse("movies:create_comment", args=[self.movie.tmdb_id])
+        for i in range(30):  # rate is 30/h
+            self.client.post(url, {"content": f"komentarz {i}"})
+        self.assertEqual(Comment.objects.filter(user=self.user).count(), 30)
+
+        response = self.client.post(url, {"content": "ponad limit"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Comment.objects.filter(user=self.user).count(), 30)
