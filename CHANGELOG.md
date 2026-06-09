@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+### Security
+
+- Bumped Django 5.2.14 → 5.2.15 (PYSEC-2026-197 through PYSEC-2026-201) and pip 26.1.1 → 26.1.2 (PYSEC-2026-196) in `uv.lock`; the `pyproject.toml` floor is now `Django>=5.2.15`.
+
 ### Fixed
+
+- Gave the `django-deploy-check` CI job a dummy `DATABASE_URL` (`.github/workflows/security.yml`) — the job runs with `DJANGO_DEBUG=False`, so the new fail-safe in `config/settings.py` (refuse to boot without `DATABASE_URL` when `DEBUG` is off) correctly aborted it. `manage.py check --deploy` only parses the URL, never connects.
 
 - Grouped private-diary entries on `/auth/journal/` by local calendar day — `accounts.JournalView` now buckets notes with `timezone.localdate(note.created_at)` instead of `note.created_at.date()`, so a note written just after midnight in Europe/Warsaw is no longer filed under the previous (UTC) day.
 - Rejected non-finite movie ratings — `update_movie_rating` (`movies/views.py`) and `upsert_rating` (`movies/services.py`) now guard `score.is_finite()`, so a `NaN`/`inf` value (which constructs as a `Decimal` but raises on comparison) is turned away cleanly instead of 500-ing.
