@@ -36,6 +36,10 @@ jobs:
     env:
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: aster-1lf7.onrender.com
+      # Parsed by dj-database-url but never connected to — check --deploy
+      # only runs system checks. Without it the fail-safe in
+      # config/settings.py (DATABASE_URL required when DEBUG is off) aborts.
+      DATABASE_URL: postgres://ci:ci@localhost:5432/aster
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
