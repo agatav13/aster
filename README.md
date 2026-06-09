@@ -37,7 +37,7 @@ The full project documentation lives at <https://agatav13.github.io/aster/> and 
 - Testing: strategy and reproducible reports for unit/E2E/perf/security/a11y
 - Maintenance: admin and user guides, changelog
 
-The docs source lives in `docs/` (markdown). Build locally with `uv run mkdocs serve`.
+The docs source lives in `docs/` (markdown). Build locally with `uv run --group docs mkdocs serve`.
 
 ## Quick Start
 
@@ -45,8 +45,12 @@ The docs source lives in `docs/` (markdown). Build locally with `uv run mkdocs s
 
 ```bash
 DJANGO_SECRET_KEY=dev-secret-change-me
+DJANGO_DEBUG=True
 TMDB_API_KEY=your-tmdb-v3-key
 ```
+
+(`DJANGO_DEBUG` defaults to `False` — production behavior — so local
+development must opt in explicitly.)
 
 2. Install dependencies:
 
@@ -54,10 +58,13 @@ TMDB_API_KEY=your-tmdb-v3-key
 uv sync --group dev
 ```
 
-3. Run database migrations:
+3. Run database migrations and seed the genre dictionary (registration
+   requires picking favorite genres, and the tiles come from this table):
 
 ```bash
 uv run manage.py migrate
+uv run manage.py sync_tmdb_genres
+uv run manage.py sync_tmdb_popular --pages 3  # optional: seed the catalogue
 ```
 
 4. Start the development server:
