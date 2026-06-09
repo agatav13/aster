@@ -325,15 +325,7 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
         logger.warning("TMDB fetch failed for tmdb_id=%s: %s", tmdb_id, exc)
         raise Http404("Could not fetch movie from TMDB.") from exc
 
-    user_status: str | None = None
-    user_rating: int | None = None
-    if request.user.is_authenticated:
-        status_row = UserMovieStatus.objects.filter(
-            user=request.user, movie=movie
-        ).first()
-        user_status = status_row.status if status_row else None
-        rating_row = Rating.objects.filter(user=request.user, movie=movie).first()
-        user_rating = rating_row.score if rating_row else None
+    user_status, user_rating = _user_movie_state(request.user, movie)
 
     comments = list(visible_comments_for(movie))
     notes = list(notes_for(request.user, movie))

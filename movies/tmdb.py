@@ -316,25 +316,6 @@ class TmdbClient:
             results=results,
         )
 
-    def list_top_rated(self, page: int = 1) -> TmdbDiscoverResponse:
-        """Top-rated movies across TMDB's all-time chart."""
-        payload = self._get("/movie/top_rated", params={"page": page})
-        return _validate(TmdbDiscoverResponse, payload)
-
-    def list_now_playing(self, page: int = 1) -> TmdbDiscoverResponse:
-        """Movies currently playing in theatres.
-
-        TMDB's `/movie/now_playing` is region-sensitive; we leave `region`
-        unset so TMDB picks a sensible default from the configured language.
-        """
-        payload = self._get("/movie/now_playing", params={"page": page})
-        return _validate(TmdbDiscoverResponse, payload)
-
-    def list_upcoming(self, page: int = 1) -> TmdbDiscoverResponse:
-        """Upcoming theatrical releases in the next few weeks."""
-        payload = self._get("/movie/upcoming", params={"page": page})
-        return _validate(TmdbDiscoverResponse, payload)
-
     def search_movies(self, query: str, page: int = 1) -> TmdbDiscoverResponse:
         """Free-text title search via TMDB /search/movie.
 
