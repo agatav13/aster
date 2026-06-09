@@ -28,7 +28,6 @@ from .services import (
     fetch_and_cache_movie,
     fetch_community_top_rated_shelf,
     fetch_continue_exploring_shelf,
-    fetch_polish_cinema_shelf,
     fetch_recently_watched_recommendations_shelf,
     fetch_seeded_recommendations_shelf,
     journal_entries,
@@ -689,13 +688,9 @@ class TmdbDiscoverBrowseTests(TestCase):
         self.assertContains(response, "Trending One")
         self.assertNotContains(response, "Local Cached")
         mock_client.list_trending.assert_called_with(time_window="week")
-        # Catalogue page intentionally doesn't pull any of these any more:
-        # TMDB top-rated / Polish cinema / now-playing / upcoming were all
-        # retired from /movies/. Trending and community top-rated (local DB)
-        # are the only remaining unauthenticated rails.
-        mock_client.list_top_rated.assert_not_called()
-        mock_client.list_now_playing.assert_not_called()
-        mock_client.list_upcoming.assert_not_called()
+        # Catalogue page intentionally doesn't pull any other generic rail:
+        # trending and community top-rated (local DB) are the only remaining
+        # unauthenticated rails.
         mock_client.discover_popular.assert_not_called()
 
     @override_settings(TMDB_API_KEY="fake-key")
@@ -705,9 +700,6 @@ class TmdbDiscoverBrowseTests(TestCase):
         plain local-cache grid instead of rendering an empty shelves page."""
         mock_client = mock_client_class.return_value
         mock_client.list_trending.side_effect = TmdbApiError("boom")
-        mock_client.list_top_rated.side_effect = TmdbApiError("boom")
-        mock_client.list_now_playing.side_effect = TmdbApiError("boom")
-        mock_client.list_upcoming.side_effect = TmdbApiError("boom")
 
         response = self.client.get(reverse("movies:list"))
 
@@ -2003,42 +1995,6 @@ class CuratedShelvesTests(TestCase):
         titles = [item.title for item in items]
         self.assertIn("Released Favorite", titles)
         self.assertNotIn("Future Favorite", titles)
-
-    @override_settings(TMDB_API_KEY="fake-key")
-    @patch("movies.services.TmdbClient")
-    def test_polish_cinema_calls_discover_with_pl_params(
-        self, mock_client_class
-    ) -> None:
-        """The Polish cinema rail forwards language / vote-count / sort
-        params straight to TMDB so it surfaces acclaimed local films."""
-        mock_client = mock_client_class.return_value
-        mock_client.discover_popular.return_value = TmdbDiscoverResponse(
-            page=1,
-            total_pages=1,
-            total_results=1,
-            results=[
-                TmdbMovieSummary(
-                    id=9301, title="Ida", poster_path="/ida.jpg", popularity=5.0
-                ),
-            ],
-        )
-        mock_client.image_url.side_effect = lambda path: ""
-
-        items = fetch_polish_cinema_shelf()
-
-        mock_client.discover_popular.assert_called_once_with(
-            page=1,
-            with_original_language="pl",
-            vote_count_gte=50,
-            sort_by="vote_average.desc",
-        )
-        self.assertEqual([item.title for item in items], ["Ida"])
-
-    @override_settings(TMDB_API_KEY="")
-    def test_polish_cinema_skips_silently_without_api_key(self) -> None:
-        """Missing TMDB_API_KEY must not break the shelf — it should just
-        return an empty list so the rail hides itself."""
-        self.assertEqual(fetch_polish_cinema_shelf(), [])
 
 
 class MovieNoteServiceTests(TestCase):

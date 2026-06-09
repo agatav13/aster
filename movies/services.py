@@ -674,14 +674,6 @@ def fetch_trending_shelf(*, limit: int = SHELF_LIMIT) -> list[MovieListItem]:
     )
 
 
-def fetch_top_rated_shelf(*, limit: int = SHELF_LIMIT) -> list[MovieListItem]:
-    return _tmdb_shelf(
-        lambda c: c.list_top_rated(),
-        limit=limit,
-        label="top_rated",
-    )
-
-
 def fetch_genre_shelf(
     *, tmdb_genre_id: int, limit: int = SHELF_LIMIT
 ) -> list[MovieListItem]:
@@ -1050,28 +1042,6 @@ def fetch_continue_exploring_shelf(
         PERSONALIZED_SHELF_CACHE_TTL,
     )
     return person, items
-
-
-# TMDB's ISO-639-1 code for Polish. Isolated as a constant so the intent is
-# obvious at the call site.
-POLISH_LANGUAGE_CODE = "pl"
-# Vote-count floor for the Polish cinema rail: excludes obscure shorts and
-# festival one-offs that have a handful of votes and inflated averages.
-POLISH_CINEMA_MIN_VOTES = 50
-
-
-def fetch_polish_cinema_shelf(*, limit: int = SHELF_LIMIT) -> list[MovieListItem]:
-    """Editorial rail: highest-rated Polish-language films on TMDB."""
-    return _tmdb_shelf(
-        lambda c: c.discover_popular(
-            page=1,
-            with_original_language=POLISH_LANGUAGE_CODE,
-            vote_count_gte=POLISH_CINEMA_MIN_VOTES,
-            sort_by="vote_average.desc",
-        ),
-        limit=limit,
-        label="polish_cinema",
-    )
 
 
 def search_tmdb_movies(
