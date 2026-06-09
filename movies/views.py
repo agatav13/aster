@@ -149,8 +149,10 @@ class MovieListView(TemplateView):
         user = request.user
 
         if user.is_authenticated:
+            # seed can be None even with cached items: the shelf payload may
+            # outlive the seed row (e.g. the movie was deleted in admin).
             seed_movie, seeded_items = fetch_seeded_recommendations_shelf(user)
-            if seeded_items:
+            if seed_movie is not None and seeded_items:
                 shelves.append(
                     {
                         "eyebrow": "Bo oceniłeś wysoko",
@@ -168,7 +170,7 @@ class MovieListView(TemplateView):
             watched_seed, watched_items = fetch_recently_watched_recommendations_shelf(
                 user, exclude_seed_movie_ids=rated_seed_ids
             )
-            if watched_items:
+            if watched_seed is not None and watched_items:
                 shelves.append(
                     {
                         "eyebrow": "Bo obejrzałeś",
@@ -180,7 +182,7 @@ class MovieListView(TemplateView):
                 )
 
             explore_person, explore_items = fetch_continue_exploring_shelf(user)
-            if explore_items:
+            if explore_person is not None and explore_items:
                 shelves.append(
                     {
                         "eyebrow": "Kontynuuj odkrywanie",
