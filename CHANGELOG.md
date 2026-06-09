@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-06-10
+
 ### Changed
 
 - **Restyled the shared modal close button** (`.btn-close-custom` in `static/css/app.css`, used by the bug-report modal in `templates/feedback/_widget.html` and the rating modal in `templates/movies/_rating_modal.html`) from a bordered inline square in the header row into a frameless 36px circular icon pinned to the modal's top-right corner, with an `--accent-dim` hover fill, a subtle rotate-on-hover, and a new `:focus-visible` outline (the old button had no visible keyboard-focus state). Both modal headers now reserve right padding so long titles (e.g. "Oceń: …" with a full movie title) can't collide with the button. CSS only — no template, URL, or context-key changes.
@@ -132,7 +134,8 @@ First public release of the documentation and the supporting test suites.
 - Bump Django from 5.2.12 → 5.2.13 to remediate 5 CVEs surfaced by `pip-audit`.
 - Production hardening in `config/settings.py` activated when `DEBUG=False`: `SECURE_SSL_REDIRECT`, HSTS (1 year, include subdomains, preload), secure cookies, `X_FRAME_OPTIONS=DENY`, `SECURE_REFERRER_POLICY=same-origin`, `SECURE_CONTENT_TYPE_NOSNIFF`.
 
-[Unreleased]: https://github.com/agatav13/aster/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/agatav13/aster/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/agatav13/aster/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/agatav13/aster/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/agatav13/aster/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/agatav13/aster/releases/tag/v0.1.0
