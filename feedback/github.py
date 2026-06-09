@@ -36,7 +36,11 @@ def create_github_issue(title: str, body: str) -> tuple[str, int] | None:
         )
         return None
 
-    data = response.json()
+    try:
+        data = response.json()
+    except ValueError:
+        logger.error("GitHub 201 response was not JSON: %s", response.text[:500])
+        return None
     html_url = data.get("html_url", "")
     number = data.get("number")
     if not html_url or number is None:

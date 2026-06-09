@@ -159,3 +159,14 @@ def test_missing_title_returns_field_error(auth_client, github_ok):
 def test_get_method_not_allowed(auth_client):
     response = auth_client.get(reverse("feedback:submit"))
     assert response.status_code == 405
+
+
+def test_overlong_page_url_is_truncated_to_model_limit(auth_client, github_ok):
+    # SQLite ignores varchar limits but Postgres rejects over-long values,
+    # so the view must truncate to BugReport.page_url's max_length (200).
+    long_url = "https://example.com/page?" + "x" * 400
+    response = _post(auth_client, page_url=long_url)
+    assert response.status_code == 200
+    report = BugReport.objects.get()
+    assert len(report.page_url) == 200
+    assert report.page_url == long_url[:200]
