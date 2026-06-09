@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.test import TestCase, override_settings
@@ -354,20 +356,28 @@ class RateLimitTests(TestCase):
 
         caches["default"].clear()
 
+    # django-ratelimit uses fixed windows derived from time.time(); pin the
+    # clock so the N allowed requests and the tripping one can't straddle a
+    # window boundary mid-test (a real, observed flake for the 10/m login
+    # limit when the suite crosses a minute edge).
+    _FROZEN_TIME = 1_700_000_000.0
+
     def test_login_attempts_are_rate_limited_per_ip(self):
         url = reverse("accounts:login")
         creds = {"email": "nobody@example.com", "password": "wrong-password"}
-        for _ in range(10):  # rate is 10/m; all of these are allowed
-            self.client.post(url, creds)
-        response = self.client.post(url, creds)  # the 11th trips the limiter
+        with patch("django_ratelimit.core.time.time", return_value=self._FROZEN_TIME):
+            for _ in range(10):  # rate is 10/m; all of these are allowed
+                self.client.post(url, creds)
+            response = self.client.post(url, creds)  # the 11th trips the limiter
         self.assertContains(response, "Za dużo prób logowania")
 
     def test_registration_attempts_are_rate_limited_per_ip(self):
         url = reverse("accounts:register")
         payload = {"email": "x@example.com"}  # invalid form, but still counts
-        for _ in range(5):  # rate is 5/h
-            self.client.post(url, payload)
-        response = self.client.post(url, payload)
+        with patch("django_ratelimit.core.time.time", return_value=self._FROZEN_TIME):
+            for _ in range(5):  # rate is 5/h
+                self.client.post(url, payload)
+            response = self.client.post(url, payload)
         self.assertContains(response, "Za dużo prób rejestracji")
 
     def test_password_reset_requests_are_rate_limited_per_ip(self):
@@ -375,9 +385,10 @@ class RateLimitTests(TestCase):
         throttled like register/login/resend-activation."""
         url = reverse("accounts:password_reset")
         payload = {"email": "nobody@example.com"}
-        for _ in range(5):  # rate is 5/h
-            self.client.post(url, payload)
-        response = self.client.post(url, payload)
+        with patch("django_ratelimit.core.time.time", return_value=self._FROZEN_TIME):
+            for _ in range(5):  # rate is 5/h
+                self.client.post(url, payload)
+            response = self.client.post(url, payload)
         self.assertContains(response, "Za dużo prób")
 
 
