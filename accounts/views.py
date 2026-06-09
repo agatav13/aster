@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth import login, logout
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.tokens import default_token_generator
 from django.http import Http404, HttpRequest, HttpResponse
@@ -152,6 +153,24 @@ class ResendActivationView(_RateLimitedFormView):
                 )
                 return redirect("accounts:resend_activation")
         return super().form_valid(form)
+
+
+@method_decorator(
+    ratelimit(key="ip", rate="5/h", method="POST", block=False), name="dispatch"
+)
+class AppPasswordResetView(auth_views.PasswordResetView):
+    """Password reset with the same friendly rate-limit handling as the other
+    unauthenticated email-sending endpoints — every POST triggers an outbound
+    email, so without a limit one IP can email-bomb any registered address."""
+
+    ratelimit_message = "Za dużo prób. Spróbuj ponownie później."
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        if getattr(request, "limited", False):
+            form = self.get_form()
+            form.add_error(None, self.ratelimit_message)
+            return self.form_invalid(form)
+        return super().post(request, *args, **kwargs)
 
 
 class LogoutView(View):
