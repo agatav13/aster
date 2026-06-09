@@ -68,7 +68,10 @@ class SubmitBugReportView(LoginRequiredMixin, View):
             user=request.user,
             title=form.cleaned_data["title"],
             description=form.cleaned_data["description"],
-            page_url=form.cleaned_data.get("page_url") or "",
+            # Truncated to the model's max_length: the hidden field carries
+            # whatever URL the user was on, and Postgres (unlike SQLite)
+            # rejects over-long values instead of ignoring the limit.
+            page_url=(form.cleaned_data.get("page_url") or "")[:200],
             user_agent=request.META.get("HTTP_USER_AGENT", "")[:512],
         )
         logger.info("Created BugReport id=%s by user id=%s", report.pk, request.user.pk)

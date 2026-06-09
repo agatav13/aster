@@ -80,3 +80,14 @@ def test_malformed_response_returns_none(settings, monkeypatch, data):
         github.httpx, "Client", lambda timeout: _Client(_Response(201, data))
     )
     assert github.create_github_issue("t", "b") is None
+
+
+def test_non_json_201_body_returns_none(settings, monkeypatch):
+    settings.GITHUB_TOKEN = "tok"
+    settings.GITHUB_REPO = "owner/repo"
+    resp = _Response(201, {})
+    monkeypatch.setattr(
+        resp, "json", lambda: (_ for _ in ()).throw(ValueError("no json"))
+    )
+    monkeypatch.setattr(github.httpx, "Client", lambda timeout: _Client(resp))
+    assert github.create_github_issue("t", "b") is None
