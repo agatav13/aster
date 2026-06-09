@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Exists, OuterRef
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
@@ -78,8 +79,8 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
     template_name = "community/profile.html"
 
     def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        user_id = kwargs["user_id"]
-        if request.user.is_authenticated and request.user.pk == user_id:
+        # LoginRequiredMixin guarantees an authenticated user here.
+        if request.user.pk == kwargs["user_id"]:
             return redirect("accounts:profile")
         return super().get(request, *args, **kwargs)
 
@@ -191,19 +192,19 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
+@login_required
 @require_POST
 def follow_toggle(request: HttpRequest, user_id: int) -> HttpResponse:
-    if not request.user.is_authenticated:
-        return redirect("accounts:login")
     if request.user.pk == user_id:
         return HttpResponseBadRequest("Nie można obserwować samego siebie.")
 
     target = get_object_or_404(User, pk=user_id, is_active=True)
-    qs = Follow.objects.filter(follower=request.user, followee=target)
-    if qs.exists():
-        qs.delete()
-    else:
-        Follow.objects.create(follower=request.user, followee=target)
+    # get_or_create instead of exists()+create(): two concurrent POSTs
+    # (double-click) would otherwise both create and the loser would 500 on
+    # the uq_follow_pair constraint.
+    _, created = Follow.objects.get_or_create(follower=request.user, followee=target)
+    if not created:
+        Follow.objects.filter(follower=request.user, followee=target).delete()
 
     next_url = request.POST.get("next") or ""
     if next_url and url_has_allowed_host_and_scheme(
