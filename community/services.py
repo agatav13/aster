@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from movies.models import Rating, UserMovieStatus
 
-from .mock import FeedGroup, FeedItem
+from .feed import FeedGroup, FeedItem
 from .models import Follow
 
 

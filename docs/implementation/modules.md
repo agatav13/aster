@@ -25,9 +25,9 @@ tests/           — e2e/ (Playwright), perf/ (locust)
 > deduplikowany feed pogrupowany po datach. Widoki: `FeedView`
 > (`/community/`), `PeopleView` (`/community/people/`),
 > `UserProfileView` (`/community/u/<id>/` — read-only profil publiczny)
-> oraz `follow_toggle` (POST). Plik `community/mock.py` został
-> ograniczony do dataclass’ów `FeedItem` / `FeedGroup` używanych przez
-> serwis i szablony.
+> oraz `follow_toggle` (POST). Plik `community/feed.py` (dawniej
+> myląco nazwany `mock.py`) zawiera dataclass’y `FeedItem` /
+> `FeedGroup` używane przez serwis i szablony.
 
 > **Uwaga o PWA:** `config/urls.py` wystawia `GET /service-worker.js`
 > przez `TemplateView` (template `templates/pwa/service-worker.js`,
