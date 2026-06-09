@@ -257,6 +257,11 @@ LOGGING = {
             "level": APP_LOG_LEVEL,
             "propagate": False,
         },
+        "community": {
+            "handlers": ["console"],
+            "level": APP_LOG_LEVEL,
+            "propagate": False,
+        },
         "movies": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
         "core": {"handlers": ["console"], "level": APP_LOG_LEVEL, "propagate": False},
         "feedback": {

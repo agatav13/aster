@@ -3,7 +3,7 @@ services:
     runtime: python
     name: aster-app
     buildCommand: ./build.sh
-    startCommand: uv run gunicorn config.wsgi:application
+    startCommand: uv run --no-sync gunicorn config.wsgi:application
     healthCheckPath: /health/
     envVars:
       - key: PYTHON_VERSION
@@ -31,4 +31,6 @@ services:
       - key: GITHUB_TOKEN
         sync: false
       - key: GITHUB_REPO
+        sync: false
+      - key: TMDB_API_KEY
         sync: false

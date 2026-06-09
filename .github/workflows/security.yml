@@ -17,7 +17,7 @@ jobs:
       - run: uv python install 3.13
       - run: uv sync --all-extras --dev
       - name: Bandit (medium+ severity)
-        run: uv run bandit -r accounts core movies config -ll
+        run: uv run bandit -r accounts community core feedback movies config -ll
 
   pip-audit:
     runs-on: ubuntu-latest
