@@ -369,3 +369,13 @@ class RateLimitTests(TestCase):
             self.client.post(url, payload)
         response = self.client.post(url, payload)
         self.assertContains(response, "Za dużo prób rejestracji")
+
+    def test_password_reset_requests_are_rate_limited_per_ip(self):
+        """Every POST sends an outbound email, so this endpoint must be
+        throttled like register/login/resend-activation."""
+        url = reverse("accounts:password_reset")
+        payload = {"email": "nobody@example.com"}
+        for _ in range(5):  # rate is 5/h
+            self.client.post(url, payload)
+        response = self.client.post(url, payload)
+        self.assertContains(response, "Za dużo prób")

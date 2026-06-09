@@ -5,6 +5,7 @@ from .forms import AppPasswordResetForm
 from .views import (
     ActivateAccountView,
     ActivationSentView,
+    AppPasswordResetView,
     EditDisplayNameView,
     EditFavoriteGenresView,
     JournalView,
@@ -34,7 +35,7 @@ urlpatterns = [
     ),
     path(
         "password-reset/",
-        auth_views.PasswordResetView.as_view(
+        AppPasswordResetView.as_view(
             form_class=AppPasswordResetForm,
             template_name="accounts/password_reset_form.html",
             email_template_name="accounts/emails/password_reset_email.txt",
