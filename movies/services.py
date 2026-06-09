@@ -258,13 +258,11 @@ def normalize_all_genres() -> dict[str, int]:
 def _build_movie_defaults(
     payload: TmdbMovieSummary | TmdbMovieDetail, client: TmdbClient
 ) -> dict[str, Any]:
-    runtime = getattr(payload, "runtime", None)
-    return {
+    defaults: dict[str, Any] = {
         "title": payload.title,
         "original_title": payload.original_title or "",
         "overview": payload.overview or "",
         "release_date": payload.release_date,
-        "runtime_minutes": runtime,
         "poster_url": client.image_url(payload.poster_path),
         "backdrop_url": client.image_url(payload.backdrop_path),
         "original_language": payload.original_language or "",
@@ -273,6 +271,12 @@ def _build_movie_defaults(
         ),
         "tmdb_synced_at": timezone.now(),
     }
+    # Detail-only fields stay out of the defaults when upserting from a
+    # summary payload — update_or_create would otherwise NULL a previously
+    # cached runtime.
+    if isinstance(payload, TmdbMovieDetail):
+        defaults["runtime_minutes"] = payload.runtime
+    return defaults
 
 
 def upsert_movie_summary(payload: TmdbMovieSummary, client: TmdbClient) -> Movie:

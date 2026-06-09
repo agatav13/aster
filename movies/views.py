@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -13,7 +14,15 @@ from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 from django_ratelimit.decorators import ratelimit
 
-from .models import Comment, Genre, MovieCredit, MovieNote, Rating, UserMovieStatus
+from .models import (
+    Comment,
+    Genre,
+    Movie,
+    MovieCredit,
+    MovieNote,
+    Rating,
+    UserMovieStatus,
+)
 from .services import (
     MovieListPage,
     browse_local_movies,
@@ -371,7 +380,7 @@ def movie_detail(request: HttpRequest, tmdb_id: int) -> HttpResponse:
     )
 
 
-def _resolve_movie_or_404(tmdb_id: int):
+def _resolve_movie_or_404(tmdb_id: int) -> Movie:
     """Shared helper for write-side views: fetch-and-cache or 404."""
     try:
         return fetch_and_cache_movie(tmdb_id)
@@ -391,7 +400,9 @@ def _is_htmx(request: HttpRequest) -> bool:
     return request.headers.get("HX-Request") == "true"
 
 
-def _user_movie_state(user, movie) -> tuple[str | None, int | None]:
+def _user_movie_state(
+    user: AbstractBaseUser | AnonymousUser, movie: Movie
+) -> tuple[str | None, Decimal | None]:
     if not user.is_authenticated:
         return None, None
     status_row = UserMovieStatus.objects.filter(user=user, movie=movie).first()
@@ -402,7 +413,7 @@ def _user_movie_state(user, movie) -> tuple[str | None, int | None]:
     )
 
 
-def _detail_partial_context(request: HttpRequest, movie) -> dict[str, Any]:
+def _detail_partial_context(request: HttpRequest, movie: Movie) -> dict[str, Any]:
     user_status, user_rating = _user_movie_state(request.user, movie)
     return {
         "movie": movie,
@@ -417,7 +428,7 @@ def _htmx_response(*fragments: str) -> HttpResponse:
     return HttpResponse("\n".join(fragments))
 
 
-def _htmx_actions_response(request: HttpRequest, movie) -> HttpResponse:
+def _htmx_actions_response(request: HttpRequest, movie: Movie) -> HttpResponse:
     """Swap the actions block + OOB-update the user-rating cell.
 
     The rating modal is intentionally left in place: replacing its DOM node
@@ -433,7 +444,7 @@ def _htmx_actions_response(request: HttpRequest, movie) -> HttpResponse:
     )
 
 
-def _htmx_comments_response(request: HttpRequest, movie) -> HttpResponse:
+def _htmx_comments_response(request: HttpRequest, movie: Movie) -> HttpResponse:
     comments = list(visible_comments_for(movie))
     ctx = {
         "movie": movie,
@@ -447,19 +458,21 @@ def _htmx_comments_response(request: HttpRequest, movie) -> HttpResponse:
     )
 
 
-def _actions_response(request: HttpRequest, movie, tmdb_id: int) -> HttpResponse:
+def _actions_response(request: HttpRequest, movie: Movie, tmdb_id: int) -> HttpResponse:
     if _is_htmx(request):
         return _htmx_actions_response(request, movie)
     return _detail_redirect(tmdb_id)
 
 
-def _comments_response(request: HttpRequest, movie, tmdb_id: int) -> HttpResponse:
+def _comments_response(
+    request: HttpRequest, movie: Movie, tmdb_id: int
+) -> HttpResponse:
     if _is_htmx(request):
         return _htmx_comments_response(request, movie)
     return _detail_redirect(tmdb_id)
 
 
-def _htmx_notes_response(request: HttpRequest, movie) -> HttpResponse:
+def _htmx_notes_response(request: HttpRequest, movie: Movie) -> HttpResponse:
     notes = list(notes_for(request.user, movie))
     ctx = {
         "movie": movie,
@@ -472,7 +485,7 @@ def _htmx_notes_response(request: HttpRequest, movie) -> HttpResponse:
     )
 
 
-def _notes_response(request: HttpRequest, movie, tmdb_id: int) -> HttpResponse:
+def _notes_response(request: HttpRequest, movie: Movie, tmdb_id: int) -> HttpResponse:
     if _is_htmx(request):
         return _htmx_notes_response(request, movie)
     return _detail_redirect(tmdb_id)
