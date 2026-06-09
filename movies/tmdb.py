@@ -16,7 +16,7 @@ from typing import Annotated, Any
 import httpx
 from django.conf import settings
 from django.core.cache import cache
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,19 @@ class TmdbConfigError(RuntimeError):
 
 class TmdbApiError(RuntimeError):
     """Raised when the TMDB API returns a non-success response."""
+
+
+def _validate[ModelT: BaseModel](model_cls: type[ModelT], payload: Any) -> ModelT:
+    """Validate a TMDB payload, converting pydantic errors to TmdbApiError.
+
+    Callers already handle TmdbApiError gracefully (shelves degrade, pages
+    fall back to the local DB); a raw ValidationError would escape as a 500.
+    """
+    try:
+        return model_cls.model_validate(payload)
+    except ValidationError as exc:
+        logger.warning("TMDB payload failed %s validation: %s", model_cls.__name__, exc)
+        raise TmdbApiError("TMDB returned an unexpected payload shape") from exc
 
 
 class TmdbGenre(BaseModel):
@@ -189,7 +202,11 @@ class TmdbClient:
             raise TmdbApiError(
                 f"TMDB request to {path} failed with status {response.status_code}"
             )
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            logger.warning("TMDB %s returned a non-JSON body", path)
+            raise TmdbApiError(f"TMDB request to {path} returned invalid JSON") from exc
         cache.set(
             cache_key,
             payload,
@@ -199,7 +216,7 @@ class TmdbClient:
 
     def list_genres(self) -> list[TmdbGenre]:
         payload = self._get("/genre/movie/list")
-        return TmdbGenresResponse.model_validate(payload).genres
+        return _validate(TmdbGenresResponse, payload).genres
 
     def list_trending(
         self,
@@ -219,7 +236,7 @@ class TmdbClient:
                 f"time_window must be 'day' or 'week', got {time_window!r}"
             )
         payload = self._get(f"/trending/movie/{time_window}", params={"page": page})
-        return TmdbDiscoverResponse.model_validate(payload)
+        return _validate(TmdbDiscoverResponse, payload)
 
     def discover_popular(
         self,
@@ -251,7 +268,7 @@ class TmdbClient:
         if vote_count_gte is not None:
             params["vote_count.gte"] = vote_count_gte
         payload = self._get("/discover/movie", params=params)
-        return TmdbDiscoverResponse.model_validate(payload)
+        return _validate(TmdbDiscoverResponse, payload)
 
     def get_movie_recommendations(
         self, tmdb_id: int, page: int = 1
@@ -261,7 +278,7 @@ class TmdbClient:
             f"/movie/{tmdb_id}/recommendations",
             params={"page": page},
         )
-        return TmdbDiscoverResponse.model_validate(payload)
+        return _validate(TmdbDiscoverResponse, payload)
 
     def get_person_movie_credits(self, person_id: int) -> TmdbDiscoverResponse:
         """Filmography for a person (cast + crew), normalized to the shared
@@ -290,7 +307,7 @@ class TmdbClient:
                 "popularity": row.get("popularity"),
                 "genre_ids": row.get("genre_ids") or [],
             }
-        results = [TmdbMovieSummary.model_validate(row) for row in seen.values()]
+        results = [_validate(TmdbMovieSummary, row) for row in seen.values()]
         results.sort(key=lambda r: r.popularity or 0, reverse=True)
         return TmdbDiscoverResponse(
             page=1,
@@ -302,7 +319,7 @@ class TmdbClient:
     def list_top_rated(self, page: int = 1) -> TmdbDiscoverResponse:
         """Top-rated movies across TMDB's all-time chart."""
         payload = self._get("/movie/top_rated", params={"page": page})
-        return TmdbDiscoverResponse.model_validate(payload)
+        return _validate(TmdbDiscoverResponse, payload)
 
     def list_now_playing(self, page: int = 1) -> TmdbDiscoverResponse:
         """Movies currently playing in theatres.
@@ -311,12 +328,12 @@ class TmdbClient:
         unset so TMDB picks a sensible default from the configured language.
         """
         payload = self._get("/movie/now_playing", params={"page": page})
-        return TmdbDiscoverResponse.model_validate(payload)
+        return _validate(TmdbDiscoverResponse, payload)
 
     def list_upcoming(self, page: int = 1) -> TmdbDiscoverResponse:
         """Upcoming theatrical releases in the next few weeks."""
         payload = self._get("/movie/upcoming", params={"page": page})
-        return TmdbDiscoverResponse.model_validate(payload)
+        return _validate(TmdbDiscoverResponse, payload)
 
     def search_movies(self, query: str, page: int = 1) -> TmdbDiscoverResponse:
         """Free-text title search via TMDB /search/movie.
@@ -328,14 +345,14 @@ class TmdbClient:
             "/search/movie",
             params={"query": query, "page": page, "include_adult": "false"},
         )
-        return TmdbDiscoverResponse.model_validate(payload)
+        return _validate(TmdbDiscoverResponse, payload)
 
     def get_movie(self, tmdb_id: int) -> TmdbMovieDetail:
         payload = self._get(
             f"/movie/{tmdb_id}",
             params={"append_to_response": "credits"},
         )
-        return TmdbMovieDetail.model_validate(payload)
+        return _validate(TmdbMovieDetail, payload)
 
     def image_url(self, path: str | None) -> str:
         if not path:
