@@ -17,8 +17,14 @@ def env_bool(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+_IS_TEST = "test" in sys.argv or "pytest" in sys.modules
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me")
-DEBUG = env_bool("DJANGO_DEBUG", True)
+# Fail safe: an environment that forgets to set DJANGO_DEBUG gets production
+# behavior (and the SECRET_KEY guard below), not debug pages with a known
+# key. The test runner keeps the dev default — the suite exercises
+# DEBUG-mode behavior (plain static storage, no SSL redirect).
+DEBUG = env_bool("DJANGO_DEBUG", _IS_TEST)
 if not DEBUG and SECRET_KEY in {"", "change-me"}:
     raise ImproperlyConfigured(
         "DJANGO_SECRET_KEY must be set to a unique, secret value when DEBUG is off."
@@ -98,19 +104,22 @@ _SQLITE = {
     "ENGINE": "django.db.backends.sqlite3",
     "NAME": BASE_DIR / "db.sqlite3",
 }
-if "test" in sys.argv or "pytest" in sys.modules:
+if _IS_TEST:
     DATABASES = {"default": _SQLITE}
 else:
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=None,
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
-        or _SQLITE
-    }
+    _db_from_env = dj_database_url.config(
+        default=None,
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+    if not _db_from_env and not DEBUG:
+        # Without this guard a production deploy with a missing/typo'd
+        # DATABASE_URL would silently boot against a fresh SQLite file on
+        # ephemeral disk and lose every write on the next deploy.
+        raise ImproperlyConfigured("DATABASE_URL must be set when DEBUG is off.")
+    DATABASES = {"default": _db_from_env or _SQLITE}
 
-if "test" in sys.argv or "pytest" in sys.modules:
+if _IS_TEST:
     CACHES = {
         "default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"},
     }
@@ -218,10 +227,9 @@ TMDB_REQUEST_TIMEOUT = float(os.getenv("TMDB_REQUEST_TIMEOUT", "3"))
 TMDB_LANGUAGE = os.getenv("TMDB_LANGUAGE", "pl-PL")
 TMDB_RESPONSE_CACHE_TTL = int(os.getenv("TMDB_RESPONSE_CACHE_TTL", "900"))
 
-_IS_TEST_RUN = "test" in sys.argv
 APP_LOG_LEVEL = os.getenv(
     "APP_LOG_LEVEL",
-    "CRITICAL" if _IS_TEST_RUN else ("DEBUG" if DEBUG else "INFO"),
+    "CRITICAL" if _IS_TEST else ("DEBUG" if DEBUG else "INFO"),
 )
 
 LOGGING = {
@@ -258,7 +266,7 @@ LOGGING = {
         },
         "django.request": {
             "handlers": ["console"],
-            "level": "CRITICAL" if _IS_TEST_RUN else "WARNING",
+            "level": "CRITICAL" if _IS_TEST else "WARNING",
             "propagate": False,
         },
     },
