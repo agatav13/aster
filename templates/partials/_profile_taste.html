@@ -1,0 +1,13 @@
+  {% if top_genres %}
+    <section class="profile-taste" aria-labelledby="profile-taste-label">
+      <p class="profile-taste-label" id="profile-taste-label">
+        <i class="bi bi-compass"></i>
+        <span>{% if is_own_profile %}Najczęściej wybierasz{% else %}Najczęściej wybiera{% endif %}</span>
+      </p>
+      <ul class="profile-taste-pills">
+        {% for g in top_genres %}
+          <li class="genre-pill">{{ g }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}

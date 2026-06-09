@@ -1,0 +1,59 @@
+  <header class="profile-hero" aria-labelledby="profile-hero-name">
+    {% if is_own_profile %}
+      <a href="{% url 'accounts:settings' %}"
+         class="profile-hero-settings"
+         aria-label="Ustawienia konta">
+        <i class="bi bi-gear" aria-hidden="true"></i>
+        <span class="profile-hero-settings-label">Ustawienia</span>
+      </a>
+    {% endif %}
+
+    <div class="profile-hero-body">
+      <h1 id="profile-hero-name" class="profile-hero-name">{{ profile_display_name }}</h1>
+      <p class="profile-hero-meta">
+        <span class="profile-hero-meta-email">{% if is_own_profile %}{{ profile_email }}{% else %}{{ profile_handle }}{% endif %}</span>
+        <span class="profile-hero-meta-dot" aria-hidden="true">·</span>
+        <span class="profile-hero-meta-since">Dołączył(a) {{ profile_joined|date:"F Y" }}</span>
+      </p>
+      {% if not is_own_profile %}
+        <p class="profile-hero-meta">
+          <span><strong>{{ followers_count }}</strong> obserwujących</span>
+          <span class="profile-hero-meta-dot" aria-hidden="true">·</span>
+          <span><strong>{{ following_count }}</strong> obserwowanych</span>
+        </p>
+
+        <form method="post" action="{% url 'community:follow_toggle' target.pk %}" class="m-0 mt-2">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+          {% if is_following %}
+            <button type="submit" class="btn btn-ghost btn-ghost-sm">Obserwujesz</button>
+          {% else %}
+            <button type="submit" class="btn btn-accent btn-sm">Obserwuj</button>
+          {% endif %}
+        </form>
+      {% endif %}
+
+      <dl class="profile-hero-ledger{% if not is_own_profile %} mt-3{% endif %}">
+        <div class="profile-hero-ledger-entry">
+          <dt>Obejrzane</dt>
+          <dd>{{ watched_count }}</dd>
+        </div>
+        <div class="profile-hero-ledger-entry">
+          <dt>Ocenione</dt>
+          <dd>{{ rated_count }}</dd>
+        </div>
+        <div class="profile-hero-ledger-entry">
+          <dt>Średnia ocena</dt>
+          <dd>
+            {% if avg_rating %}{{ avg_rating|floatformat:"-2" }}<span class="stat-suffix">/5</span>{% else %}<span class="profile-hero-ledger-empty">—</span>{% endif %}
+          </dd>
+        </div>
+        <div class="profile-hero-ledger-entry">
+          <dt>Ulubiona dekada</dt>
+          <dd>
+            {% if top_decade %}{{ top_decade }}{% else %}<span class="profile-hero-ledger-empty">—</span>{% endif %}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </header>

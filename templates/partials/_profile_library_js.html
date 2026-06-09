@@ -1,0 +1,122 @@
+<script>
+  (function () {
+    var tabs = Array.prototype.slice.call(
+      document.querySelectorAll('[data-library-tab]')
+    );
+    var panels = Array.prototype.slice.call(
+      document.querySelectorAll('[data-library-panel]')
+    );
+
+    function activateTab(tab) {
+      var target = tab.getAttribute('data-library-tab');
+      tabs.forEach(function (t) {
+        var active = t === tab;
+        t.classList.toggle('is-active', active);
+        t.setAttribute('aria-selected', active ? 'true' : 'false');
+        t.setAttribute('tabindex', active ? '0' : '-1');
+      });
+      panels.forEach(function (p) {
+        p.hidden = p.getAttribute('data-library-panel') !== target;
+      });
+      try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('tab', target);
+        window.history.replaceState({}, '', url);
+      } catch (_e) { /* no-op */ }
+    }
+
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener('click', function () { activateTab(tab); });
+      tab.addEventListener('keydown', function (event) {
+        var next = null;
+        if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+        else if (event.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
+        else if (event.key === 'Home') next = tabs[0];
+        else if (event.key === 'End') next = tabs[tabs.length - 1];
+        if (next) {
+          event.preventDefault();
+          activateTab(next);
+          next.focus();
+        }
+      });
+    });
+
+    var filterButtons = Array.prototype.slice.call(
+      document.querySelectorAll('[data-library-filter]')
+    );
+    var grid = document.querySelector('[data-library-grid]');
+    var filterEmpty = document.querySelector('[data-library-filter-empty]');
+
+    function applyFilter(value) {
+      if (!grid) return;
+      grid.setAttribute('data-active-filter', value);
+      filterButtons.forEach(function (btn) {
+        var active = btn.getAttribute('data-library-filter') === value;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-checked', active ? 'true' : 'false');
+      });
+      var cards = grid.querySelectorAll('.library-card');
+      var visible = 0;
+      cards.forEach(function (card) {
+        var rated = card.getAttribute('data-has-rating') === '1';
+        var show = value === 'all'
+          || (value === 'rated' && rated)
+          || (value === 'unrated' && !rated);
+        card.classList.toggle('is-hidden', !show);
+        if (show) visible += 1;
+      });
+      if (filterEmpty) filterEmpty.hidden = visible !== 0;
+    }
+
+    filterButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        applyFilter(btn.getAttribute('data-library-filter'));
+      });
+    });
+
+    var sortSelect = document.querySelector('[data-library-sort]');
+    function applySort(value) {
+      if (!grid) return;
+      var cards = Array.prototype.slice.call(grid.querySelectorAll('.library-card'));
+      cards.sort(function (a, b) {
+        if (value === 'rating-desc' || value === 'rating-asc') {
+          var ra = a.getAttribute('data-has-rating') === '1';
+          var rb = b.getAttribute('data-has-rating') === '1';{% comment %}
+            Unrated entries sink to the bottom in both directions so
+            "lowest to highest" actually starts at the lowest real rating
+            (0.5) rather than score=0 placeholders for unrated movies.
+          {% endcomment %}
+          if (ra !== rb) return ra ? -1 : 1;
+          if (!ra) {
+            return (parseFloat(b.getAttribute('data-updated')) || 0)
+              - (parseFloat(a.getAttribute('data-updated')) || 0);
+          }
+          var sa = parseFloat(a.getAttribute('data-score')) || 0;
+          var sb = parseFloat(b.getAttribute('data-score')) || 0;
+          if (sa === sb) {
+            return (parseFloat(b.getAttribute('data-updated')) || 0)
+              - (parseFloat(a.getAttribute('data-updated')) || 0);
+          }
+          return value === 'rating-desc' ? sb - sa : sa - sb;
+        }
+        if (value === 'title') {
+          return a.getAttribute('data-title').localeCompare(
+            b.getAttribute('data-title'), 'pl'
+          );
+        }
+        if (value === 'year-desc') {
+          return (parseInt(b.getAttribute('data-year'), 10) || 0)
+            - (parseInt(a.getAttribute('data-year'), 10) || 0);
+        }
+        return (parseFloat(b.getAttribute('data-updated')) || 0)
+          - (parseFloat(a.getAttribute('data-updated')) || 0);
+      });
+      cards.forEach(function (card) { grid.appendChild(card); });
+    }
+    if (sortSelect) {
+      sortSelect.addEventListener('change', function () {
+        applySort(sortSelect.value);
+      });
+    }
+  })();
+</script>
