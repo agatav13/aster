@@ -1641,9 +1641,9 @@ który łączy <code>Rating</code> i <code>UserMovieStatus</code> obserwowanych 
 deduplikowany feed pogrupowany po datach. Widoki: <code>FeedView</code>
 (<code>/community/</code>), <code>PeopleView</code> (<code>/community/people/</code>),
 <code>UserProfileView</code> (<code>/community/u/&lt;id&gt;/</code> — read-only profil publiczny)
-oraz <code>follow_toggle</code> (POST). Plik <code>community/mock.py</code> został
-ograniczony do dataclass’ów <code>FeedItem</code> / <code>FeedGroup</code> używanych przez
-serwis i szablony.</p>
+oraz <code>follow_toggle</code> (POST). Plik <code>community/feed.py</code> (dawniej
+myląco nazwany <code>mock.py</code>) zawiera dataclass’y <code>FeedItem</code> /
+<code>FeedGroup</code> używane przez serwis i szablony.</p>
 <p><strong>Uwaga o PWA:</strong> <code>config/urls.py</code> wystawia <code>GET /service-worker.js</code>
 przez <code>TemplateView</code> (template <code>templates/pwa/service-worker.js</code>,
 <code>content_type="application/javascript"</code>). <code>base.html</code> ładuje

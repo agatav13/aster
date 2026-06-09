@@ -1587,7 +1587,7 @@
 </table>
 <h2 id="lock-reproducibility">Lock &amp; reproducibility<a class="headerlink" href="#lock-reproducibility" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>pyproject.toml</code> — deklaracje, dependency groups (<code>dev</code>, <code>docs</code>).</li>
+<li><code>pyproject.toml</code> — deklaracje, dependency groups (<code>dev</code>, <code>docs</code>) oraz konfiguracja narzędzi (<code>[tool.pytest]</code>, <code>[tool.coverage]</code>, <code>[tool.bandit]</code>, <code>[tool.ty]</code> — w tym <code>[tool.ty.src]</code> wykluczające lokalne skrypty robocze, np. generator diagramu <code>gen_aster_erd.py</code>, spod <code>ty check</code>).</li>
 <li><code>uv.lock</code> — przypięte wersje wszystkich tranzytywnych zależności (commitowane).</li>
 <li><code>.python-version</code> — <code>3.13</code>, używane przez <code>uv python install</code>.</li>
 <li><code>pre-commit-config.yaml</code> — automatyczne uruchamianie ruff i ty przed commitami.</li>
