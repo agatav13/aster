@@ -266,6 +266,28 @@ class TmdbClientConfigTests(TestCase):
         self.assertEqual(second.results[0].title, "Cached Remote")
         mock_get.assert_called_once()
 
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.tmdb.httpx.get")
+    def test_non_json_body_raises_tmdb_api_error(self, mock_get) -> None:
+        """A 200 with an HTML body (proxy/captive portal) must surface as
+        TmdbApiError, which all callers already degrade on — not a 500."""
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.side_effect = ValueError("not json")
+
+        with self.assertRaises(TmdbApiError):
+            TmdbClient().list_trending()
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.tmdb.httpx.get")
+    def test_malformed_payload_raises_tmdb_api_error(self, mock_get) -> None:
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"unexpected": "shape"}
+
+        with self.assertRaises(TmdbApiError):
+            TmdbClient().list_trending()
+
 
 class GenreRelocationTests(TestCase):
     """Smoke test that the move from accounts.Genre → movies.Genre stayed intact."""
@@ -927,6 +949,13 @@ class RatingServiceTests(TestCase):
             with self.assertRaises(ValueError):
                 upsert_rating(user=self.user, movie=self.movie, score=bad)
 
+    def test_upsert_rejects_non_finite(self) -> None:
+        """NaN/inf construct as Decimal but raise InvalidOperation on
+        comparison — the service must turn them into a plain ValueError."""
+        for bad in (Decimal("nan"), Decimal("snan"), Decimal("inf"), Decimal("-inf")):
+            with self.assertRaises(ValueError):
+                upsert_rating(user=self.user, movie=self.movie, score=bad)
+
     def test_remove_rating_refreshes_aggregates(self) -> None:
         upsert_rating(user=self.user, movie=self.movie, score=5)
         upsert_rating(user=self.other, movie=self.movie, score=3)
@@ -1101,6 +1130,13 @@ class MovieRatingViewTests(TestCase):
     def test_invalid_score_does_not_create_rating(self) -> None:
         url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
         self.client.post(url, {"action": "save", "score": "not-a-number"})
+        self.assertFalse(Rating.objects.filter(user=self.user).exists())
+
+    def test_non_finite_score_is_rejected_without_error(self) -> None:
+        url = reverse("movies:update_rating", args=[self.movie.tmdb_id])
+        for raw in ("nan", "NaN", "snan", "inf", "-inf"):
+            response = self.client.post(url, {"action": "save", "score": raw})
+            self.assertEqual(response.status_code, 302)
         self.assertFalse(Rating.objects.filter(user=self.user).exists())
 
     def test_half_star_score_via_view(self) -> None:
@@ -2197,3 +2233,18 @@ class JournalViewTests(TestCase):
         response = self.client.get(reverse("accounts:journal"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Twój dziennik jest pusty")
+
+    def test_journal_groups_by_local_date_not_utc(self) -> None:
+        """A note written 2026-01-10 23:30 UTC is 2026-01-11 00:30 in
+        Europe/Warsaw, so it belongs under January 11 in the journal."""
+        from datetime import datetime
+        from datetime import timezone as dt_timezone
+
+        note = create_note(user=self.user, movie=self.movie, content="nocny wpis")
+        MovieNote.objects.filter(pk=note.pk).update(
+            created_at=datetime(2026, 1, 10, 23, 30, tzinfo=dt_timezone.utc)
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("accounts:journal"))
+        groups = response.context["groups"]
+        self.assertEqual(groups[0]["date"], date(2026, 1, 11))
