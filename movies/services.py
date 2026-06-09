@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -366,6 +367,11 @@ def sync_movie_credits(movie: Movie, credits: TmdbCredits, client: TmdbClient) -
     MovieCredit.objects.bulk_create(bulk, ignore_conflicts=True)
 
 
+# How long to wait before re-checking TMDB for credits of a movie whose
+# previous backfill produced no credit rows.
+CREDITS_BACKFILL_RETRY_TTL = 24 * 60 * 60
+
+
 def fetch_and_cache_movie(tmdb_id: int, client: TmdbClient | None = None) -> Movie:
     """Look up a movie locally; if missing, fetch from TMDB and persist.
 
@@ -377,7 +383,13 @@ def fetch_and_cache_movie(tmdb_id: int, client: TmdbClient | None = None) -> Mov
         if existing.credits.exists():
             logger.debug("Movie cache hit tmdb_id=%s", tmdb_id)
             return existing
-        # Cached before credits feature — backfill from TMDB.
+        # Cached before credits feature — backfill from TMDB. Some movies
+        # legitimately have zero TMDB credits, so credits.exists() would stay
+        # False forever; the cache marker keeps a no-credit film from
+        # re-triggering the detail fetch on every view.
+        backfill_marker = f"movies:credits-backfill-attempted:{tmdb_id}"
+        if not cache.add(backfill_marker, True, CREDITS_BACKFILL_RETRY_TTL):
+            return existing
         logger.info("Backfilling credits for tmdb_id=%s", tmdb_id)
         try:
             client = client or TmdbClient()
@@ -740,7 +752,16 @@ def _personal_shelf_version_key(user_id: int) -> str:
 
 def _personal_shelf_version(user_id: int) -> int:
     version = cache.get(_personal_shelf_version_key(user_id))
-    return int(version) if version is not None else 1
+    if version is not None:
+        return int(version)
+    # The version key can be evicted independently of the entries it
+    # namespaces; a constant fallback would resurrect stale entries written
+    # under an older version. Re-seed with a time-derived value so a missing
+    # key always starts a fresh namespace. cache.add keeps concurrent
+    # workers from clobbering each other's seed.
+    fresh = int(time.time())
+    cache.add(_personal_shelf_version_key(user_id), fresh, None)
+    return int(cache.get(_personal_shelf_version_key(user_id)) or fresh)
 
 
 def _personal_shelf_cache_key(
@@ -1136,7 +1157,10 @@ def set_movie_status(*, user, movie: Movie, status: str) -> UserMovieStatus:
     obj, _ = UserMovieStatus.objects.update_or_create(
         user=user, movie=movie, defaults={"status": status}
     )
-    bust_recommendations_cache(user)
+    # on_commit: busting inside the transaction would let a concurrent
+    # request recompute and re-cache shelves from pre-commit data, pinning
+    # stale results for the full TTL.
+    transaction.on_commit(lambda: bust_recommendations_cache(user))
     logger.info(
         "User id=%s set status=%s on movie tmdb_id=%s",
         user.pk,
@@ -1151,7 +1175,7 @@ def remove_movie_status(*, user, movie: Movie) -> bool:
     """Delete any status row for (user, movie). Returns True if one existed."""
     deleted, _ = UserMovieStatus.objects.filter(user=user, movie=movie).delete()
     if deleted:
-        bust_recommendations_cache(user)
+        transaction.on_commit(lambda: bust_recommendations_cache(user))
         logger.info(
             "User id=%s cleared status on movie tmdb_id=%s",
             user.pk,
@@ -1208,7 +1232,7 @@ def upsert_rating(*, user, movie: Movie, score: Decimal | float | int) -> Rating
         movie=movie,
         defaults={"status": UserMovieStatus.WATCHED},
     )
-    bust_recommendations_cache(user)
+    transaction.on_commit(lambda: bust_recommendations_cache(user))
     logger.info(
         "User id=%s %s rating=%s for movie tmdb_id=%s (status auto-set to watched)",
         user.pk,
@@ -1225,7 +1249,7 @@ def remove_rating(*, user, movie: Movie) -> bool:
     deleted, _ = Rating.objects.filter(user=user, movie=movie).delete()
     if deleted:
         _refresh_movie_rating_aggregates(movie)
-        bust_recommendations_cache(user)
+        transaction.on_commit(lambda: bust_recommendations_cache(user))
         logger.info(
             "User id=%s removed rating on movie tmdb_id=%s",
             user.pk,
@@ -1474,6 +1498,10 @@ TMDB_RECOMMENDATION_SEED_LIMIT = 3
 TMDB_WATCHED_SEED_LIMIT = 2
 TMDB_GENRE_DISCOVERY_LIMIT = 2
 TMDB_CANDIDATE_POOL_LIMIT = 36
+# Of the candidate pool, at most this many may be hydrated via a TMDB detail
+# fetch in a single request; the rest must already be in the local Movie
+# table. Keeps a cold cache from firing ~40 sequential HTTP calls in-request.
+TMDB_CANDIDATE_DETAIL_FETCH_LIMIT = 10
 
 
 @dataclass
@@ -1734,8 +1762,24 @@ def _fetch_tmdb_recommendation_candidates(
     except TmdbApiError as exc:
         logger.warning("TMDB recommendation candidate expansion failed: %s", exc)
 
+    candidate_ids = candidate_tmdb_ids[:TMDB_CANDIDATE_POOL_LIMIT]
+    locally_cached = set(
+        Movie.objects.filter(tmdb_id__in=candidate_ids).values_list(
+            "tmdb_id", flat=True
+        )
+    )
     movies: list[Movie] = []
-    for tmdb_id in candidate_tmdb_ids[:TMDB_CANDIDATE_POOL_LIMIT]:
+    remote_fetches = 0
+    skipped_remote = 0
+    for tmdb_id in candidate_ids:
+        # Hydrating an uncached candidate costs a TMDB detail round-trip;
+        # uncapped, a cold pool fires ~TMDB_CANDIDATE_POOL_LIMIT sequential
+        # HTTP calls inside the request. Locally cached movies are free.
+        if tmdb_id not in locally_cached:
+            if remote_fetches >= TMDB_CANDIDATE_DETAIL_FETCH_LIMIT:
+                skipped_remote += 1
+                continue
+            remote_fetches += 1
         try:
             movie = fetch_and_cache_movie(tmdb_id, client=client)
         except TmdbApiError as exc:
@@ -1748,6 +1792,12 @@ def _fetch_tmdb_recommendation_candidates(
         if not _is_released(movie.release_date):
             continue
         movies.append(movie)
+    if skipped_remote:
+        logger.info(
+            "Skipped %s uncached recommendation candidates (remote fetch cap %s)",
+            skipped_remote,
+            TMDB_CANDIDATE_DETAIL_FETCH_LIMIT,
+        )
     return movies
 
 
