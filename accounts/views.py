@@ -4,6 +4,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.tokens import default_token_generator
+from django.db import IntegrityError
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
@@ -57,7 +58,14 @@ class RegisterView(_RateLimitedFormView):
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        user = form.save()
+        try:
+            user = form.save()
+        except IntegrityError:
+            # Two concurrent registrations for the same email both pass
+            # clean_email's existence check; the loser lands here instead
+            # of 500ing on the unique constraint.
+            form.add_error("email", "Konto z tym adresem e-mail już istnieje.")
+            return self.form_invalid(form)
         logger.info("Registered new user id=%s email=%s", user.pk, user.email)
         try:
             send_activation_email(user)
