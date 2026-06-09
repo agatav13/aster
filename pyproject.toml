@@ -79,6 +79,11 @@ skip_covered = false
 exclude_dirs = ["tests", ".venv", "staticfiles", "docs"]
 skips = ["B101"]
 
+[tool.ty.src]
+# Untracked local one-off scripts (diagram generators, scratch files) must
+# not fail `ty check` — it runs repo-wide in the pre-commit hook.
+exclude = ["gen_aster_erd.py"]
+
 [tool.ty.rules]
 # Django's metaclass magic (Model.objects, descriptors, HttpRequest.user)
 # generates false positives for these rules.
