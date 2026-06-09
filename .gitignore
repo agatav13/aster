@@ -223,3 +223,9 @@ __marimo__/
 .claude/settings.local.json
 .claude/CLAUDE.local.md
 .claude/worktrees/
+
+# Local presentation/diagram artifacts (slides, ERD exports, generators)
+aster*.pdf
+aster-slides-*.html
+aster-erd.excalidraw
+gen_aster_erd.py
