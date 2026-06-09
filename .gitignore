@@ -226,6 +226,6 @@ __marimo__/
 
 # Local presentation/diagram artifacts (slides, ERD exports, generators)
 aster*.pdf
-aster-slides-*.html
+aster-*.html
 aster-erd.excalidraw
 gen_aster_erd.py
