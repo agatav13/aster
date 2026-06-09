@@ -1,4 +1,6 @@
+import argparse
 import time
+from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -12,16 +14,16 @@ class Command(BaseCommand):
         "Backfill director and cast credits from TMDB for cached movies that have none."
     )
 
-    def add_arguments(self, parser: object) -> None:
-        parser.add_argument(  # type: ignore[attr-defined]
+    def add_arguments(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
             "--sleep",
             type=float,
             default=0.25,
             help="Seconds to wait between TMDB requests (rate-limit courtesy).",
         )
 
-    def handle(self, *args: object, **options: object) -> None:
-        sleep_seconds: float = options["sleep"]  # type: ignore[index]
+    def handle(self, *args: Any, **options: Any) -> None:
+        sleep_seconds: float = options["sleep"]
         try:
             client = TmdbClient()
         except TmdbConfigError as exc:

@@ -2241,3 +2241,90 @@ class CommentRateLimitTests(TestCase):
         response = self.client.post(url, {"content": "ponad limit"})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Comment.objects.filter(user=self.user).count(), 30)
+
+
+@override_settings(TMDB_API_KEY="fake-key")
+class TmdbClientEndpointTests(TestCase):
+    """Error paths and parameter assembly of the TMDB wrapper — previously
+    only config errors and response caching were covered."""
+
+    @patch("movies.tmdb.httpx.get")
+    def test_transport_error_raises_tmdb_api_error(self, mock_get) -> None:
+        import httpx
+
+        mock_get.side_effect = httpx.ConnectError("connection refused")
+        with self.assertRaises(TmdbApiError):
+            TmdbClient().list_trending()
+
+    @patch("movies.tmdb.httpx.get")
+    def test_http_error_status_raises_tmdb_api_error(self, mock_get) -> None:
+        mock_response = mock_get.return_value
+        mock_response.status_code = 503
+        mock_response.text = "upstream down"
+        with self.assertRaises(TmdbApiError):
+            TmdbClient().list_trending()
+
+    @patch("movies.tmdb.httpx.get")
+    def test_search_movies_forwards_query_page_and_adult_filter(self, mock_get) -> None:
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "page": 2,
+            "total_pages": 2,
+            "total_results": 0,
+            "results": [],
+        }
+
+        TmdbClient().search_movies("incepcja", page=2)
+
+        params = mock_get.call_args.kwargs["params"]
+        self.assertEqual(params["query"], "incepcja")
+        self.assertEqual(params["page"], 2)
+        self.assertEqual(params["include_adult"], "false")
+
+    @patch("movies.tmdb.httpx.get")
+    def test_person_credits_deduplicate_and_sort_by_popularity(self, mock_get) -> None:
+        """A director-and-writer on the same film must appear once, and the
+        synthetic page is sorted by popularity descending."""
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "cast": [{"id": 1, "title": "Movie A", "popularity": 1.0}],
+            "crew": [
+                {"id": 1, "title": "Movie A", "popularity": 1.0},
+                {"id": 2, "title": "Movie B", "popularity": 5.0},
+            ],
+        }
+
+        response = TmdbClient().get_person_movie_credits(123)
+
+        self.assertEqual([r.id for r in response.results], [2, 1])
+        self.assertEqual(response.total_results, 2)
+
+
+class WriteViewTmdbFallbackTests(TestCase):
+    """_resolve_movie_or_404 must convert TMDB config/API errors into 404s
+    on the write-side views instead of leaking 500s."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.user = get_user_model().objects.create_user(
+            email="write-404@example.com", password="StrongPass123!"
+        )
+
+    def setUp(self) -> None:
+        self.client.force_login(self.user)
+
+    @override_settings(TMDB_API_KEY="")
+    def test_status_update_for_uncached_movie_404s_without_tmdb(self) -> None:
+        url = reverse("movies:update_status", args=[424242])
+        response = self.client.post(url, {"action": "watched"})
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(TMDB_API_KEY="fake-key")
+    @patch("movies.views.fetch_and_cache_movie")
+    def test_rating_update_404s_when_tmdb_errors(self, mock_fetch) -> None:
+        mock_fetch.side_effect = TmdbApiError("boom")
+        url = reverse("movies:update_rating", args=[424242])
+        response = self.client.post(url, {"action": "save", "score": "4"})
+        self.assertEqual(response.status_code, 404)

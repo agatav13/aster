@@ -379,3 +379,116 @@ class RateLimitTests(TestCase):
             self.client.post(url, payload)
         response = self.client.post(url, payload)
         self.assertContains(response, "Za dużo prób")
+
+
+class ActivationEdgeCaseTests(TestCase):
+    """Negative paths of the activation flow — previously only the happy
+    path was covered."""
+
+    def _make_inactive_user(self, email: str = "edge@example.com") -> User:
+        return User.objects.create_user(
+            email=email,
+            password="MocneHaslo123!",
+            is_active=False,
+            is_email_verified=False,
+        )
+
+    def _activation_url(self, uidb64: str, token: str) -> str:
+        return reverse("accounts:activate", kwargs={"uidb64": uidb64, "token": token})
+
+    def test_garbage_uidb64_returns_404(self):
+        response = self.client.get(self._activation_url("not-base64!", "token"))
+        self.assertEqual(response.status_code, 404)
+
+    def test_nonexistent_user_returns_404(self):
+        uid = urlsafe_base64_encode(force_bytes(999_999))
+        response = self.client.get(self._activation_url(uid, "token"))
+        self.assertEqual(response.status_code, 404)
+
+    def test_invalid_token_does_not_activate(self):
+        user = self._make_inactive_user()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+        response = self.client.get(self._activation_url(uid, "wrong-token"))
+
+        user.refresh_from_db()
+        self.assertContains(response, "Nie udało się aktywować konta")
+        self.assertFalse(user.is_active)
+
+    def test_already_active_account_renders_info_without_valid_token(self):
+        user = self._make_inactive_user()
+        user.is_active = True
+        user.is_email_verified = True
+        user.save()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+        response = self.client.get(self._activation_url(uid, "wrong-token"))
+
+        self.assertContains(response, "Konto jest już aktywne")
+
+    def test_activation_link_is_single_use_per_state(self):
+        """Re-using a valid link after activation hits the already-active
+        branch instead of re-activating."""
+        user = self._make_inactive_user()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        first = self.client.get(self._activation_url(uid, token))
+        second = self.client.get(self._activation_url(uid, token))
+
+        self.assertContains(first, "Konto zostało aktywowane")
+        self.assertContains(second, "Konto jest już aktywne")
+
+
+class ResendActivationTests(TestCase):
+    def test_resend_sends_email_for_inactive_account(self):
+        User.objects.create_user(
+            email="sleepy@example.com", password="MocneHaslo123!", is_active=False
+        )
+        response = self.client.post(
+            reverse("accounts:resend_activation"), {"email": "sleepy@example.com"}
+        )
+
+        self.assertRedirects(response, reverse("accounts:activation_sent"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("/auth/activate/", mail.outbox[0].body)
+
+    def test_resend_is_silent_for_active_account(self):
+        User.objects.create_user(
+            email="awake@example.com", password="MocneHaslo123!", is_active=True
+        )
+        response = self.client.post(
+            reverse("accounts:resend_activation"), {"email": "awake@example.com"}
+        )
+
+        self.assertRedirects(response, reverse("accounts:activation_sent"))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_resend_is_silent_for_unknown_email(self):
+        """No user enumeration: unknown addresses get the same redirect."""
+        response = self.client.post(
+            reverse("accounts:resend_activation"), {"email": "ghost@example.com"}
+        )
+
+        self.assertRedirects(response, reverse("accounts:activation_sent"))
+        self.assertEqual(len(mail.outbox), 0)
+
+
+class LogoutViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="bye@example.com", password="MocneHaslo123!", is_active=True
+        )
+
+    def test_post_logs_out_and_redirects_home(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("accounts:logout"))
+
+        self.assertRedirects(response, reverse("home"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_get_is_not_allowed(self):
+        """Logout must stay POST-only — a GET logout is CSRF-able via <img>."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("accounts:logout"))
+        self.assertEqual(response.status_code, 405)
