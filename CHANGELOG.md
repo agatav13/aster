@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+### Fixed
+
+- Grouped private-diary entries on `/auth/journal/` by local calendar day — `accounts.JournalView` now buckets notes with `timezone.localdate(note.created_at)` instead of `note.created_at.date()`, so a note written just after midnight in Europe/Warsaw is no longer filed under the previous (UTC) day.
+- Rejected non-finite movie ratings — `update_movie_rating` (`movies/views.py`) and `upsert_rating` (`movies/services.py`) now guard `score.is_finite()`, so a `NaN`/`inf` value (which constructs as a `Decimal` but raises on comparison) is turned away cleanly instead of 500-ing.
+- Truncated `page_url` to 200 chars before creating a `BugReport` (`feedback/views.py`), matching the model's `URLField` max length — an over-long current-page URL previously raised on Postgres (which enforces the limit) instead of being accepted as it is on SQLite.
+- Handled non-JSON `201` responses from the GitHub Issues API in `create_github_issue` (`feedback/github.py`) — the body is now parsed inside a `try/except ValueError` that logs and returns `None`, so a malformed success response no longer crashes bug-report submission.
+
 ## [1.1.0] — 2026-06-04
 
 ### Added

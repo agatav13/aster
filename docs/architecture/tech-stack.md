@@ -36,7 +36,7 @@
 
 ## Lock & reproducibility
 
-- `pyproject.toml` — deklaracje, dependency groups (`dev`, `docs`).
+- `pyproject.toml` — deklaracje, dependency groups (`dev`, `docs`) oraz konfiguracja narzędzi (`[tool.pytest]`, `[tool.coverage]`, `[tool.bandit]`, `[tool.ty]` — w tym `[tool.ty.src]` wykluczające lokalne skrypty robocze, np. generator diagramu `gen_aster_erd.py`, spod `ty check`).
 - `uv.lock` — przypięte wersje wszystkich tranzytywnych zależności (commitowane).
 - `.python-version` — `3.13`, używane przez `uv python install`.
 - `pre-commit-config.yaml` — automatyczne uruchamianie ruff i ty przed commitami.
