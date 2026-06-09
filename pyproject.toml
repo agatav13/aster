@@ -79,6 +79,10 @@ skip_covered = false
 exclude_dirs = ["tests", ".venv", "staticfiles", "docs"]
 skips = ["B101"]
 
+[tool.ruff.lint]
+# Defaults (E4/E7/E9/F) plus: import sorting, pyupgrade, flake8-django.
+extend-select = ["I", "UP", "DJ"]
+
 [tool.ty.src]
 # Untracked local one-off scripts (diagram generators, scratch files) must
 # not fail `ty check` — it runs repo-wide in the pre-commit hook.

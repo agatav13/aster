@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -2194,11 +2194,10 @@ class JournalViewTests(TestCase):
         """A note written 2026-01-10 23:30 UTC is 2026-01-11 00:30 in
         Europe/Warsaw, so it belongs under January 11 in the journal."""
         from datetime import datetime
-        from datetime import timezone as dt_timezone
 
         note = create_note(user=self.user, movie=self.movie, content="nocny wpis")
         MovieNote.objects.filter(pk=note.pk).update(
-            created_at=datetime(2026, 1, 10, 23, 30, tzinfo=dt_timezone.utc)
+            created_at=datetime(2026, 1, 10, 23, 30, tzinfo=UTC)
         )
         self.client.force_login(self.user)
         response = self.client.get(reverse("accounts:journal"))
