@@ -11,6 +11,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
+from django_ratelimit.decorators import ratelimit
 
 from .models import Comment, Genre, MovieCredit, MovieNote, Rating, UserMovieStatus
 from .services import (
@@ -536,10 +537,16 @@ def update_movie_rating(request: HttpRequest, tmdb_id: int) -> HttpResponse:
 
 @login_required
 @require_POST
+@ratelimit(key="user", rate="30/h", method="POST", block=False)
 def create_movie_comment(request: HttpRequest, tmdb_id: int) -> HttpResponse:
     """Create a new visible comment on the movie. Empty/over-long content is
-    silently dropped — the comments section just re-renders unchanged."""
+    silently dropped — the comments section just re-renders unchanged.
+
+    Comments are public, so creation is throttled per user; a tripped limit
+    re-renders the section unchanged, like any other rejected content."""
     movie = _resolve_movie_or_404(tmdb_id)
+    if getattr(request, "limited", False):
+        return _comments_response(request, movie, tmdb_id)
     content = request.POST.get("content", "")
     try:
         create_comment(user=request.user, movie=movie, content=content)
