@@ -62,14 +62,17 @@ class HomeView(View):
             # cache the assembled shelves rather than recomputing them per
             # request. The underlying TMDB calls are already cached; this also
             # skips the shelf-assembly and any local DB work behind them.
-            landing_ctx = cache.get_or_set(
-                "home:landing",
-                lambda: {
+            landing_ctx = cache.get("home:landing")
+            if landing_ctx is None:
+                landing_ctx = {
                     "top_rated": fetch_community_top_rated_shelf(),
                     "trending": fetch_trending_shelf(),
-                },
-                LANDING_CACHE_TTL,
-            )
+                }
+                # The trending shelf swallows TMDB errors and returns [] —
+                # caching that would pin an empty landing page for the full
+                # TTL after a single transient failure.
+                if landing_ctx["trending"]:
+                    cache.set("home:landing", landing_ctx, LANDING_CACHE_TTL)
             return render(request, "core/landing.html", landing_ctx)
 
         user = request.user
