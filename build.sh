@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -o errexit
 
-uv sync --python 3.13
-uv run manage.py collectstatic --noinput
-uv run manage.py migrate
+# --no-dev: production has no use for pytest/playwright/locust/ruff etc.
+# --no-sync on the run commands so they don't re-install the dev group.
+uv sync --no-dev --python 3.13
+uv run --no-sync manage.py collectstatic --noinput
+uv run --no-sync manage.py migrate

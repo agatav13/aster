@@ -82,7 +82,7 @@ uv run playwright install chromium
 DJANGO_ALLOW_ASYNC_UNSAFE=true uv run pytest tests/e2e -m e2e
 
 # Security checks
-uv run bandit -r accounts core movies config -ll
+uv run bandit -r accounts community core feedback movies config -ll
 uv run pip-audit
 uv run manage.py check --deploy
 
