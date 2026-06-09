@@ -1,4 +1,5 @@
 import logging
+from itertools import groupby
 
 from django.contrib.auth import login, logout
 from django.contrib.auth import views as auth_views
@@ -15,6 +16,9 @@ from django.utils.http import urlsafe_base64_decode
 from django.views import View
 from django.views.generic import FormView, TemplateView, UpdateView
 from django_ratelimit.decorators import ratelimit
+
+from movies.profile import build_profile_stats
+from movies.services import journal_entries
 
 from .forms import (
     DisplayNameForm,
@@ -195,66 +199,9 @@ class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = "accounts/profile.html"
 
     def get_context_data(self, **kwargs):
-        # Imported locally to keep accounts → movies coupling out of the
-        # module import graph (movies already imports accounts indirectly
-        # via the user FK, and a top-level import here risks a cycle).
-        from collections import Counter
-        from decimal import Decimal
-
-        from movies.models import Movie, Rating, UserMovieStatus
-
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-
-        watched_rows = (
-            UserMovieStatus.objects.filter(user=user, status=UserMovieStatus.WATCHED)
-            .select_related("movie")
-            .order_by("-updated_at")
-        )
-        watchlist_rows = (
-            UserMovieStatus.objects.filter(user=user, status=UserMovieStatus.WATCHLIST)
-            .select_related("movie")
-            .order_by("-updated_at")
-        )
-        rated_rows = (
-            Rating.objects.filter(user=user)
-            .select_related("movie")
-            .order_by("-updated_at")
-        )
-
-        watched_movies = [row.movie for row in watched_rows]
-        watchlist_movies = [row.movie for row in watchlist_rows]
-        rated_movies = [{"movie": row.movie, "score": row.score} for row in rated_rows]
-
-        # "Library" = strictly watched movies, with the user's rating attached
-        # when one exists. A rating without an explicit watched mark stays out
-        # of this list (the watchlist tab covers planned-to-watch separately).
-        # updated_ts uses the latest of (watched, rated) so the grid still
-        # surfaces recent activity even when the rating arrived after the
-        # watched mark.
-        ratings_by_movie: dict[int, tuple[Decimal, float]] = {
-            row.movie.pk: (row.score, row.updated_at.timestamp()) for row in rated_rows
-        }
-        library_entries = []
-        for row in watched_rows:
-            score_ts = ratings_by_movie.get(row.movie.pk)
-            score = score_ts[0] if score_ts else None
-            updated_ts = row.updated_at.timestamp()
-            if score_ts:
-                updated_ts = max(updated_ts, score_ts[1])
-            library_entries.append(
-                {
-                    "movie": row.movie,
-                    "score": score,
-                    "updated_ts": updated_ts,
-                    "score_int": int(score) if score is not None else 0,
-                    "has_rating": score is not None,
-                }
-            )
-        library_entries.sort(key=lambda e: e["updated_ts"], reverse=True)
-        library_count = len(library_entries)
-        library_rated_count = sum(1 for e in library_entries if e["has_rating"])
-        library_unrated_count = library_count - library_rated_count
+        stats = build_profile_stats(user)
 
         raw_tab = self.request.GET.get("tab")
         # Old two-of-three tab values ("watched", "rated") now both resolve to
@@ -280,49 +227,23 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         else:
             initials = "U"
 
-        avg_rating: Decimal | None = None
-        if rated_rows.exists():
-            total = sum((row.score for row in rated_rows), Decimal("0"))
-            avg_rating = (total / len(rated_movies)).quantize(Decimal("0.01"))
-
-        top_genres: list[str] = []
-        top_decade: str | None = None
-        if watched_movies or rated_movies:
-            movie_ids = {m.pk for m in watched_movies} | {
-                row["movie"].pk for row in rated_movies
-            }
-            movies_qs = Movie.objects.filter(pk__in=movie_ids).prefetch_related(
-                "genres"
-            )
-            genre_counter: Counter[str] = Counter()
-            decade_counter: Counter[str] = Counter()
-            for m in movies_qs:
-                for g in m.genres.all():
-                    genre_counter[g.name] += 1
-                if m.release_date is not None:
-                    decade = (m.release_date.year // 10) * 10
-                    decade_counter[f"{decade}s"] += 1
-            top_genres = [name for name, _ in genre_counter.most_common(3)]
-            if decade_counter:
-                top_decade = decade_counter.most_common(1)[0][0]
-
         ctx.update(
             {
-                "watched_movies": watched_movies,
-                "watchlist_movies": watchlist_movies,
-                "rated_movies": rated_movies,
-                "watched_count": len(watched_movies),
-                "watchlist_count": len(watchlist_movies),
-                "rated_count": len(rated_movies),
-                "library_entries": library_entries,
-                "library_count": library_count,
-                "library_rated_count": library_rated_count,
-                "library_unrated_count": library_unrated_count,
+                "watched_movies": stats.watched_movies,
+                "watchlist_movies": stats.watchlist_movies,
+                "rated_movies": stats.rated_movies,
+                "watched_count": stats.watched_count,
+                "watchlist_count": stats.watchlist_count,
+                "rated_count": stats.rated_count,
+                "library_entries": stats.library_entries,
+                "library_count": stats.library_count,
+                "library_rated_count": stats.library_rated_count,
+                "library_unrated_count": stats.library_unrated_count,
                 "active_tab": active_tab_legacy,
                 "active_library_tab": active_library_tab,
-                "avg_rating": avg_rating,
-                "top_genres": top_genres,
-                "top_decade": top_decade,
+                "avg_rating": stats.avg_rating,
+                "top_genres": stats.top_genres,
+                "top_decade": stats.top_decade,
                 "profile_initials": initials,
                 "profile_display_name": user.public_name,
                 "profile_email": user.email,
@@ -343,12 +264,6 @@ class JournalView(LoginRequiredMixin, TemplateView):
     template_name = "accounts/journal.html"
 
     def get_context_data(self, **kwargs):
-        # Local import keeps the accounts → movies dependency out of the
-        # module import graph, matching ProfileView above.
-        from itertools import groupby
-
-        from movies.services import journal_entries
-
         ctx = super().get_context_data(**kwargs)
         entries = list(journal_entries(self.request.user))
 
