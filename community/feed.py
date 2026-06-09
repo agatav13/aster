@@ -1,4 +1,4 @@
-"""Shared dataclasses for community views."""
+"""View-models for the community activity feed (FeedItem/FeedGroup)."""
 
 from __future__ import annotations
 
