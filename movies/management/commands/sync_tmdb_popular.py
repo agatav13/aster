@@ -1,4 +1,6 @@
+import argparse
 import time
+from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -9,23 +11,23 @@ from movies.tmdb import TmdbApiError, TmdbClient, TmdbConfigError
 class Command(BaseCommand):
     help = "Pull popular movies from TMDB and upsert them locally with credits."
 
-    def add_arguments(self, parser: object) -> None:
-        parser.add_argument(  # type: ignore[attr-defined]
+    def add_arguments(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
             "--pages",
             type=int,
             default=1,
             help="How many pages of /discover/movie to ingest (20 movies per page).",
         )
-        parser.add_argument(  # type: ignore[attr-defined]
+        parser.add_argument(
             "--sleep",
             type=float,
             default=0.25,
             help="Seconds to wait between TMDB detail requests (rate-limit courtesy).",
         )
 
-    def handle(self, *args: object, **options: object) -> None:
-        pages: int = options["pages"]  # type: ignore[index]
-        sleep_seconds: float = options["sleep"]  # type: ignore[index]
+    def handle(self, *args: Any, **options: Any) -> None:
+        pages: int = options["pages"]
+        sleep_seconds: float = options["sleep"]
         try:
             client = TmdbClient()
         except TmdbConfigError as exc:
