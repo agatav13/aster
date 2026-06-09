@@ -529,6 +529,9 @@ def update_movie_rating(request: HttpRequest, tmdb_id: int) -> HttpResponse:
         score = Decimal(raw_score)
     except (ValueError, InvalidOperation):
         return _actions_response(request, movie, tmdb_id)
+    # Decimal("nan")/Decimal("inf") construct fine but blow up on comparison.
+    if not score.is_finite():
+        return _actions_response(request, movie, tmdb_id)
 
     try:
         upsert_rating(user=request.user, movie=movie, score=score)

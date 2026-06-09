@@ -1191,6 +1191,8 @@ def upsert_rating(*, user, movie: Movie, score: Decimal | float | int) -> Rating
     when the row is already watched.
     """
     score_dec = Decimal(str(score))
+    if not score_dec.is_finite():
+        raise ValueError("Score must be a finite number")
     if not (Rating.MIN_SCORE <= score_dec <= Rating.MAX_SCORE):
         raise ValueError(
             f"Score must be between {Rating.MIN_SCORE} and {Rating.MAX_SCORE}"
