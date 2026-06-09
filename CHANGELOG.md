@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+### Changed
+
+- **Restyled the shared modal close button** (`.btn-close-custom` in `static/css/app.css`, used by the bug-report modal in `templates/feedback/_widget.html` and the rating modal in `templates/movies/_rating_modal.html`) from a bordered inline square in the header row into a frameless 36px circular icon pinned to the modal's top-right corner, with an `--accent-dim` hover fill, a subtle rotate-on-hover, and a new `:focus-visible` outline (the old button had no visible keyboard-focus state). Both modal headers now reserve right padding so long titles (e.g. "Oceń: …" with a full movie title) can't collide with the button. CSS only — no template, URL, or context-key changes.
+
 ### Security
 
 - Bumped Django 5.2.14 → 5.2.15 (PYSEC-2026-197 through PYSEC-2026-201) and pip 26.1.1 → 26.1.2 (PYSEC-2026-196) in `uv.lock`; the `pyproject.toml` floor is now `Django>=5.2.15`.
