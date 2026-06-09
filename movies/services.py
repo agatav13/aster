@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Any, Iterator
+from typing import Any
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.cache import cache
@@ -429,7 +430,7 @@ class MovieListItem:
     popularity: float | None = None
 
     @classmethod
-    def from_local(cls, movie: Movie) -> "MovieListItem":
+    def from_local(cls, movie: Movie) -> MovieListItem:
         return cls(
             tmdb_id=movie.tmdb_id,
             title=movie.title,
@@ -441,9 +442,7 @@ class MovieListItem:
         )
 
     @classmethod
-    def from_tmdb(
-        cls, summary: TmdbMovieSummary, client: TmdbClient
-    ) -> "MovieListItem":
+    def from_tmdb(cls, summary: TmdbMovieSummary, client: TmdbClient) -> MovieListItem:
         return cls(
             tmdb_id=summary.id,
             title=summary.title,
