@@ -6,6 +6,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
@@ -324,9 +325,14 @@ class JournalView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         entries = list(journal_entries(self.request.user))
 
+        # localdate, not .date(): created_at is stored in UTC, so a note
+        # written just after midnight in Europe/Warsaw would otherwise be
+        # grouped under the previous day.
         groups = [
             {"date": day, "entries": list(items)}
-            for day, items in groupby(entries, key=lambda note: note.created_at.date())
+            for day, items in groupby(
+                entries, key=lambda note: timezone.localdate(note.created_at)
+            )
         ]
 
         ctx.update(
